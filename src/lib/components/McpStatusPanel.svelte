@@ -69,7 +69,11 @@
   /**
    * Update health metrics when server status changes
    */
-  function updateHealthMetrics(serverName: string, status: string, errorMsg?: string) {
+  function updateHealthMetrics(
+    serverName: string,
+    status: string,
+    errorMsg: string | undefined = undefined,
+  ) {
     const current = healthMetrics[serverName] || {
       name: serverName,
       latency: null,

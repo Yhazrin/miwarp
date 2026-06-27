@@ -790,7 +790,7 @@
     }
   }
 
-  function handleInput(e?: Event) {
+  function handleInput(e: Event | undefined = undefined) {
     const composing = (e as InputEvent | undefined)?.isComposing === true;
     if (!composing) {
       const raw = store.inputText;
@@ -1614,7 +1614,10 @@
     ]);
   }
 
-  async function tryNativeClipboardPaste(snapshot?: string, cursorPos?: number) {
+  async function tryNativeClipboardPaste(
+    snapshot: string | undefined = undefined,
+    cursorPos: number | undefined = undefined,
+  ) {
     try {
       const files = await withTimeout(api.getClipboardFiles(), 250);
       if (files.length === 0) return; // No files — text already inserted (or empty paste)

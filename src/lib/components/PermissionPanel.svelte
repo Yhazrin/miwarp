@@ -97,10 +97,10 @@
   async function respondSingle(
     requestId: string,
     behavior: "allow" | "deny",
-    updatedPermissions?: PermissionSuggestion[],
-    updatedInput?: Record<string, unknown>,
-    denyMessage?: string,
-    interrupt?: boolean,
+    updatedPermissions: PermissionSuggestion[] | undefined = undefined,
+    updatedInput: Record<string, unknown> | undefined = undefined,
+    denyMessage: string | undefined = undefined,
+    interrupt: boolean | undefined = undefined,
   ) {
     if (isBusy(requestId) || isStuck(requestId)) return;
     dbg("PermissionPanel", "respondSingle", { requestId, behavior });

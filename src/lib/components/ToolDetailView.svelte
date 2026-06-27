@@ -177,7 +177,7 @@
   function computeFallbackPatch(
     oldStr: string,
     newStr: string,
-    originalFile?: string,
+    originalFile: string | undefined = undefined,
   ): PatchHunk[] {
     if (!diffLoaded()) return [];
 

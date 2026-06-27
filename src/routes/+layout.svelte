@@ -512,7 +512,7 @@
     }
   }
 
-  function requestMoveToFolder(runIds: string[], folderId?: string | null) {
+  function requestMoveToFolder(runIds: string[], folderId: string | null | undefined = undefined) {
     // If folderId is provided (including null for archive), execute immediately without modal
     if (folderId !== undefined) {
       const doMove = async () => {
@@ -1804,7 +1804,7 @@
    *  re-render — the input dock / status bar stay mounted. */
   function navigateToChatRun(
     targetRunId: string,
-    opts?: { scrollTo?: string; replaceState?: boolean },
+    opts: { scrollTo?: string; replaceState?: boolean } | undefined = undefined,
   ) {
     getChatTimelineResetHandle()?.shrinkVisibleRender(24);
     requestAnimationFrame(() => {

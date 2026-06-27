@@ -44,7 +44,10 @@
     );
   }
 
-  async function handleCandidateInstall(cid: string, resolution?: "abort" | "copy" | "replace") {
+  async function handleCandidateInstall(
+    cid: string,
+    resolution: "abort" | "copy" | "replace" | undefined = undefined,
+  ) {
     if (installScope === "project" && !projectCwd) {
       globalToast(t("skillSources_need_project_scope"), "error");
       return;

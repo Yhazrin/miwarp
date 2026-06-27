@@ -11,7 +11,10 @@
   import EmptyState from "$lib/components/EmptyState.svelte";
   import type { CliSessionSummary, DiscoverResult, ImportResult, SyncResult } from "$lib/types";
 
-  function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  function invoke<T>(
+    cmd: string,
+    args: Record<string, unknown> | undefined = undefined,
+  ): Promise<T> {
     return getTransport().invoke<T>(cmd, args);
   }
 

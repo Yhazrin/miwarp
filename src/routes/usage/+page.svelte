@@ -160,7 +160,7 @@
     return sortAsc ? " \u25B2" : " \u25BC";
   }
 
-  async function loadData(days?: number) {
+  async function loadData(days: number | undefined = undefined) {
     const thisRequest = ++requestId;
     if (!data) loading = true; // Only show full spinner on initial load
     error = "";

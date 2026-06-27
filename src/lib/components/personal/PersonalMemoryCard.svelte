@@ -12,7 +12,7 @@
 
   let { skillCount }: { skillCount: number } = $props();
 
-  function lk(key: string, params?: Record<string, string>): string {
+  function lk(key: string, params: Record<string, string> | undefined = undefined): string {
     return t(key as MessageKey, params);
   }
 </script>

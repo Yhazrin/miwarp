@@ -106,7 +106,7 @@
     }
   }
 
-  function formatDuration(startedAt: string, endedAt?: string): string {
+  function formatDuration(startedAt: string, endedAt: string | undefined = undefined): string {
     if (!endedAt) return t("sched_inProgress");
     const seconds = Math.round(
       (new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 1000,
@@ -118,7 +118,7 @@
     return `${hours}h ${minutes % 60}m`;
   }
 
-  function openInChat(runId?: string) {
+  function openInChat(runId: string | undefined = undefined) {
     if (!runId) return;
     goto(`/chat?run=${runId}`);
   }

@@ -116,7 +116,10 @@
     return mounted && gen === pageGeneration;
   }
 
-  function detectPlatformFromUrl(url: string, activePlatformId?: string): string | null {
+  function detectPlatformFromUrl(
+    url: string,
+    activePlatformId: string | undefined = undefined,
+  ): string | null {
     if (activePlatformId) return activePlatformId;
     if (!url) return null;
     return "anthropic";

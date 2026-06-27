@@ -171,7 +171,7 @@
     }
   }
 
-  function formatDuration(startedAt: string, endedAt?: string): string {
+  function formatDuration(startedAt: string, endedAt: string | undefined = undefined): string {
     if (!endedAt) return t("sched_inProgress");
     const start = new Date(startedAt).getTime();
     const end = new Date(endedAt).getTime();

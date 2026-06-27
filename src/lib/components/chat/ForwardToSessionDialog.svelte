@@ -158,7 +158,7 @@
     }
   }
 
-  function relativeTimeLabel(iso?: string): string {
+  function relativeTimeLabel(iso: string | undefined = undefined): string {
     if (!iso) return "";
     return relativeTime(iso);
   }
