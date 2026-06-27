@@ -2574,14 +2574,27 @@
       <!-- ═══════════════════════════════════════════════════════ -->
       <!-- Agents Section                                        -->
       <!-- ═══════════════════════════════════════════════════════ -->
-      <div class="space-y-4" class:hidden={activeTab !== "agents"}>
+      <!--
+        Agents panel: unlike the other tabs (whose inner panels render tall
+        scrollable bodies), AgentsPanel's grid has a fixed 460px min-height
+        that doesn't grow with the viewport. Without a flex wrapper that
+        claims the scrollable area's height, AgentsPanel sits at ~520px tall
+        while sibling tabs (MCP/Hooks/Plugins) fill the whole viewport —
+        leaving a conspicuous blank band at the bottom of the page.
+        `flex h-full min-h-0 flex-col` + `flex-1` on the inner wrapper makes
+        AgentsPanel claim the remaining height and stretch its 3-column grid
+        to fill, matching every other tab.
+      -->
+      <div class="flex h-full min-h-0 flex-col gap-4" class:hidden={activeTab !== "agents"}>
         <div>
           <h2 class="text-sm font-semibold text-foreground">{t("sidebar_agents")}</h2>
           <p class="text-xs text-muted-foreground">
             {t("extensions_typeGuide_agents")}
           </p>
         </div>
-        <AgentsPanel {projectCwd} showToast={globalToast} />
+        <div class="min-h-0 flex-1">
+          <AgentsPanel {projectCwd} showToast={globalToast} />
+        </div>
       </div>
     {/if}
   </div>
