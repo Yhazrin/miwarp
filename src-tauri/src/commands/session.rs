@@ -248,7 +248,10 @@ Project state snapshot:
     )
 }
 
-pub(crate) fn apply_project_desk_context(settings: &mut adapter::AdapterSettings, meta: &RunMeta) {
+pub(crate) fn apply_project_desk_context(
+    settings: &mut adapter::AdapterSettings,
+    meta: &mut RunMeta,
+) {
     if !matches!(meta.run_surface.as_ref(), Some(RunSurface::ProjectDesk)) {
         return;
     }
@@ -260,11 +263,32 @@ pub(crate) fn apply_project_desk_context(settings: &mut adapter::AdapterSettings
         append_adapter_context(&mut settings.append_system_prompt, &context);
     }
 
+    // P2-14 / P2-16: stamp the snapshot metadata so the workbench sidebar
+    // can label this run as a startup snapshot (and surface the real
+    // char/token counts instead of guessing). We overwrite any prior
+    // stamp because the context has been re-injected at this call site
+    // and the snapshot timestamp must match the most recent apply.
+    meta.project_desk_context = Some(crate::models::ProjectDeskContextMeta {
+        context_char_count: context.chars().count() as u64,
+        estimated_tokens: estimate_context_tokens(&context),
+        snapshot_generated_at: crate::models::now_iso(),
+    });
+
     log::debug!(
         "[session] project desk context injected for run_id={}, cwd={}",
         meta.id,
         meta.cwd
     );
+}
+
+/// P2-16: rough token estimate for the project-desk system context. Mirrors
+/// the heuristic the workbench controller uses on the TS side as a fallback
+/// when the backend hasn't stamped the value yet. We keep it conservative
+/// (~3 chars per token) because the system prompt is English-leaning.
+fn estimate_context_tokens(context: &str) -> u64 {
+    let chars = context.chars().count() as u64;
+    // Floor at 120 tokens so the UI never shows "0 tokens" for short context.
+    std::cmp::max(120, chars / 3)
 }
 
 /// Resolved authentication and environment info for spawning CLI.
@@ -794,7 +818,7 @@ pub(crate) async fn start_session_impl(
     );
 
     // 1. Read run metadata + validate execution path
-    let meta =
+    let mut meta =
         storage::runs::get_run(&run_id).ok_or_else(|| format!("Run {} not found", run_id))?;
     let exec_path = meta.resolved_execution_path();
     if exec_path != crate::models::ExecutionPath::SessionActor {
@@ -842,7 +866,18 @@ pub(crate) async fn start_session_impl(
         );
         adapter_settings.permission_mode = Some(mapped);
     }
-    apply_project_desk_context(&mut adapter_settings, &meta);
+    apply_project_desk_context(&mut adapter_settings, &mut meta);
+
+    // P2-14 / P2-16: persist the snapshot stamp the helper just filled in
+    // so the workbench sidebar sees a fresh `snapshot_generated_at` /
+    // `context_char_count` / `estimated_tokens` on the next `list_runs`
+    // call. Best-effort: if the meta write fails the spawn still proceeds
+    // (the in-memory value is gone but the session is intact).
+    if meta.project_desk_context.is_some() {
+        if let Err(e) = storage::runs::save_meta(&meta) {
+            log::warn!("[session] failed to persist project_desk_context: {}", e);
+        }
+    }
 
     // 2b. Resolve remote host from RunMeta (audit #2: single truth source)
     let remote = resolve_remote_host(&meta)?;

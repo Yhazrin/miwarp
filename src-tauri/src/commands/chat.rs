@@ -73,7 +73,8 @@ pub async fn send_chat_message(
         attachments.as_ref().map_or(0, |a| a.len()),
         client_message_id,
     );
-    let run = storage::runs::get_run(&run_id).ok_or_else(|| format!("Run {} not found", run_id))?;
+    let mut run =
+        storage::runs::get_run(&run_id).ok_or_else(|| format!("Run {} not found", run_id))?;
 
     // Validate execution path — send_chat_message is the pipe_exec path
     let exec_path = run.resolved_execution_path();
@@ -192,7 +193,7 @@ pub async fn send_chat_message(
     let user_settings = storage::settings::get_user_settings();
     let mut adapter_settings =
         crate::agent::adapter::build_adapter_settings(&agent_settings, &user_settings, model);
-    super::session::apply_project_desk_context(&mut adapter_settings, &run);
+    super::session::apply_project_desk_context(&mut adapter_settings, &mut run);
 
     // OpenCode resumes by starting a new turn process with the persisted session ID.
     let conversation_id = match run.resolved_conversation_ref() {

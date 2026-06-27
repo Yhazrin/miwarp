@@ -250,6 +250,23 @@ pub enum RunSurface {
     ProjectDesk,
 }
 
+/// P2-14 / P2-16: snapshot of the project-desk system context that was
+/// injected into the run at spawn time. The workbench sidebar uses
+/// `snapshot_generated_at` to label the context as a startup snapshot
+/// (not refreshed mid-run) and `context_char_count` / `estimated_tokens`
+/// to give users a real token number instead of a rough estimate.
+/// None for chat-surface runs.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectDeskContextMeta {
+    /// Char count of the system prompt that was injected for this run.
+    pub context_char_count: u64,
+    /// Estimated token count, derived if backend didn't supply one.
+    pub estimated_tokens: u64,
+    /// When the snapshot was generated (ISO 8601 string).
+    pub snapshot_generated_at: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskRun {
     pub id: String,
@@ -908,6 +925,14 @@ pub struct RunMeta {
     /// MiWarp surface that created this run. None means the default chat surface.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub run_surface: Option<RunSurface>,
+    /// P2-14 / P2-16: snapshot of the project-desk system context that was
+    /// injected into the run at spawn time. The workbench sidebar uses
+    /// `snapshot_generated_at` to label the context as a startup snapshot
+    /// (not refreshed mid-run) and `context_char_count` /
+    /// `estimated_tokens` to give users a real token number instead of a
+    /// rough estimate. None for chat-surface runs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_desk_context: Option<ProjectDeskContextMeta>,
     /// Scheduled task definition id when this run was created by the scheduler.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scheduled_task_id: Option<String>,

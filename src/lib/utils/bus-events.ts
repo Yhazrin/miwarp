@@ -7,6 +7,9 @@
 
 // ── Run lifecycle ───────────────────────────────────────────────────────
 export const EVT_RUNS_CHANGED = "ocv:runs-changed";
+// P2-13: focus a specific pending tool card. Detail carries the tool_use_id
+// so the ConversationTimeline can scroll + highlight the right card.
+export const EVT_FOCUS_PENDING_TOOL = "ocv:focus-pending-tool";
 
 // ── CWD / project ──────────────────────────────────────────────────────
 export const EVT_CWD_CHANGED = "ocv:cwd-changed";

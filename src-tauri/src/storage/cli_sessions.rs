@@ -1231,6 +1231,7 @@ pub fn import_session(
             session_id.to_string(),
         )),
         run_surface: None,
+        project_desk_context: None,
         folder_id: None,
         creation_mode: None,
         worktree_path: None,

@@ -1,11 +1,14 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { onMount } from "svelte";
   import { workbenchStore } from "$lib/workbench/workbench-store.svelte";
   import { sessionStore } from "$lib/stores";
   import type { TimelineEntry } from "$lib/types";
   import type { TaskNotificationItem } from "$lib/stores/session-store.svelte";
+  import { attentionQueueStore } from "$lib/stores/attention-queue-store.svelte";
+  import type { AttentionItem } from "$lib/types/attention-queue";
   import { t } from "$lib/i18n/index.svelte";
-  import { EVT_WORKBENCH_STAGE_PROMPT } from "$lib/utils/bus-events";
+  import { EVT_WORKBENCH_STAGE_PROMPT, EVT_FOCUS_PENDING_TOOL } from "$lib/utils/bus-events";
   import { relativeTime, truncate } from "$lib/utils/format";
   import Icon from "$lib/components/Icon.svelte";
   import StatusBadge from "$lib/components/StatusBadge.svelte";
@@ -50,9 +53,14 @@
           const status = entry.tool.status;
           const name = entry.tool.tool_name;
           if (
+            // P1-7: gate the AskUserQuestion name match on a pending status
+            // so a *successfully answered* question no longer surfaces in
+            // the pending list. The previous guard matched by name alone,
+            // which kept answered questions showing until the next reload.
             status === "permission_prompt" ||
             status === "ask_pending" ||
-            name === "AskUserQuestion"
+            status === "running" ||
+            (name === "AskUserQuestion" && status !== "success")
           ) {
             pending.push(entry);
           }
@@ -75,6 +83,73 @@
   });
   const pendingTimelineItems = $derived(timelineBuckets.pending);
   const failedTools = $derived(timelineBuckets.failed);
+
+  /**
+   * P1-6: attention items for the active project, surfaced in the
+   * "Pending work" section alongside timeline-derived pending tools.
+   * The attention queue is the canonical source for "agent needs user
+   * input" — Rust's RunStatus enum doesn't carry the wait states the
+   * UI used to fake via `run.status === "waiting_input"`.
+   */
+  const attentionItems = $derived(
+    activeRunId
+      ? (attentionQueueStore.snapshot?.items ?? []).filter(
+          (item: AttentionItem) =>
+            item.run_id === activeRunId &&
+            (item.status === "open" || item.status === "acknowledged"),
+        )
+      : ([] as AttentionItem[]),
+  );
+  /**
+   * P1-8: project-level attention — covers every run for the selected
+   * project, not just the one currently loaded into SessionStore. Used by
+   * the takeover "Handoffs" step so a non-active run needing approval still
+   * counts as a pending handoff.
+   */
+  const projectAttentionItems = $derived(
+    project ? workbenchStore.attentionItemsForActiveProject() : ([] as AttentionItem[]),
+  );
+  const projectAttentionCount = $derived(
+    projectAttentionItems.filter((item) => item.status === "open" || item.status === "acknowledged")
+      .length,
+  );
+  /**
+   * P1-8: live runs in this project (running / pending / spawning). The
+   * takeover "Context" step uses this to drive the project-desk surface
+   * recommendation.
+   */
+  const liveProjectRunCount = $derived(
+    project
+      ? workbenchStore.selectedProjectRuns.filter((run) =>
+          ["running", "pending", "spawning", "waiting_input", "waiting_approval"].includes(
+            run.status,
+          ),
+        ).length
+      : 0,
+  );
+  /** Combined: attention items first (canonical), then timeline-derived
+   *  permission_prompt / ask_pending entries that haven't been queued yet.
+   *  Deduped by tool_use_id / item id. */
+  const pendingWork = $derived.by(() => {
+    const seen = new Set<string>();
+    const out: Array<
+      | { kind: "attention"; item: AttentionItem }
+      | { kind: "timeline"; entry: Extract<TimelineEntry, { kind: "tool" }> }
+    > = [];
+    for (const item of attentionItems) {
+      const key = item.stable_key || item.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ kind: "attention", item });
+    }
+    for (const entry of pendingTimelineItems) {
+      const key = entry.tool.tool_use_id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ kind: "timeline", entry });
+    }
+    return out;
+  });
   const recentFiles = $derived.by(() => {
     if (!ownsCurrentRun) return [] as Array<{ path: string; name: string }>;
     return store.persistedFiles
@@ -114,8 +189,11 @@
             label: t("workbench_takeoverHandoffs"),
             description: t("workbench_takeoverHandoffsDescription"),
             prompt: t("workbench_briefingNeedsYouPrompt", { project: project.label }),
-            complete: pendingTimelineItems.length === 0,
-            tone: pendingTimelineItems.length > 0 ? "attention" : "complete",
+            // P1-8: project-level attention count, not just the active run's
+            // timeline. A non-active run needing approval still counts as a
+            // pending handoff.
+            complete: projectAttentionCount === 0,
+            tone: projectAttentionCount > 0 ? "attention" : "complete",
           },
           {
             icon: "check-square",
@@ -147,6 +225,38 @@
     return "text-miwarp-status-info";
   }
 
+  // P2-13: real scroll + flash highlight when the workbench's "view
+  // pending" button (in WorkbenchProjectChat) dispatches
+  // EVT_FOCUS_PENDING_TOOL. We resolve the matching `data-tool-use-id`
+  // attribute on the pending-work list and bring it into view, then
+  // briefly add a highlight ring so the user can see exactly which
+  // entry we focused.
+  let highlightedKey = $state<string | null>(null);
+  let highlightTimer: ReturnType<typeof setTimeout> | null = null;
+  function handleFocusPendingTool(event: Event): void {
+    const detail = (event as CustomEvent<{ toolUseId?: string }>).detail;
+    const toolUseId = detail?.toolUseId;
+    if (!toolUseId) return;
+    const root = document.querySelector("[data-workbench-control-panel]");
+    if (!root) return;
+    const card = root.querySelector(`[data-tool-use-id="${CSS.escape(toolUseId)}"]`);
+    if (card instanceof HTMLElement) {
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      highlightedKey = toolUseId;
+      if (highlightTimer) clearTimeout(highlightTimer);
+      highlightTimer = setTimeout(() => {
+        highlightedKey = null;
+      }, 1800);
+    }
+  }
+  onMount(() => {
+    window.addEventListener(EVT_FOCUS_PENDING_TOOL, handleFocusPendingTool);
+    return () => {
+      window.removeEventListener(EVT_FOCUS_PENDING_TOOL, handleFocusPendingTool);
+      if (highlightTimer) clearTimeout(highlightTimer);
+    };
+  });
+
   function stagePrompt(prompt: string): void {
     window.dispatchEvent(
       new CustomEvent(EVT_WORKBENCH_STAGE_PROMPT, {
@@ -167,14 +277,33 @@
     return Math.max(120, Math.round(baseChars / 3));
   }
 
-  const projectDeskContextTokens = $derived(
-    hasProjectDeskContext && project ? estimateSystemPromptTokens(project.cwd) : 0,
+  /**
+   * P2-14 / P2-16: prefer the real `project_desk_context` snapshot stamped
+   * on the run meta by `apply_project_desk_context` (Rust). When the
+   * stamp is missing (older runs, chat-surface), fall back to the
+   * heuristic estimate so the UI still shows a number. Returns
+   * `null` when the active run has no project-desk context at all.
+   */
+  const projectDeskContextTokens = $derived.by(() => {
+    if (!hasProjectDeskContext || !project) return 0;
+    const stamp = activeRun?.project_desk_context;
+    if (stamp?.estimatedTokens != null && stamp.estimatedTokens > 0) {
+      return stamp.estimatedTokens;
+    }
+    if (stamp?.contextCharCount != null && stamp.contextCharCount > 0) {
+      return Math.max(120, Math.round(stamp.contextCharCount / 3));
+    }
+    return estimateSystemPromptTokens(project.cwd);
+  });
+  const projectDeskContextSnapshotAt = $derived(
+    hasProjectDeskContext ? (activeRun?.project_desk_context?.snapshotGeneratedAt ?? null) : null,
   );
 </script>
 
 <aside
   class="wb-frame flex min-h-0 w-full flex-col overflow-hidden xl:w-[320px]"
   aria-label={t("workbench_controlPanel")}
+  data-workbench-control-panel
 >
   <header class="shrink-0 border-b border-border/40 px-4 py-2.5">
     <!--
@@ -206,6 +335,39 @@
 
   <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
     {#if project}
+      <!--
+        P1-8: project projection header — quick numeric summary of the
+        selected project's runs + attention queue + (when bound) the
+        active run's task notifications. The cards are intentionally tiny
+        so they don't compete with the takeover checklist below.
+      -->
+      <section
+        class="mb-3 grid grid-cols-3 gap-2 text-[10px]"
+        data-testid="workbench-project-projection"
+      >
+        <div class="rounded-xl border border-border/40 bg-muted/30 px-2 py-1.5">
+          <p class="text-[9px] uppercase tracking-wider text-muted-foreground">
+            {t("workbench_projectionRuns")}
+          </p>
+          <p class="mt-0.5 text-sm font-semibold text-foreground">{project.sessionCount}</p>
+        </div>
+        <div class="rounded-xl border border-border/40 bg-muted/30 px-2 py-1.5">
+          <p class="text-[9px] uppercase tracking-wider text-muted-foreground">
+            {t("workbench_projectionLive")}
+          </p>
+          <p class="mt-0.5 text-sm font-semibold text-foreground">{liveProjectRunCount}</p>
+        </div>
+        <div
+          class="rounded-xl border px-2 py-1.5 {projectAttentionCount > 0
+            ? 'border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.08)]'
+            : 'border-border/40 bg-muted/30'}"
+        >
+          <p class="text-[9px] uppercase tracking-wider text-muted-foreground">
+            {t("workbench_projectionAttention")}
+          </p>
+          <p class="mt-0.5 text-sm font-semibold text-foreground">{projectAttentionCount}</p>
+        </div>
+      </section>
       <section>
         <div class="mb-2 flex items-center justify-between gap-2">
           <h3 class="text-xs font-semibold text-foreground">{t("workbench_takeoverChecklist")}</h3>
@@ -382,6 +544,17 @@
                 </span>
               {/if}
             </div>
+            {#if projectDeskContextSnapshotAt}
+              <p
+                class="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground"
+                data-testid="workbench-snapshot-generated-at"
+              >
+                <Icon name="clock" size="xs" class="shrink-0" />
+                {t("workbench_snapshotGeneratedAt", {
+                  when: relativeTime(projectDeskContextSnapshotAt),
+                })}
+              </p>
+            {/if}
           </button>
         {:else}
           <div
@@ -394,28 +567,60 @@
 
       <section class="mt-5">
         <h3 class="mb-2 text-xs font-semibold text-foreground">{t("workbench_pendingWork")}</h3>
-        {#if pendingTimelineItems.length > 0}
+        {#if pendingWork.length > 0}
           <div class="space-y-2">
-            {#each pendingTimelineItems as item (item.id)}
-              <div
-                class="rounded-2xl border border-[hsl(var(--miwarp-status-warning)/0.28)] bg-[hsl(var(--miwarp-status-warning)/0.08)] px-3 py-2"
-              >
-                <div class="flex items-center gap-2">
-                  <Icon
-                    name="triangle-alert"
-                    size="sm"
-                    class="shrink-0 text-miwarp-status-warning"
-                  />
-                  <p class="truncate text-xs font-medium text-foreground">
-                    {item.tool.tool_name}
+            {#each pendingWork as entry (entry.kind === "attention" ? entry.item.id : entry.entry.id)}
+              {#if entry.kind === "attention"}
+                <div
+                  class="rounded-2xl border border-[hsl(var(--miwarp-status-warning)/0.28)] bg-[hsl(var(--miwarp-status-warning)/0.08)] px-3 py-2 transition-shadow {highlightedKey ===
+                  (entry.item.stable_key ?? entry.item.id)
+                    ? 'ring-2 ring-[hsl(var(--miwarp-status-warning)/0.6)] shadow-lg'
+                    : ''}"
+                  data-testid="workbench-pending-attention"
+                  data-tool-use-id={entry.item.stable_key ?? entry.item.id}
+                >
+                  <div class="flex items-center gap-2">
+                    <Icon
+                      name="triangle-alert"
+                      size="sm"
+                      class="shrink-0 text-miwarp-status-warning"
+                    />
+                    <p class="truncate text-xs font-medium text-foreground">
+                      {entry.item.kind === "pending_approval"
+                        ? t("workbench_pendingApproval")
+                        : t("workbench_pendingQuestion")}
+                    </p>
+                  </div>
+                  <p class="mt-1 text-[11px] text-muted-foreground">
+                    {truncate(entry.item.summary ?? "", 120)}
                   </p>
                 </div>
-                <p class="mt-1 text-[11px] text-muted-foreground">
-                  {item.tool.status === "ask_pending"
-                    ? t("workbench_pendingQuestion")
-                    : t("workbench_pendingApproval")}
-                </p>
-              </div>
+              {:else}
+                <div
+                  class="rounded-2xl border border-[hsl(var(--miwarp-status-warning)/0.28)] bg-[hsl(var(--miwarp-status-warning)/0.08)] px-3 py-2 transition-shadow {highlightedKey ===
+                  entry.entry.tool.tool_use_id
+                    ? 'ring-2 ring-[hsl(var(--miwarp-status-warning)/0.6)] shadow-lg'
+                    : ''}"
+                  data-testid="workbench-pending-tool"
+                  data-tool-use-id={entry.entry.tool.tool_use_id}
+                >
+                  <div class="flex items-center gap-2">
+                    <Icon
+                      name="triangle-alert"
+                      size="sm"
+                      class="shrink-0 text-miwarp-status-warning"
+                    />
+                    <p class="truncate text-xs font-medium text-foreground">
+                      {entry.entry.tool.tool_name}
+                    </p>
+                  </div>
+                  <p class="mt-1 text-[11px] text-muted-foreground">
+                    {entry.entry.tool.status === "ask_pending"
+                      ? t("workbench_pendingQuestion")
+                      : t("workbench_pendingApproval")}
+                  </p>
+                </div>
+              {/if}
             {/each}
           </div>
         {:else}
@@ -426,7 +631,14 @@
       </section>
 
       <section class="mt-5">
-        <h3 class="mb-2 text-xs font-semibold text-foreground">{t("workbench_recentSessions")}</h3>
+        <!--
+          P2-15: "Recent activity" (按 last_activity_at 排序) — 前后端统一
+          语义。旧 label "Recent sessions" 暗示静态历史，现在我们以
+          `selectedProjectRuns` 排序后的活动时间为序，包含活跃与已结束。
+        -->
+        <h3 class="mb-2 text-xs font-semibold text-foreground">
+          {t("workbench_recentSession")}
+        </h3>
         {#if recentSessions.length > 0}
           <div class="space-y-1.5">
             {#each recentSessions as session (session.id)}

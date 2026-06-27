@@ -119,6 +119,10 @@ pub fn create_run(
         execution_path: None,   // Caller sets after create_run
         conversation_ref: None, // Written by runtime events (session_init / thread.started)
         run_surface: None,
+        // P2-16: filled by `apply_project_desk_context` in commands/session.rs
+        // once the system prompt has been materialized. None for chat-surface
+        // runs and for runs created before this field landed.
+        project_desk_context: None,
         scheduled_task_id: None,
         scheduled_task_run_id: None,
         runtime_kind: Some(crate::models::AgentRuntimeKind::from_agent(agent)),

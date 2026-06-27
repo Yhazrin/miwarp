@@ -21,7 +21,12 @@
     EVT_CWD_CHANGED,
     EVT_RUNS_CHANGED,
     EVT_WORKBENCH_STAGE_PROMPT,
+    EVT_FOCUS_PENDING_TOOL,
   } from "$lib/utils/bus-events";
+  import {
+    type ProcessVisibility,
+    normalizeProcessVisibility,
+  } from "$lib/utils/process-visibility";
   import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
   import { deriveAutoName } from "$lib/utils/auto-name";
   import { relativeTime, truncate } from "$lib/utils/format";
@@ -43,6 +48,13 @@
   };
 
   let settings = $state<UserSettings | null>(null);
+  // P1-12: respect the user's "对话 / 全部" choice from settings instead of
+  // forcing `developer`. The chat page picks the same value via
+  // `normalizeProcessVisibility(settings.process_visibility)` and the
+  // ProcessVisibilityPicker writes back via `setProcessVisibility`.
+  const processVisibility = $derived<ProcessVisibility>(
+    settings ? normalizeProcessVisibility(settings.process_visibility) : "developer",
+  );
   let promptRef = $state<PromptInput | undefined>();
   let streamRef = $state<HTMLDivElement | undefined>();
   let sendBusy = $state(false);
@@ -140,6 +152,10 @@
 
     void hydrateSettings();
     void loadCliInfo(false, store.agent);
+    // P1-6: hydrate the attention queue so the hero / sidebar attention
+    // counts are accurate on cold start. The queue stays in sync via the
+    // `attention_queue_changed` Tauri event registered by subscribe().
+    void workbenchStore.ensureAttentionLoaded();
     window.addEventListener(EVT_WORKBENCH_STAGE_PROMPT, handleStagePrompt);
 
     return () => {
@@ -234,6 +250,32 @@
       persistProjectCwd(currentProject.cwd);
       if (ownsCurrentRun && store.run) {
         await store.sendMessage(prompt, attachments);
+      } else if (
+        // P0-2: reuse the chat page's resume pathway for historical
+        // project_desk runs. The same `store.resumeSession(..., initialMessage)`
+        // call drives the chat page's auto-resume — keeping the workbench on
+        // this single path means resume UX stays consistent across both
+        // surfaces (OpenCode session reattach + atomic prompt delivery).
+        activeRunId &&
+        workbenchStore.selectedProjectRuns.some(
+          (run) =>
+            run.id === activeRunId &&
+            run.run_surface === "project_desk" &&
+            !isLiveRunStatus(run.status),
+        )
+      ) {
+        const resumedRunId = await store.resumeSession(
+          activeRunId,
+          "continue",
+          prompt,
+          attachments,
+        );
+        if (resumedRunId) {
+          workbenchStore.setActiveRun(currentProject.id, resumedRunId);
+          reconcilePermissionRun(resumedRunId);
+        }
+        // P1-10: single EVT_RUNS_CHANGED → refresh() roundtrip.
+        window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
       } else {
         const runId = await store.startSession(
           prompt,
@@ -247,13 +289,33 @@
         workbenchStore.setActiveRun(currentProject.id, runId);
         reconcilePermissionRun(runId);
         await nameWorkbenchRun(runId, currentProject.label, prompt);
+        // P1-10: dispatch EVT_RUNS_CHANGED exactly once. The workbench store
+        // already has an `EVT_RUNS_CHANGED` listener wired up via
+        // subscribeToBusEvents() that calls refresh(); calling refresh()
+        // here would double the IPC and could race the EVT_RUNS_CHANGED
+        // listener (especially with the P0-5 generation guard).
         window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
-        void workbenchStore.refresh();
       }
     } finally {
       sendBusy = false;
       requestAnimationFrame(() => promptRef?.focus());
     }
+  }
+
+  /**
+   * P0-2 helper: live (=still in progress) project_desk runs should resume
+   * via sendMessage, while finished ones go through resumeSession. This
+   * mirrors the live-status set the chat page treats as "no need to
+   * resume, just keep streaming".
+   */
+  function isLiveRunStatus(status: string): boolean {
+    return (
+      status === "running" ||
+      status === "pending" ||
+      status === "waiting_input" ||
+      status === "waiting_approval" ||
+      status === "spawning"
+    );
   }
 
   async function nameWorkbenchRun(
@@ -299,12 +361,97 @@
     await store.answerToolQuestion(toolUseId, answer);
   }
 
+  /**
+   * P2-13: focus the first pending tool. We pick the canonical
+   * `pendingToolPermissions` (which combines permission_prompt +
+   * ask_pending + running) and dispatch a window event so the
+   * ConversationTimeline can scroll-into-view + highlight the card.
+   * Falls back to focusing the input if the timeline hasn't rendered
+   * the card yet (cold start race).
+   */
+  function focusPendingTool(): void {
+    const pending = store.pendingToolPermissions;
+    const first = pending[0];
+    if (first?.tool?.tool_use_id) {
+      window.dispatchEvent(
+        new CustomEvent(EVT_FOCUS_PENDING_TOOL, {
+          detail: { toolUseId: first.tool.tool_use_id },
+        }),
+      );
+    }
+    requestAnimationFrame(() => promptRef?.focus());
+  }
+
   function openPreviewInFullChat(_path: string): void {
     openActiveRun();
   }
 </script>
 
 <div class="project-desk-chat relative flex min-h-0 flex-1 flex-col">
+  <!--
+    P2-17: error banner with retry. Mounted above the active-run surface
+    badge so users see the failure state immediately on cold start when
+    listRuns() throws. The banner also serves as the workbench's "exit"
+    surface — there's no other error UI in the workbench right now.
+  -->
+  {#if workbenchStore.error}
+    <div
+      class="shrink-0 border-b border-[hsl(var(--miwarp-status-error)/0.4)] bg-[hsl(var(--miwarp-status-error)/0.1)] px-4 py-2"
+      role="alert"
+      data-testid="workbench-error-banner"
+    >
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex min-w-0 items-center gap-2">
+          <Icon name="triangle-alert" size="sm" class="shrink-0 text-miwarp-status-error" />
+          <div class="min-w-0">
+            <p class="truncate text-xs font-semibold text-foreground">
+              {t("workbench_errorTitle")}
+            </p>
+            <p class="truncate text-[11px] text-muted-foreground">
+              {truncate(workbenchStore.error, 200)}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-[hsl(var(--miwarp-status-error)/0.4)] bg-background/80 px-2.5 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--miwarp-status-error)/0.5)]"
+          onclick={() => void workbenchStore.retry()}
+          aria-label={t("workbench_errorRetry")}
+        >
+          <Icon name="refresh-cw" size="xs" />
+          {t("workbench_errorRetry")}
+        </button>
+      </div>
+    </div>
+  {/if}
+  <!--
+    P1-9: always show the active-run surface badge in the chat header so
+    users can see at a glance whether the conversation has project_desk
+    context (system prompt injected, scoped to cwd) or is a plain chat
+    session running on the same project cwd. Both are allowed; the badge
+    makes the distinction explicit instead of hiding it inside the right
+    panel.
+  -->
+  {#if ownsCurrentRun && store.run}
+    {@const surface = store.run.run_surface}
+    <div
+      class="shrink-0 border-b border-border/40 bg-muted/20 px-4 py-1.5"
+      data-testid="workbench-active-surface-badge"
+    >
+      <div class="flex items-center gap-2 text-[11px] text-muted-foreground">
+        <Icon
+          name={surface === "project_desk" ? "layout" : "message-square"}
+          size="xs"
+          class="shrink-0"
+        />
+        <span>
+          {surface === "project_desk"
+            ? t("workbench_projectDeskContextEnabled")
+            : t("workbench_standardChatContext")}
+        </span>
+      </div>
+    </div>
+  {/if}
   <!--
     工作台顶部黄色审批条：仅在 store.hasInlinePermission 时显示。
     这是显眼的“全局警示”，位于 timeline 之上，提醒用户整个项目在等他们。
@@ -331,7 +478,7 @@
         <button
           type="button"
           class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-[hsl(var(--miwarp-status-warning)/0.4)] bg-background/80 px-2.5 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--miwarp-status-warning)/0.5)]"
-          onclick={() => promptRef?.focus()}
+          onclick={() => focusPendingTool()}
           aria-label={t("workbench_focusPending")}
         >
           <Icon name="target" size="xs" />
@@ -478,7 +625,7 @@
           debugRunId={store.run?.id}
           debugSessionId={store.run?.session_id ?? undefined}
           {lastToolId}
-          processVisibility="developer"
+          {processVisibility}
           {permissionCoordinator}
           permissionMode={store.permissionMode}
           {toolResultCache}
@@ -578,7 +725,7 @@
         onRestoreStash={undefined}
         onValueChange={undefined}
         contextWindow={store.contextWindow}
-        processVisibility="developer"
+        {processVisibility}
       />
     </div>
   </div>

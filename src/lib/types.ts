@@ -32,6 +32,21 @@ export type ExecutionPath = "session_actor" | "pipe_exec";
 /** First-class MiWarp surface that created or owns a run. */
 export type RunSurface = "chat" | "project_desk";
 
+/** P2-14 / P2-16: snapshot of the project-desk system context that was
+ *  injected at spawn time. Mirrors `ProjectDeskContextMeta` in
+ *  src-tauri/src/models.rs. The workbench sidebar reads these to label
+ *  the context as a startup snapshot (not refreshed mid-run) and to show
+ *  real char / token counts instead of guessing. */
+export interface ProjectDeskContextMeta {
+  /** Char count of the system prompt that was injected. */
+  contextCharCount: number;
+  /** Estimated token count, derived from char count when the backend
+   *  didn't supply a tighter number. */
+  estimatedTokens: number;
+  /** ISO 8601 timestamp of when the snapshot was generated. */
+  snapshotGeneratedAt: string;
+}
+
 /** Unified resume/fork identity across agents. */
 export type ConversationRef =
   | { kind: "claude_session"; id: string }
@@ -87,6 +102,12 @@ export interface TaskRun {
   conversation_ref?: ConversationRef;
   /** MiWarp surface that created this run. Undefined means the default chat surface. */
   run_surface?: RunSurface;
+  /** P2-14 / P2-16: snapshot of the project-desk system context that was
+   *  injected at spawn time. Lets the workbench label the context as a
+   *  startup snapshot (not refreshed mid-run) and show real
+   *  char/token counts instead of guessing. Undefined for chat-surface runs
+   *  and runs created before the field landed. */
+  project_desk_context?: ProjectDeskContextMeta;
   /** User-created folder ID for organizing sessions. */
   folder_id?: string;
   /** Soft-delete timestamp. Populated by incremental sync. */
