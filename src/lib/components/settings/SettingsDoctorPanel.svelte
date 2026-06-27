@@ -5,7 +5,7 @@
   import { buildDoctorReport } from "$lib/utils/doctor";
   import { t } from "$lib/i18n/index.svelte";
   import Button from "$lib/components/Button.svelte";
-  import { showToast as _showToast } from "$lib/stores/toast-store.svelte";
+  import { pushSessionIslandNotify } from "$lib/stores/session-island-notify.svelte";
 
   interface Props {
     settings: UserSettings | null;
@@ -24,6 +24,8 @@
   // check and the update button share the same render path.
   let updating = $state(false);
   let updateError = $state<string | null>(null);
+  let updateSuccessMessage = $state<string | null>(null);
+  let updateSuccessTimer: ReturnType<typeof setTimeout> | undefined;
 
   const resolvedPerfMode = $derived.by(() => {
     const mode = settings?.visual_performance_mode ?? "auto";
@@ -95,24 +97,43 @@
     }
   }
 
+  function showUpdateSuccess(message: string) {
+    updateError = null;
+    clearTimeout(updateSuccessTimer);
+    if (
+      pushSessionIslandNotify({
+        text: message,
+        tone: "info",
+      })
+    ) {
+      updateSuccessMessage = null;
+      return;
+    }
+    updateSuccessMessage = message;
+    updateSuccessTimer = setTimeout(() => {
+      updateSuccessMessage = null;
+      updateSuccessTimer = undefined;
+    }, 3500);
+  }
+
   async function runCliUpdate() {
     if (updating) return;
     updating = true;
     updateError = null;
+    updateSuccessMessage = null;
+    clearTimeout(updateSuccessTimer);
     try {
       const result = await api.updateClaudeCli();
       if (result.success) {
-        _showToast(t("settings_doctor_updateSuccess"));
+        showUpdateSuccess(t("settings_doctor_updateSuccess"));
       } else {
         const detail = (result.stderr || result.stdout || "").trim().slice(0, 200);
         updateError = detail || t("settings_doctor_updateFailed");
-        _showToast(updateError, "error");
       }
       // Re-run diagnostics so the version display + button state refresh.
       await refresh();
     } catch (e) {
       updateError = e instanceof Error ? e.message : String(e);
-      _showToast(updateError, "error");
     } finally {
       updating = false;
     }
@@ -122,6 +143,7 @@
     void refresh();
     return () => {
       refreshGeneration += 1;
+      clearTimeout(updateSuccessTimer);
     };
   });
 
@@ -200,6 +222,11 @@
             {#if report.cli.auto_update_channel}
               <dd class="mt-0.5 text-[10px] text-muted-foreground/70">
                 {t("doctor_cliAutoUpdate", { channel: report.cli.auto_update_channel })}
+              </dd>
+            {/if}
+            {#if updateSuccessMessage}
+              <dd class="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                {updateSuccessMessage}
               </dd>
             {/if}
             {#if updateError}

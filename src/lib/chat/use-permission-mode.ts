@@ -2,11 +2,16 @@ import * as api from "$lib/api";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { mapCliToApp } from "$lib/chat/utils/permission-mode-contract";
 import type { SessionStore } from "$lib/stores/session-store.svelte";
+import type {
+  PermissionStatusInput,
+  PermissionStatusTone,
+} from "$lib/chat/send-status-presentation";
 
 export interface PermissionModeContext {
   store: SessionStore;
   t: (key: string, params?: Record<string, string>) => string;
-  showToast: (msg: string) => void;
+  /** Push a notification through the unified SessionStatusBar overlay. */
+  showPermissionStatus: (input: PermissionStatusInput) => void;
   getPermModeLabel: (mode: string) => string;
 }
 
@@ -31,7 +36,7 @@ export function createPermissionModeHandler(ctx: PermissionModeContext) {
     newMode: string,
     opts?: { toast?: boolean },
   ): Promise<boolean> {
-    const { store, t, showToast, getPermModeLabel } = ctx;
+    const { store, t, showPermissionStatus, getPermModeLabel } = ctx;
     const seq = ++permissionModeChangeSeq;
     const oldMode = store.permissionMode;
     const oldFlag = store.permissionModeSetByUser;
@@ -58,7 +63,10 @@ export function createPermissionModeHandler(ctx: PermissionModeContext) {
         dbgWarn("chat", "permission mode change failed:", e);
         store.error = t("chat_permModeFailed", { mode: newMode, error: String(e) });
         if (opts?.toast !== false) {
-          showToast(t("toast_permissionFailed"));
+          showPermissionStatus({
+            text: t("toast_permissionFailed"),
+            tone: "error" satisfies PermissionStatusTone,
+          });
         }
         return false;
       }
@@ -67,7 +75,10 @@ export function createPermissionModeHandler(ctx: PermissionModeContext) {
     if (seq !== permissionModeChangeSeq) return false;
 
     if (opts?.toast !== false) {
-      showToast(t("toast_permissionMode", { mode: getPermModeLabel(newMode) }));
+      showPermissionStatus({
+        text: t("toast_permissionMode", { mode: getPermModeLabel(newMode) }),
+        tone: "info" satisfies PermissionStatusTone,
+      });
     }
 
     let persistFailed = false;
@@ -89,14 +100,24 @@ export function createPermissionModeHandler(ctx: PermissionModeContext) {
           dbgWarn("chat", "permission mode persist failed:", e);
           if (hadActiveSession) {
             store.permissionModePersistFailed = true;
-            if (opts?.toast !== false) showToast(t("toast_permissionPersistFailed"));
+            if (opts?.toast !== false) {
+              showPermissionStatus({
+                text: t("toast_permissionPersistFailed"),
+                tone: "warning" satisfies PermissionStatusTone,
+              });
+            }
           } else {
             persistFailed = true;
             store.permissionMode = oldMode;
             store.permissionModeSetByUser = oldFlag;
             store.permissionModePersistFailed = oldPersistFailed;
             dbgWarn("chat", "no active session — reverting UI to match persisted settings");
-            if (opts?.toast !== false) showToast(t("toast_permissionChangeFailed"));
+            if (opts?.toast !== false) {
+              showPermissionStatus({
+                text: t("toast_permissionChangeFailed"),
+                tone: "error" satisfies PermissionStatusTone,
+              });
+            }
           }
         }
       })

@@ -17,6 +17,15 @@
   import { shouldShowContextDetails } from "$lib/utils/process-visibility";
   import type { SessionIslandAlignment } from "$lib/utils/session-island-alignment";
   import { agentToRuntimeId, getRuntimeDescriptor } from "$lib/runtime/registry";
+  import type { SendCoordinator, SendStatusEvent } from "$lib/chat/send-coordinator";
+  import {
+    getPermissionStatusPresentation,
+    getSendStatusPresentation,
+  } from "$lib/chat/send-status-presentation";
+  import type {
+    PermissionStatusInput,
+    PermissionStatusPresentation,
+  } from "$lib/chat/send-status-presentation";
 
   let {
     run = null,
@@ -80,7 +89,21 @@
     onOpenSettings,
     onOpenCliImport,
     onNewChat,
+    splitModeEnabled = false,
+    onToggleSplitMode,
     alignment = "center" as SessionIslandAlignment,
+    /** v1.0.9+: unified send status overlay (replaces SendStatusBanner). */
+    sendCoordinator = null as SendCoordinator | null,
+    onSendRetry = undefined as ((event: SendStatusEvent) => void) | undefined,
+    /**
+     * v1.1.0: push a permission-mode notification through the unified
+     * SessionStatusBar overlay (replaces the standalone `ToastHost`
+     * capsule for permission-mode changes). Statuses auto-dismiss after
+     * `autoDismissMs` unless `transient: false`. Pass `null` to clear.
+     */
+    permissionStatus = null as PermissionStatusInput | null,
+    onPermissionStatusDismiss = undefined as (() => void) | undefined,
+    autoDismissMs = 2400,
   }: {
     run?: TaskRun | null;
     agent?: string;
@@ -142,12 +165,28 @@
     onOpenSettings?: () => void;
     onOpenCliImport?: () => void;
     onNewChat?: () => void;
+    splitModeEnabled?: boolean;
+    onToggleSplitMode?: () => void;
     /** Top capsule horizontal anchor within the chat pane. */
     alignment?: SessionIslandAlignment;
+    sendCoordinator?: SendCoordinator | null;
+    onSendRetry?: (event: SendStatusEvent) => void;
+    /** Push permission-mode notifications through the unified overlay. */
+    permissionStatus?: PermissionStatusInput | null;
+    /** Notify parent so it can clear its source state when the overlay fades. */
+    onPermissionStatusDismiss?: () => void;
+    /** Auto-dismiss delay for permission statuses; ignored when `transient: false`. */
+    autoDismissMs?: number;
   } = $props();
 
   let showChromeActions = $derived(
-    !!(onToggleLayoutSidebar || onOpenSettings || onOpenCliImport || onNewChat),
+    !!(
+      onToggleLayoutSidebar ||
+      onOpenSettings ||
+      onOpenCliImport ||
+      onNewChat ||
+      onToggleSplitMode
+    ),
   );
 
   // v1.0.6 follow-up: hoist context-pill visibility so both tier 1 and
@@ -162,9 +201,120 @@
     !!(run && onRename) || !!agent || !!model || !!onProcessVisibilityChange,
   );
 
+  // ── Send status (unified notification channel; replaces bottom SendStatusBanner) ──
+  let sendStatusEvent = $state<SendStatusEvent | null>(null);
+  let sendStatusUnsub: (() => void) | null = null;
+
+  $effect(() => {
+    const coordinator = sendCoordinator;
+    sendStatusUnsub?.();
+    sendStatusUnsub = null;
+    if (!coordinator) {
+      sendStatusEvent = null;
+      return;
+    }
+    sendStatusUnsub = coordinator.subscribe((event) => {
+      sendStatusEvent = event;
+    });
+    return () => {
+      sendStatusUnsub?.();
+      sendStatusUnsub = null;
+    };
+  });
+
+  /**
+   * v1.1.0: mirror the live coordinator event into a local slot so the
+   * overlay can auto-dismiss without leaking coordinator state. New
+   * coordinator events (e.g. transport retry → submitting) re-fill the
+   * slot and reset the timer, so the user sees transient flashes during
+   * reconnects instead of a sticky banner.
+   */
+  let sendStatusLocal = $state<SendStatusEvent | null>(null);
+  let sendDismissTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function sendAutoDismissMs(event: SendStatusEvent): number {
+    if (event.state === "failed") return 8000;
+    return 2000;
+  }
+
+  $effect(() => {
+    const incoming = sendStatusEvent;
+    if (!incoming) {
+      sendStatusLocal = null;
+      clearTimeout(sendDismissTimer);
+      sendDismissTimer = undefined;
+      return;
+    }
+    const visible = getSendStatusPresentation(incoming);
+    if (!visible || !visible.visible) {
+      sendStatusLocal = null;
+      clearTimeout(sendDismissTimer);
+      sendDismissTimer = undefined;
+      return;
+    }
+    if (incoming === sendStatusLocal) {
+      // Same object identity → just reset the timer (state may have advanced
+      // within the same record, e.g. queued → failed).
+      clearTimeout(sendDismissTimer);
+    }
+    sendStatusLocal = incoming;
+    sendDismissTimer = setTimeout(() => {
+      sendStatusLocal = null;
+      sendDismissTimer = undefined;
+    }, sendAutoDismissMs(incoming));
+  });
+
+  $effect(() => {
+    return () => {
+      clearTimeout(sendDismissTimer);
+      sendDismissTimer = undefined;
+    };
+  });
+
+  const sendStatusPresentation = $derived(getSendStatusPresentation(sendStatusLocal));
+  const sendOverlayActive = $derived(Boolean(sendStatusPresentation?.visible));
+
+  // ── Permission-mode notification overlay (replaces standalone ToastHost for perm changes) ──
+  /**
+   * Mirrors the incoming `permissionStatus` prop into local state so the
+   * auto-dismiss timer can clear the overlay without round-tripping back
+   * through the parent. `version` is bumped whenever a new payload arrives
+   * so an in-flight dismiss timer for an older payload is cancelled.
+   */
+  let permissionStatusLocal = $state<PermissionStatusInput | null>(null);
+  let permissionDismissTimer: ReturnType<typeof setTimeout> | undefined;
+
+  $effect(() => {
+    const incoming = permissionStatus;
+    if (incoming === permissionStatusLocal) return;
+    clearTimeout(permissionDismissTimer);
+    permissionDismissTimer = undefined;
+    permissionStatusLocal = incoming ?? null;
+    if (incoming && incoming.transient !== false && autoDismissMs > 0) {
+      permissionDismissTimer = setTimeout(() => {
+        permissionStatusLocal = null;
+        permissionDismissTimer = undefined;
+        onPermissionStatusDismiss?.();
+      }, autoDismissMs);
+    }
+  });
+
+  $effect(() => {
+    return () => {
+      clearTimeout(permissionDismissTimer);
+      permissionDismissTimer = undefined;
+    };
+  });
+
+  const permissionPresentation = $derived<PermissionStatusPresentation | null>(
+    getPermissionStatusPresentation(permissionStatusLocal),
+  );
+  const permissionOverlayActive = $derived(Boolean(permissionPresentation?.visible));
+
   // ── Capsule morph: running / done / stopped / cached (flash) + waiting (persistent) ──
   type MorphFlash = "none" | "running" | "done" | "stopped" | "cached";
   type MorphShell = "none" | "running" | "done" | "stopped" | "cached" | "waiting";
+  type StatusOverlayMode = "none" | "send" | "permission" | "morph";
 
   let morphFlash = $state<MorphFlash>("none");
   let morphFlashTimer: ReturnType<typeof setTimeout> | undefined;
@@ -194,7 +344,31 @@
     return "none";
   });
 
-  let morphHidesContent = $derived(morphShell !== "none");
+  /** Send failures / in-flight submits take priority over session morph flashes. */
+  let statusOverlayMode = $derived.by((): StatusOverlayMode => {
+    if (sendOverlayActive) return "send";
+    if (permissionOverlayActive) return "permission";
+    if (morphShell !== "none") return "morph";
+    return "none";
+  });
+
+  let statusOverlayActive = $derived(statusOverlayMode !== "none");
+
+  function islandOverlayShellClass(): string {
+    if (statusOverlayMode === "send" && sendStatusPresentation) {
+      return sendStatusPresentation.shellClass;
+    }
+    if (statusOverlayMode === "permission" && permissionPresentation) {
+      // Inline add-on class shrinks the width to the content; the base
+      // shell class (send-pending / send-warning / send-failed) still owns
+      // color, shadow, and rounded geometry.
+      return `${permissionPresentation.shellClass} session-island-permission-shell`;
+    }
+    if (statusOverlayMode === "morph") {
+      return morphShellClass(morphShell);
+    }
+    return "";
+  }
 
   function morphShellClass(shell: MorphShell): string {
     switch (shell) {
@@ -369,17 +543,17 @@
 
   /** One class on the shell — context pill width + tier 2 + outer capsule share this. */
   let islandInteractionClass = $derived(
-    morphShell === "none" && islandActive ? "session-island-active" : "",
+    !statusOverlayActive && islandActive ? "session-island-active" : "",
   );
 
   let islandCompactClass = $derived(
-    morphShell === "none" && compactVisible ? "session-island-compact-pill" : "",
+    !statusOverlayActive && compactVisible ? "session-island-compact-pill" : "",
   );
 
   let tier2HasContent = $derived(tier2HasMeta);
 
   /** Tier 2 expands on hover/menus when there is something to show. */
-  let islandExpanded = $derived(morphShell === "none" && islandActive && tier2HasContent);
+  let islandExpanded = $derived(!statusOverlayActive && islandActive && tier2HasContent);
 
   // Dispatch event when island expansion state changes (for tool panel positioning)
   $effect(() => {
@@ -541,9 +715,7 @@
   Retains .session-status-drag for window drag region functionality.
 -->
 <div
-  class="session-status-drag session-island-shell {morphShellClass(
-    morphShell,
-  )} {islandInteractionClass} {islandCompactClass} {tier2HasContent
+  class="session-status-drag session-island-shell {islandOverlayShellClass()} {islandInteractionClass} {islandCompactClass} {tier2HasContent
     ? 'session-island-has-tier2'
     : ''} {islandExpanded ? 'session-island-expanded' : ''} {alignment === 'right'
     ? 'session-island-align-right'
@@ -554,26 +726,68 @@
   onpointerleave={onShellPointerLeave}
   role="presentation"
 >
-  {#if morphHidesContent}
+  {#if statusOverlayActive}
     <div
-      class="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-[inherit]"
-      aria-hidden="true"
+      class="absolute inset-0 z-50 flex items-center justify-center rounded-[inherit] px-3 {statusOverlayMode ===
+      'send'
+        ? 'pointer-events-auto'
+        : 'pointer-events-none'}"
+      role="status"
+      aria-live="polite"
+      data-send-state={sendStatusPresentation?.state ?? ""}
+      data-send-code={sendStatusPresentation?.errorCode ?? ""}
+      data-overlay-mode={statusOverlayMode}
     >
-      <span
-        class="text-base font-black tracking-widest text-miwarp-accent-on-accent {morphShell ===
-        'waiting'
-          ? 'animate-slow-pulse'
-          : ''}"
-        style="font-family: 'FonWorker', sans-serif;"
-      >
-        {morphShellLabel(morphShell)}
-      </span>
+      {#if statusOverlayMode === "send" && sendStatusPresentation}
+        {#if sendStatusPresentation.retryable && onSendRetry && sendStatusLocal}
+          <div class="flex w-full max-w-full items-center justify-between gap-3">
+            <span class="truncate text-sm font-semibold tracking-wide text-miwarp-accent-on-accent">
+              {t(sendStatusPresentation.labelKey as Parameters<typeof t>[0])}
+            </span>
+            <button
+              type="button"
+              class="shrink-0 rounded-md border border-current/40 px-2 py-0.5 text-xs font-medium text-miwarp-accent-on-accent transition hover:bg-current/10"
+              onclick={() => {
+                if (sendStatusLocal) onSendRetry(sendStatusLocal);
+                sendStatusLocal = null;
+                clearTimeout(sendDismissTimer);
+                sendDismissTimer = undefined;
+              }}
+            >
+              {t("send_retry")}
+            </button>
+          </div>
+        {:else}
+          <span
+            class="truncate px-1 text-center text-sm font-semibold tracking-wide text-miwarp-accent-on-accent"
+          >
+            {t(sendStatusPresentation.labelKey as Parameters<typeof t>[0])}
+          </span>
+        {/if}
+      {:else if statusOverlayMode === "permission" && permissionPresentation}
+        <span
+          class="truncate px-1 text-center text-sm font-semibold tracking-wide text-miwarp-accent-on-accent"
+        >
+          {permissionPresentation.text}
+        </span>
+      {:else if statusOverlayMode === "morph"}
+        <span
+          class="text-base font-black tracking-widest text-miwarp-accent-on-accent {morphShell ===
+          'waiting'
+            ? 'animate-slow-pulse'
+            : ''}"
+          style="font-family: 'FonWorker', sans-serif;"
+          aria-hidden="true"
+        >
+          {morphShellLabel(morphShell)}
+        </span>
+      {/if}
     </div>
   {/if}
 
   <!-- Tier 1: icon rail -->
   <div
-    class="session-island-tier1-frame relative inline-flex h-9 w-max max-w-full shrink-0 items-center transition-opacity duration-300 {morphHidesContent
+    class="session-island-tier1-frame relative inline-flex h-9 w-max max-w-full shrink-0 items-center transition-opacity duration-300 {statusOverlayActive
       ? 'opacity-0'
       : ''}"
   >
@@ -667,6 +881,24 @@
             aria-expanded={layoutSidebarOpen}
           >
             <Icon name="layout" size="md" class="shrink-0 opacity-90" />
+          </button>
+        {/if}
+
+        {#if onToggleSplitMode}
+          <button
+            type="button"
+            class="session-island-tab session-island-chrome-anchor transition-colors hover:bg-muted/45 hover:text-foreground
+              {splitModeEnabled ? 'bg-primary/15 text-primary' : 'text-muted-foreground'}"
+            tabindex={islandActive ? 0 : -1}
+            onclick={(e) => {
+              e.stopPropagation();
+              onToggleSplitMode();
+            }}
+            title={splitModeEnabled ? t("split_mode_exit") : t("split_mode_enter")}
+            aria-label={splitModeEnabled ? t("split_mode_exit") : t("split_mode_enter")}
+            aria-pressed={splitModeEnabled}
+          >
+            <Icon name="monitor" size="md" class="shrink-0 opacity-90" />
           </button>
         {/if}
 
@@ -774,7 +1006,7 @@
     <div
       class="tier-2-content flex min-h-0 min-w-0 shrink-0 items-center justify-between overflow-hidden {islandActive
         ? 'session-island-tier2-open border-t border-border/20'
-        : 'border-0'} {morphHidesContent ? 'opacity-0 pointer-events-none' : ''}"
+        : 'border-0'} {statusOverlayActive ? 'opacity-0 pointer-events-none' : ''}"
     >
       <div class="session-island-tier2">
         {#if run && onRename}

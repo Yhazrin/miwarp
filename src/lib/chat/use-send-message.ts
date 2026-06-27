@@ -124,7 +124,7 @@ export function createSendMessage(ctx: SendMessageContext): SendMessageHandle {
         code: event.error?.code,
         retryable: event.error?.retryable,
       });
-      // For retryable failures, the SendStatusBanner will surface a Retry
+      // For retryable failures, SessionStatusBar surfaces a Retry CTA.
       // CTA that re-uses the captured draft snapshot.
     },
   });
