@@ -16,68 +16,19 @@
         <div class="splash-glow splash-glow--b"></div>
       </div>
       <div class="splash-stage">
-        <div class="splash-mark-wrap" aria-hidden="true">
-          <svg
-            class="splash-mark-svg"
-            viewBox="0 0 80 80"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              <linearGradient
-                id="splash-grad"
-                x1="8"
-                y1="8"
-                x2="72"
-                y2="72"
-                gradientUnits="userSpaceOnUse"
-              >
-                <stop stop-color="hsl(var(--miwarp-accent-primary))" />
-                <stop offset="1" stop-color="hsl(var(--miwarp-accent-violet))" />
-              </linearGradient>
-            </defs>
-            <circle
-              class="splash-ring"
-              cx="40"
-              cy="40"
-              r="30"
-              stroke="url(#splash-grad)"
-              stroke-width="1.5"
-              stroke-opacity="0.35"
-            />
-            <circle
-              class="splash-ring splash-ring--inner"
-              cx="40"
-              cy="40"
-              r="22"
-              stroke="url(#splash-grad)"
-              stroke-width="1"
-              stroke-opacity="0.22"
-              stroke-dasharray="4 7"
-            />
-            <circle
-              class="splash-orbit"
-              cx="40"
-              cy="10"
-              r="3.5"
-              fill="hsl(var(--miwarp-accent-primary))"
-            />
-            <path
-              class="splash-core"
-              d="M27 49 L40 24 L53 49"
-              stroke="url(#splash-grad)"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <circle
-              class="splash-core"
-              cx="40"
-              cy="40"
-              r="4"
-              fill="hsl(var(--miwarp-accent-primary))"
-            />
-          </svg>
+        <div class="splash-logo-wrap">
+          <img
+            class="splash-logo splash-logo--dark"
+            src="%sveltekit.assets%/logo-dark.png"
+            alt="MiWarp"
+            draggable="false"
+          />
+          <img
+            class="splash-logo splash-logo--light"
+            src="%sveltekit.assets%/logo-light.png"
+            alt="MiWarp"
+            draggable="false"
+          />
         </div>
         <p class="splash-brand">MiWarp</p>
         <div class="splash-loader" aria-hidden="true">
