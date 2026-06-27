@@ -287,24 +287,15 @@ fn scan_commands_dir(
 
 /// List standalone skills from ~/.claude/skills/*/SKILL.md
 /// and optionally from {cwd}/.claude/skills/*/SKILL.md.
-/// Returns an error if the cwd directory cannot be accessed (permission denied).
+/// Missing or unreadable directories are skipped; user-scope skills are still returned.
 pub fn list_standalone_skills(cwd: &str) -> Result<Vec<StandaloneSkill>, String> {
     let mut skills = Vec::new();
 
-    // User-scope skills (~/.claude/skills/) - non-critical, ignore errors
-    let _ = scan_skills_dir(&skills_dir(), "user", &mut skills);
+    scan_skills_dir(&skills_dir(), "user", &mut skills);
 
-    // Project-scope skills ({cwd}/.claude/skills/)
     if !cwd.is_empty() {
         let project_dir = PathBuf::from(cwd).join(".claude").join("skills");
-        if let Err(e) = scan_skills_dir(&project_dir, "project", &mut skills) {
-            // Return error for project dir access failures (e.g., permission denied on Desktop)
-            return Err(format!(
-                "cannot access project skills directory '{}': {}",
-                project_dir.display(),
-                e
-            ));
-        }
+        scan_skills_dir(&project_dir, "project", &mut skills);
     }
 
     log::debug!(
@@ -315,13 +306,21 @@ pub fn list_standalone_skills(cwd: &str) -> Result<Vec<StandaloneSkill>, String>
 }
 
 /// Scan a directory for skills and append to the result vector.
-/// Returns Err if the directory cannot be read due to permission issues.
-fn scan_skills_dir(
-    dir: &Path,
-    scope: &str,
-    skills: &mut Vec<StandaloneSkill>,
-) -> Result<(), std::io::Error> {
-    let entries = std::fs::read_dir(dir)?;
+/// Ignores missing directories; logs and skips unreadable ones.
+fn scan_skills_dir(dir: &Path, scope: &str, skills: &mut Vec<StandaloneSkill>) {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(e) => {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                log::warn!(
+                    "[plugins] scan_skills_dir skipped '{}': {}",
+                    dir.display(),
+                    e
+                );
+            }
+            return;
+        }
+    };
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -350,7 +349,6 @@ fn scan_skills_dir(
             remote_ref,
         });
     }
-    Ok(())
 }
 
 fn read_skill_remote_meta(skill_dir: &Path) -> Option<SkillRemoteRef> {
@@ -768,4 +766,40 @@ pub async fn list_installed_plugins_cli() -> Result<Vec<crate::models::Installed
         plugins.len()
     );
     Ok(plugins)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn list_standalone_skills_tolerates_missing_project_skills_dir() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let cwd = tmp.path().to_string_lossy().to_string();
+        let skills = list_standalone_skills(&cwd)
+            .expect("should not fail when project skills dir is missing");
+        assert!(skills
+            .iter()
+            .all(|s| s.scope == "user" || s.scope == "project"));
+    }
+
+    #[test]
+    fn scan_skills_dir_reads_skill_frontmatter() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let skill_dir = tmp.path().join("demo-skill");
+        fs::create_dir_all(&skill_dir).expect("mkdir");
+        fs::write(
+            skill_dir.join("SKILL.md"),
+            "---\nname: demo\ndescription: Demo skill\n---\n",
+        )
+        .expect("write skill");
+
+        let mut skills = Vec::new();
+        scan_skills_dir(tmp.path(), "project", &mut skills);
+        assert_eq!(skills.len(), 1);
+        assert_eq!(skills[0].name, "demo");
+        assert_eq!(skills[0].description, "Demo skill");
+        assert_eq!(skills[0].scope, "project");
+    }
 }
