@@ -39,6 +39,13 @@ pub fn run_dir(run_id: &str) -> PathBuf {
     runs_dir().join(run_id)
 }
 
+/// Per-run usage 提取结果缓存目录：`~/.miwarp/cache/usage/<run_id>.json`。
+/// 写入内容包含 events.jsonl 的 mtime/size 元信息，下次提取时按 mtime 决定
+/// 是否复用。
+pub fn usage_cache_dir() -> PathBuf {
+    data_dir().join("cache").join("usage")
+}
+
 /// Resolve the user's home directory reliably.
 /// Primary: `getpwuid()` system call (works even when `$HOME` is unset,
 /// e.g. GUI apps launched from Finder/Dock on macOS 26+).
