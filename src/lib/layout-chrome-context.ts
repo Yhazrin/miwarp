@@ -1,4 +1,4 @@
-import type { UserSettings } from "$lib/types";
+import type { TaskRun, UserSettings } from "$lib/types";
 
 /** Left titlebar actions shared between layout toolbar and SessionStatusBar tier 2. */
 export type LayoutChromeContext = {
@@ -41,5 +41,26 @@ export async function resolveLayoutCachedSettings(
   if (!cache) return null;
   const immediate = cache.settings;
   if (immediate) return immediate;
+  return cache.whenReady();
+}
+
+/** v1.0.10 perf: exposes the layout's already-loaded runs list so child pages
+ *  (e.g. /workbench) can skip a redundant list_runs / list_runs_lite IPC at
+ *  mount time. The runs may still be a cache-first hydration when layout
+ *  used readRunsListCache(); consumers should treat them as "best effort,
+ *  eventually consistent" — the layout itself reconciles in the background. */
+export const RUNS_CACHE_CONTEXT_KEY = "layoutRunsCache";
+export type RunsCacheContext = {
+  /** Returns the latest runs loaded by the layout, or [] if not yet loaded. */
+  readonly runs: TaskRun[];
+  /** Awaits the layout's in-flight first runs load (dedupes concurrent callers). */
+  whenReady: () => Promise<TaskRun[]>;
+};
+
+export async function resolveLayoutCachedRuns(
+  cache: RunsCacheContext | undefined,
+): Promise<TaskRun[] | null> {
+  if (!cache) return null;
+  if (cache.runs.length > 0) return cache.runs;
   return cache.whenReady();
 }

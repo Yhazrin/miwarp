@@ -179,13 +179,20 @@ class WorkbenchStore {
     this.persistActiveRuns();
   }
 
-  async refresh(workspaces?: WorkspaceOption[]): Promise<void> {
+  async refresh(
+    workspaces?: WorkspaceOption[],
+    /** v1.0.10 perf: pass the runs already loaded by the layout to avoid a
+     *  redundant list_runs_lite IPC when both the sidebar and the workbench
+     *  are mounted (cold start). Falls back to the IPC when undefined. */
+    preloadedRuns?: TaskRun[],
+  ): Promise<void> {
     this.restorePersistedState();
     if (workspaces) this.workspaceOptions = workspaces;
     this.loading = true;
     this.error = "";
     try {
-      const runs = await api.listRunsLite();
+      const runs =
+        preloadedRuns && preloadedRuns.length > 0 ? preloadedRuns : await api.listRunsLite();
       this.allRuns = runs;
       this.projects = this.buildProjects(this.workspaceOptions, runs);
       this.syncActiveRuns();

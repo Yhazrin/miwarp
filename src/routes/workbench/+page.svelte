@@ -1,14 +1,28 @@
 <script lang="ts">
+  import { getContext } from "svelte";
   import { workbenchStore } from "$lib/workbench/workbench-store.svelte";
   import { workspacesStore } from "$lib/stores/workspaces-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import {
+    RUNS_CACHE_CONTEXT_KEY,
+    type RunsCacheContext,
+    resolveLayoutCachedRuns,
+  } from "$lib/layout-chrome-context";
   import WorkbenchProjectHero from "$lib/components/workbench/WorkbenchProjectHero.svelte";
   import WorkbenchProjectChat from "$lib/components/workbench/WorkbenchProjectChat.svelte";
   import WorkbenchControlPanel from "$lib/components/workbench/WorkbenchControlPanel.svelte";
 
+  // v1.0.10 perf: reuse the runs the layout already loaded (and continues to
+  // reconcile in the background) to skip a redundant list_runs_lite IPC on
+  // workbench mount. Falls back to the IPC when the cache isn't ready yet.
+  const runsCache = getContext<RunsCacheContext | undefined>(RUNS_CACHE_CONTEXT_KEY);
+
   $effect(() => {
     const workspaces = workspacesStore.list;
-    void workbenchStore.refresh(workspaces);
+    void (async () => {
+      const cached = await resolveLayoutCachedRuns(runsCache);
+      void workbenchStore.refresh(workspaces, cached ?? undefined);
+    })();
   });
 </script>
 

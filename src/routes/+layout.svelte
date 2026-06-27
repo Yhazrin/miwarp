@@ -140,7 +140,9 @@
   import {
     LAYOUT_CHROME_CONTEXT_KEY,
     type LayoutChromeContext,
+    RUNS_CACHE_CONTEXT_KEY,
     SETTINGS_CACHE_CONTEXT_KEY,
+    type RunsCacheContext,
     type SettingsCacheContext,
     routeNeedsLayoutContentPanel,
   } from "$lib/layout-chrome-context";
@@ -313,6 +315,30 @@
       return settings;
     },
   });
+  // v1.0.10 perf: expose layout-loaded runs to child pages (e.g. /workbench)
+  // so they can skip a redundant list_runs / list_runs_lite IPC at mount time.
+  // loadRuns() signals the gate at the end of its first invocation; subsequent
+  // callers get the in-memory snapshot immediately.
+  let runsReadyResolve: ((value: TaskRun[]) => void) | null = null;
+  let runsReadyPromise: Promise<TaskRun[]> = new Promise<TaskRun[]>((resolve) => {
+    runsReadyResolve = resolve;
+  });
+  setContext<RunsCacheContext>(RUNS_CACHE_CONTEXT_KEY, {
+    get runs() {
+      return runs;
+    },
+    whenReady: async () => {
+      if (runs.length > 0) return runs;
+      return runsReadyPromise;
+    },
+  });
+  function signalRunsReadyOnce() {
+    if (!runsReadyResolve) return;
+    const resolve = runsReadyResolve;
+    runsReadyResolve = null;
+    // Fire-and-forget: don't make the IPC caller wait for our signal.
+    Promise.resolve().then(() => resolve(runs));
+  }
   let sidebarOpen = $state(true);
   let projectCwd = $state("");
   let pinnedCwds = $state<string[]>([]);
@@ -853,6 +879,10 @@
       }
       lastRunsSync = new Date().toISOString();
       runsLoadSucceededOnce = true;
+      // v1.0.10 perf: signal the layout-runs-cache gate once. We do this on
+      // every successful call (idempotent), so concurrent callers receive the
+      // first settled snapshot and subsequent ones read `runs` directly.
+      signalRunsReadyOnce();
     } catch (e) {
       dbgWarn("layout", "loadRuns failed", e);
     }

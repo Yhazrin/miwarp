@@ -3,7 +3,12 @@
   import { get } from "svelte/store";
   import { goto, replaceState, beforeNavigate } from "$app/navigation";
   import { tick, onMount, untrack, getContext } from "svelte";
-  import { LAYOUT_CHROME_CONTEXT_KEY, type LayoutChromeContext } from "$lib/layout-chrome-context";
+  import {
+    LAYOUT_CHROME_CONTEXT_KEY,
+    SETTINGS_CACHE_CONTEXT_KEY,
+    type LayoutChromeContext,
+    type SettingsCacheContext,
+  } from "$lib/layout-chrome-context";
   import { fly } from "svelte/transition";
   import * as api from "$lib/api";
   import {
@@ -126,6 +131,9 @@
   const _toggleLayoutSidebar = getContext<() => void>("toggleSidebar");
   const layoutChrome = getContext<LayoutChromeContext>(LAYOUT_CHROME_CONTEXT_KEY);
   const keybindingStore = getContext<KeybindingStore>("keybindings");
+  // v1.0.10 perf: layout already loaded UserSettings in its own onMount; reuse it
+  // to skip the ~10-30ms duplicate getUserSettings() IPC at chat-mount time.
+  const settingsCache = getContext<SettingsCacheContext | undefined>(SETTINGS_CACHE_CONTEXT_KEY);
 
   // ── Store + Middleware ──
   const store = sessionStore;
@@ -1596,6 +1604,9 @@
     store,
     middleware,
     keybindingStore,
+    // v1.0.10 perf: forward the layout-cached settings handle so init()
+    // can skip the cold getUserSettings() IPC when layout already loaded.
+    getSettingsCache: () => settingsCache,
     getSettings: () => settings,
     setSettings: (v) => {
       settings = v;

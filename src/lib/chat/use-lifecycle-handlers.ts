@@ -45,6 +45,8 @@ import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
 import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
 import { consumeChatBootstrap } from "$lib/chat/chat-bootstrap-cache";
 import { disarmChatSettingsHop, isChatSettingsHop } from "$lib/utils/chat-settings-nav";
+import { type SettingsCacheContext, resolveLayoutCachedSettings } from "$lib/layout-chrome-context";
+import { readRunsListCache } from "$lib/utils/runs-list-cache";
 import type { BtwStateData } from "$lib/chat/use-chat-actions";
 
 // ── Component ref types (minimum interface needed by lifecycle handlers) ──
@@ -80,6 +82,9 @@ export interface LifecycleHandlerContext {
   // ── Settings & config state ──
   getSettings: () => UserSettings | null;
   setSettings: (v: UserSettings | null) => void;
+  /** v1.0.10 perf: optional handle to the layout-cached UserSettings so init()
+   *  can skip the cold getUserSettings() IPC when layout already loaded it. */
+  getSettingsCache?: () => SettingsCacheContext | undefined;
   setRemoteHosts: (v: RemoteHost[]) => void;
   setAuthOverview: (v: AuthOverview | null) => void;
   checkAllLocalProxies: () => void;
@@ -160,6 +165,7 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
     keybindingStore,
     getSettings,
     setSettings,
+    getSettingsCache,
     setRemoteHosts,
     setAuthOverview,
     checkAllLocalProxies,
@@ -254,6 +260,13 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
     const bootstrap = returningFromSettings ? consumeChatBootstrap() : null;
     if (returningFromSettings) disarmChatSettingsHop();
 
+    // v1.0.10 perf: prefer the layout-cached UserSettings to skip a cold
+    // getUserSettings() IPC at chat-mount time. The layout already loaded it
+    // during its own onMount; resolving from the context cache avoids one
+    // round-trip per cold start. Falls back to a direct IPC if layout cache
+    // is unavailable (older layouts / non-SvelteKit shells).
+    const settingsCache = getSettingsCache?.();
+
     if (bootstrap) {
       dbg("chat", "bootstrap from settings return (skip cold API)");
       if (bootstrap.agentSettings) {
@@ -262,7 +275,8 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
       }
       // Snapshot is taken before /settings edits — always reload persisted user settings.
       try {
-        const freshSettings = await api.getUserSettings();
+        const cached = await resolveLayoutCachedSettings(settingsCache);
+        const freshSettings = cached ?? (await api.getUserSettings());
         applyLoadedSettings(freshSettings);
       } catch (e) {
         dbgWarn("chat", "failed to load settings after settings hop:", e);
@@ -275,7 +289,8 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
     } else {
       // Phase 1: load settings (required by everything else)
       try {
-        const loadedSettings = await api.getUserSettings();
+        const cached = await resolveLayoutCachedSettings(settingsCache);
+        const loadedSettings = cached ?? (await api.getUserSettings());
         applyLoadedSettings(loadedSettings);
         api
           .getAuthOverview()
@@ -296,9 +311,19 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
 
     // Phase 2: parallel fetch of independent data (skipped when returning to an active run)
     if (!skipRunsFetch) {
+      // v1.0.10 perf: prefer the layout-populated runs-list IDB cache so the
+      // cold-start listRuns IPC isn't doubled up (layout already loaded it in
+      // its own onMount). Falls back to a direct IPC if the cache is empty.
+      let runsFromCache: TaskRun[] | null = null;
+      try {
+        const cached = await readRunsListCache();
+        if (cached.length > 0) runsFromCache = cached;
+      } catch {
+        /* IDB unavailable — fall through to IPC */
+      }
       const [agentResult, runsResult] = await Promise.allSettled([
         bootstrap ? Promise.resolve(null) : api.getAgentSettings("claude"),
-        api.listRuns(),
+        runsFromCache ? Promise.resolve(runsFromCache) : api.listRuns(),
       ]);
 
       if (!bootstrap && agentResult.status === "fulfilled") {

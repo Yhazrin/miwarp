@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { onMount, tick } from "svelte";
+  import { onMount, tick, getContext } from "svelte";
   import * as api from "$lib/api";
   import { runProjectCwd, workbenchStore } from "$lib/workbench/workbench-store.svelte";
   import {
@@ -12,6 +12,11 @@
   } from "$lib/stores";
   import type { Attachment, UserSettings } from "$lib/types";
   import { t } from "$lib/i18n/index.svelte";
+  import {
+    SETTINGS_CACHE_CONTEXT_KEY,
+    type SettingsCacheContext,
+    resolveLayoutCachedSettings,
+  } from "$lib/layout-chrome-context";
   import {
     EVT_CWD_CHANGED,
     EVT_RUNS_CHANGED,
@@ -48,6 +53,11 @@
   let sendBusy = $state(false);
   let bootingRunId = $state("");
   let approving = $state(false);
+
+  // v1.0.10 perf: reuse the layout-cached UserSettings to skip a redundant
+  // getUserSettings() IPC on /workbench mount. Falls back to direct IPC if
+  // the layout context isn't available (non-SvelteKit shells / older layouts).
+  const settingsCache = getContext<SettingsCacheContext | undefined>(SETTINGS_CACHE_CONTEXT_KEY);
 
   const store = sessionStore;
   const toolResultCache = createToolResultCache(() => store.run?.id);
@@ -256,7 +266,9 @@
 
   async function hydrateSettings(): Promise<void> {
     try {
-      const next = await api.getUserSettings();
+      const cached = await resolveLayoutCachedSettings(settingsCache);
+      const next = cached ?? (await api.getUserSettings());
+      if (!next) return;
       settings = next;
       if (next.default_agent && !store.run) store.agent = next.default_agent;
       if (next.default_model && !store.run) store.model = next.default_model;
