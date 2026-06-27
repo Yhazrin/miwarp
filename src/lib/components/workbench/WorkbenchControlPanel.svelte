@@ -173,7 +173,7 @@
 </script>
 
 <aside
-  class="flex min-h-0 w-full flex-col overflow-hidden rounded-3xl border border-border/40 bg-card/35 shadow-sm backdrop-blur-xl xl:w-[320px]"
+  class="wb-frame flex min-h-0 w-full flex-col overflow-hidden xl:w-[320px]"
   aria-label={t("workbench_controlPanel")}
 >
   <header class="shrink-0 border-b border-border/40 px-4 py-3">
@@ -229,21 +229,21 @@
     {#if project}
       <section class="space-y-2">
         <div class="grid grid-cols-3 gap-2">
-          <div class="rounded-2xl border border-border/40 bg-background/45 px-3 py-2">
+          <div class="wb-card">
             <p class="text-[10px] text-muted-foreground">{t("workbench_metricSessions")}</p>
             <p class="mt-1 text-lg font-semibold text-foreground">{project.sessionCount}</p>
           </div>
-          <div class="rounded-2xl border border-border/40 bg-background/45 px-3 py-2">
+          <div class="wb-card">
             <p class="text-[10px] text-muted-foreground">{t("workbench_metricTools")}</p>
             <p class="mt-1 text-lg font-semibold text-foreground">{store.tools.length}</p>
           </div>
-          <div class="rounded-2xl border border-border/40 bg-background/45 px-3 py-2">
+          <div class="wb-card">
             <p class="text-[10px] text-muted-foreground">{t("workbench_metricPending")}</p>
             <p class="mt-1 text-lg font-semibold text-foreground">{pendingTimelineItems.length}</p>
           </div>
         </div>
 
-        <div class="rounded-2xl border border-border/40 bg-background/45 px-3 py-2.5">
+        <div class="wb-card wb-card--lg">
           <p class="text-[10px] text-muted-foreground">{t("workbench_projectPath")}</p>
           <p class="mt-1 break-all font-mono text-[11px] leading-4 text-foreground/80">
             {project.cwd}
@@ -377,7 +377,7 @@
           </div>
         {:else}
           <div
-            class="rounded-2xl border border-border/35 bg-background/35 px-3 py-3 text-xs text-muted-foreground"
+            class="wb-empty"
           >
             {t("workbench_noOutputFiles")}
           </div>
@@ -406,7 +406,7 @@
           </div>
         {:else}
           <div
-            class="rounded-2xl border border-border/35 bg-background/35 px-3 py-3 text-xs text-muted-foreground"
+            class="wb-empty"
           >
             {t("workbench_noBackgroundTasks")}
           </div>
@@ -441,7 +441,7 @@
           </div>
         {:else}
           <div
-            class="rounded-2xl border border-border/35 bg-background/35 px-3 py-3 text-xs text-muted-foreground"
+            class="wb-empty"
           >
             {t("workbench_noRisks")}
           </div>
@@ -529,7 +529,7 @@
           </div>
         {:else}
           <div
-            class="rounded-2xl border border-border/35 bg-background/35 px-3 py-3 text-xs text-muted-foreground"
+            class="wb-empty"
           >
             {t("workbench_noPendingWork")}
           </div>
@@ -581,7 +581,7 @@
           </div>
         {:else}
           <div
-            class="rounded-2xl border border-border/35 bg-background/35 px-3 py-3 text-xs text-muted-foreground"
+            class="wb-empty"
           >
             {t("workbench_noSessionsYet")}
           </div>

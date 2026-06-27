@@ -59,7 +59,7 @@
     整体高度通过 min-h 与内边距控制在 88–110px，给消息流让出空间。
   -->
   <section
-    class="motion-fade-in shrink-0 rounded-2xl border border-border/40 bg-card/60 px-4 py-3 shadow-sm backdrop-blur-xl"
+    class="wb-frame motion-fade-in shrink-0 px-4 py-3"
     aria-label={t("workbench_hero")}
   >
     <div class="flex items-center justify-between gap-3">

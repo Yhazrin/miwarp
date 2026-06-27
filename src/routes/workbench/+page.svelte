@@ -38,7 +38,7 @@
     <WorkbenchProjectHero />
     <div class="grid min-h-0 flex-1 grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div
-        class="flex min-h-[520px] flex-col overflow-hidden rounded-3xl border border-border/40 bg-card/40 shadow-sm backdrop-blur-xl xl:min-h-0"
+        class="wb-frame flex min-h-[520px] flex-col overflow-hidden xl:min-h-0"
       >
         <WorkbenchProjectChat />
       </div>
