@@ -42,11 +42,13 @@
     if (!value || value === selected) return;
     const runtime = runtimes.find((r) => r.id === value);
     if (!runtime?.selectable) return;
-    // Close the menu FIRST so the parent's rerender doesn't catch the
-    // picker in an open state (Bits UI races the bindable onValueChange
-    // with Bits UI's internal open change).
-    open = false;
     onchange?.(value as SupportedRuntimeId);
+    // Defer the close past Svelte 5's bindable prop sync flush so the
+    // parent's reactive update doesn't race against `open = false` and
+    // re-apply the stale `true` value for one tick (close → open → close).
+    queueMicrotask(() => {
+      open = false;
+    });
   }
 </script>
 

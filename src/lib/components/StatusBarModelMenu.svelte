@@ -67,8 +67,16 @@
   }
 
   function selectModel(val: string) {
-    open = false;
+    // Run the parent's state mutation FIRST, then close the popover in a
+    // microtask. Writing `open = false` synchronously while the parent's
+    // reactive update is in flight can race with Svelte 5's bindable prop
+    // sync: the bindable effect re-applies the parent's stale `true` value
+    // for one tick, which Bits UI then animates as a second open before
+    // the second close. Defer the close past the sync flush.
     onModelChange?.(val);
+    queueMicrotask(() => {
+      open = false;
+    });
   }
 </script>
 

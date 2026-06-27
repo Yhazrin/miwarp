@@ -55,9 +55,7 @@
     browser && typeof window !== "undefined"
       ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
       : false;
-  const sessionLoadingFade = { duration: reduceMotion ? 0 : 200 };
-  const conversationFadeIn = { duration: reduceMotion ? 0 : 320 };
-  const conversationFadeOut = { duration: reduceMotion ? 0 : 160 };
+  const sessionLoadingFade = { duration: reduceMotion ? 0 : 120 };
   const welcomeFade = { duration: reduceMotion ? 0 : 220 };
 
   let {
@@ -177,6 +175,7 @@
     handleHookCallbackRespond,
     handleElicitationRespond,
     handleChatScroll,
+    handleChatWheel,
     scrollChatToBottom,
     handleTermResize,
     handleTermReady,
@@ -187,7 +186,7 @@
     setLastTarget,
   } = $derived(handlers);
 
-  function onTopSentinelMount(el: HTMLDivElement) {
+  function topSentinelMount(el: HTMLDivElement) {
     setTopSentinel(el);
     return { destroy: () => setTopSentinel(null) };
   }
@@ -326,7 +325,7 @@
 </script>
 
 <div class="chat-conversation-stage relative flex flex-1 min-h-0 overflow-hidden">
-  <div class="absolute inset-0 min-h-0">
+  <div class="absolute inset-0 min-h-0 overflow-hidden">
     {#if !store.run || store.useStreamSession}
       <!-- API mode: chat messages -->
       <div
@@ -334,7 +333,7 @@
         style:overflow-anchor={readingHistory ? "auto" : "none"}
         bind:this={chatAreaRef}
         onscroll={handleChatScroll}
-        onwheel={handlers.handleChatWheel}
+        onwheel={handleChatWheel}
       >
         {#if welcomeVisible}
           <div in:fade={welcomeFade} out:fade={sessionLoadingFade}>
@@ -419,11 +418,7 @@
                 <p class="text-xs text-muted-foreground">{t("chat_loadingSession")}</p>
               </div>
             {:else}
-              <div
-                data-conversation-root
-                in:fade={conversationFadeIn}
-                out:fade={conversationFadeOut}
-              >
+              <div data-conversation-root>
                 {#if store.run?.parent_run_id}
                   <ChatForkedBanner
                     onViewParent={() => goto(`/chat?run=${store.run!.parent_run_id}`)}
@@ -437,7 +432,7 @@
                   />
                 {/if}
                 {#if filteredTimeline.length - renderLimit > 0}
-                  <div use:onTopSentinelMount aria-hidden="true" class="h-px w-full"></div>
+                  <div use:topSentinelMount aria-hidden="true" class="h-px w-full"></div>
                 {/if}
                 <ChatTimelineEntries
                   contentVisibilityEnabled={!readingHistory}
@@ -559,6 +554,30 @@
           <Icon name="chevron-down" size="xs" />
         </button>
       {/if}
+    {:else if store.run && store.run.status !== "pending"}
+      <!-- Pipe/PTY mode only — stream sessions render chat scroll above, never xterm. -->
+      <XTerminalComponent
+        bind:this={xtermRef}
+        onResize={handleTermResize}
+        onReady={handleTermReady}
+        class="h-full"
+      />
+    {:else}
+      <div class="flex h-full items-center justify-center">
+        <div class="text-center max-w-md animate-slide-up">
+          <img src={APP_LOGO_URL} alt="MiWarp" class="mx-auto mb-4 h-10 w-10 rounded-xl" />
+          <h2 class="text-lg font-semibold text-primary mb-2">{t("layout_appName")}</h2>
+          <p class="text-sm text-muted-foreground mb-4">
+            {store.run ? t("chat_typeToStartSession") : t("chat_startSessionHint")}
+          </p>
+          <ChatInitHint
+            visible={showInitHint}
+            onRunInit={() => sendMessage("/init", [])}
+            onDismiss={dismissInitHint}
+          />
+          {@render heroMetaFooter()}
+        </div>
+      </div>
     {/if}
 
     {#if showSelectionToolbar}
@@ -584,31 +603,6 @@
           <Icon name="arrow-right" size="sm" />
           {t("common_forward")}
         </button>
-      </div>
-    {/if}
-
-    {#if store.run && store.run.status !== "pending"}
-      <XTerminalComponent
-        bind:this={xtermRef}
-        onResize={handleTermResize}
-        onReady={handleTermReady}
-        class="h-full"
-      />
-    {:else}
-      <div class="flex h-full items-center justify-center">
-        <div class="text-center max-w-md animate-slide-up">
-          <img src={APP_LOGO_URL} alt="MiWarp" class="mx-auto mb-4 h-10 w-10 rounded-xl" />
-          <h2 class="text-lg font-semibold text-primary mb-2">{t("layout_appName")}</h2>
-          <p class="text-sm text-muted-foreground mb-4">
-            {store.run ? t("chat_typeToStartSession") : t("chat_startSessionHint")}
-          </p>
-          <ChatInitHint
-            visible={showInitHint}
-            onRunInit={() => sendMessage("/init", [])}
-            onDismiss={dismissInitHint}
-          />
-          {@render heroMetaFooter()}
-        </div>
       </div>
     {/if}
 

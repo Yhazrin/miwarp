@@ -8,12 +8,9 @@
  * from the previous long-running session. The render-to-navigate handoff
  * is what makes the click feel laggy on runs with >500 messages.
  *
- * The chat route registers a "shrink" handler here on mount. When the
- * layout's newChat fires, it invokes the handler to drop `renderLimit`
- * to a small cap (24) BEFORE navigating — so the long-running timeline
- * has been visually collapsed and Svelte can finish flushing the
- * shrunken DOM in the frame between shrink and goto. This keeps the
- * click feeling instant on huge runs.
+ * The layout's session picker and new-chat button call `shrinkVisibleRender`
+ * before navigating so long-running timelines collapse to 24 rows first.
+ * Only the message list re-renders — the input dock and status bar stay mounted.
  *
  * Module-level singleton, same pattern as `chat-input-registry.ts`.
  */
