@@ -24,7 +24,6 @@ import { isKeyOptionalPlatform } from "$lib/utils/platform-presets";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { t } from "$lib/i18n/index.svelte";
 import { yieldToMain } from "$lib/utils/yield";
-import { IMAGE_TYPES } from "$lib/utils/file-types";
 import { eventTs, eventTsMs } from "$lib/utils/event-ts";
 import { uuid } from "$lib/utils/uuid";
 import {
@@ -34,7 +33,6 @@ import {
   ACTIVE_PHASES,
   TERMINAL_PHASES,
   SESSION_ALIVE_PHASES,
-  assertTransition,
 } from "./types";
 import { getEventMiddleware } from "./event-middleware";
 import { REDUCERS } from "./reducers";
@@ -53,6 +51,22 @@ import {
   dispatchLiveBusSound,
   endHistorySoundMute,
 } from "$lib/services/sound-feedback-service";
+import { TransportController, DEFAULT_TIMEOUTS } from "./session/transport-controller";
+import {
+  activeToolName as activeToolNameProjection,
+  mapAttachments,
+  timelineAttachments,
+} from "./session/timeline-projection";
+import {
+  contextWindow as contextWindowProjection,
+  totalTokens as totalTokensProjection,
+} from "./session/usage-projection";
+import {
+  applySnapshot,
+  buildSnapshot,
+  parseSnapshotBody,
+  saveSnapshotToIdb,
+} from "./session/snapshot-repository";
 
 // ── CLI permission mode normalization ──
 // CLI may return different names for the same mode across versions.
@@ -67,51 +81,12 @@ function normalizePermissionMode(mode: string): string {
 
 // eventTs / eventTsMs moved to $lib/utils/event-ts so reducers can use them.
 
-// Backfill anchorId for old snapshots/entries that predate the anchor system. Recursive for subTimelines.
-function backfillAnchorId(entry: TimelineEntry): TimelineEntry {
-  const e = entry as Record<string, unknown>;
-  if (e.anchorId) return entry; // already has anchorId
-  const anchor = (e.cliUuid as string) || (e.id as string);
-  const patched = { ...entry, anchorId: anchor } as TimelineEntry;
-  if (patched.kind === "tool" && patched.subTimeline) {
-    (patched as { subTimeline: TimelineEntry[] }).subTimeline =
-      patched.subTimeline.map(backfillAnchorId);
-  }
-  return patched;
-}
+// `backfillAnchorId` / `timelineAttachments` / `mapAttachments` / `appendCapped`
+// moved to ./session/timeline-projection.ts (Worker-4 P0/P1/P2 refactor).
 
 // ── Internal batch state (plain objects, no reactivity) ──
 
 // ReduceCtx is imported from ./reducers/types
-
-// ── Helpers ──
-
-/** Strip contentBase64 from non-image attachments to avoid storing MB of data in reactive state.
- *  Images keep base64 for inline <img> preview; PDF/other show as file chip (metadata only). */
-function timelineAttachments(atts: Attachment[]): Attachment[] | undefined {
-  if (atts.length === 0) return undefined;
-  return atts.map((a) =>
-    (IMAGE_TYPES as readonly string[]).includes(a.type) ? a : { ...a, contentBase64: "" },
-  );
-}
-
-/** Map frontend Attachment[] to backend AttachmentData format for IPC. */
-function mapAttachments(
-  atts: Attachment[],
-): Array<{ content_base64: string; media_type: string; filename: string }> | null {
-  if (atts.length === 0) return null;
-  return atts.map((a) => ({
-    content_base64: a.contentBase64,
-    media_type: a.type,
-    filename: a.name,
-  }));
-}
-
-/** Append to an array with a cap of 100 entries (keeps most recent). */
-function _appendCapped<T>(arr: T[], item: T): T[] {
-  const next = [...arr, item];
-  return next.length > 100 ? next.slice(-100) : next;
-}
 
 // ── Exported types ──
 
@@ -310,20 +285,52 @@ export class SessionStore {
   /** True while loadRun is replaying events — suppresses isThinking flash on session switch. */
   private _isLoadingReplay = false;
 
-  // Spawn timeout: fail if CLI never emits session_init
-  private _spawnTimer: ReturnType<typeof setTimeout> | null = null;
-  private static readonly _SPAWN_TIMEOUT_MS = 30_000;
-
-  // Response timeout: warn if no content after sending a message
-  private _responseTimer: ReturnType<typeof setTimeout> | null = null;
-  private static readonly _RESPONSE_TIMEOUT_MS = 60_000;
-  /** True when current error was set by the response timeout (cleared when content arrives). */
+  /**
+   * Transport controller — owns phase transitions, spawn/response timeouts
+   * and stream-mode detection (Worker-4 P0/P1/P2 refactor, item #5
+   * "Phase Transition Guard"). The controller's callbacks close over `this`
+   * for the actual recovery side effects (set `error`, transition phase,
+   * kill the backend process).
+   */
+  private _transport = new TransportController({
+    onSpawnTimeout: (runId) => {
+      if (this.phase === "spawning" && this.run?.id === runId) {
+        dbgWarn("store", "spawn timeout: CLI did not respond");
+        this.error =
+          "Session failed to start (CLI did not respond). Try again or check CLI installation.";
+        // Kill the hung backend process to prevent orphans
+        api
+          .stopSession(runId)
+          .catch((e) => dbgWarn("store", "spawn timeout: failed to stop session:", e));
+        this._setPhase("failed");
+        if (this.run) {
+          this.run = { ...this.run, status: "failed" };
+        }
+      }
+    },
+    onResponseTimeout: (runId) => {
+      if (
+        this.run?.id === runId &&
+        this.phase === "running" &&
+        !this.streamingText &&
+        !this.thinkingText
+      ) {
+        this._isTimeoutError = true;
+        this.error = "No response after 60s — still waiting for API.";
+        dbgWarn("store", "response timeout: no content after 60s");
+      }
+    },
+  });
+  /** Backwards-compat alias exposed to reducers that check the legacy flag. */
   private _isTimeoutError = false;
+  /** Backwards-compat static constant the legacy `_SPAWN_TIMEOUT_MS` exposed. */
+  private static readonly _SPAWN_TIMEOUT_MS = DEFAULT_TIMEOUTS.spawnMs;
+  /** Backwards-compat static constant the legacy `_RESPONSE_TIMEOUT_MS` exposed. */
+  private static readonly _RESPONSE_TIMEOUT_MS = DEFAULT_TIMEOUTS.responseMs;
 
-  /** Set phase with dev-mode transition guard. */
+  /** Set phase with dev-mode transition guard. Delegates to TransportController. */
   private _setPhase(to: SessionPhase): void {
-    assertTransition(this.phase, to);
-    this.phase = to;
+    this._transport.setPhase(this, to);
     // Any phase change away from spawning clears the spawn timeout
     if (to !== "spawning") {
       this._clearSpawnTimeout();
@@ -335,67 +342,28 @@ export class SessionStore {
   }
 
   /** Start a timeout that fails the session if phase stays at spawning.
-   *  Also kills the backend process to prevent orphan CLI processes. */
+   *  The kill-process side effect lives in the controller's onSpawnTimeout
+   *  callback, which closes over `this` to reach the live store fields. */
   private _startSpawnTimeout(runId: string): void {
-    this._clearSpawnTimeout();
-    this._spawnTimer = setTimeout(async () => {
-      if (this.phase === "spawning" && this.run?.id === runId) {
-        dbgWarn(
-          "store",
-          "spawn timeout: CLI did not respond within",
-          SessionStore._SPAWN_TIMEOUT_MS,
-          "ms",
-        );
-        this.error =
-          "Session failed to start (CLI did not respond). Try again or check CLI installation.";
-        // Kill the hung backend process to prevent orphans
-        try {
-          await api.stopSession(runId);
-        } catch (e) {
-          dbgWarn("store", "spawn timeout: failed to stop session:", e);
-        }
-        this._setPhase("failed");
-        if (this.run) {
-          this.run = { ...this.run, status: "failed" };
-        }
-      }
-    }, SessionStore._SPAWN_TIMEOUT_MS);
+    this._transport.startSpawnTimeout(runId);
   }
 
   private _clearSpawnTimeout(): void {
-    if (this._spawnTimer) {
-      clearTimeout(this._spawnTimer);
-      this._spawnTimer = null;
-    }
+    this._transport.clearSpawnTimeout();
   }
 
   /** Start a timeout that warns if no response content arrives after sending a message. */
   private _startResponseTimeout(runId: string): void {
-    this._clearResponseTimeout();
-    this._responseTimer = setTimeout(() => {
-      if (
-        this.run?.id === runId &&
-        this.phase === "running" &&
-        !this.streamingText &&
-        !this.thinkingText
-      ) {
-        this._isTimeoutError = true;
-        this.error = "No response after 60s — still waiting for API.";
-        dbgWarn("store", "response timeout: no content after 60s");
-      }
-    }, SessionStore._RESPONSE_TIMEOUT_MS);
+    this._transport.startResponseTimeout(runId);
   }
 
   private _clearResponseTimeout(): void {
-    if (this._responseTimer) {
-      clearTimeout(this._responseTimer);
-      this._responseTimer = null;
-    }
+    this._transport.clearResponseTimeout();
   }
 
   /** Clear response timeout error (only if it was set by the timeout, not a real error). */
   private _clearTimeoutError(): void {
-    this._clearResponseTimeout();
+    this._transport.clearResponseTimeout();
     if (this._isTimeoutError) {
       this.error = "";
       this._isTimeoutError = false;
@@ -445,16 +413,7 @@ export class SessionStore {
   }
 
   get activeToolName(): string {
-    // Stream mode: scan timeline (top-level only, equivalent to previous HookEvent behavior)
-    if (this.useStreamSession) {
-      for (let i = this.timeline.length - 1; i >= 0; i--) {
-        const e = this.timeline[i];
-        if (e.kind === "tool" && e.tool.status === "running") return e.tool.tool_name;
-      }
-      return "";
-    }
-    // Pipe/PTY fallback: use HookEvent tools array
-    return this.tools.filter((e) => e.status === "running").at(-1)?.tool_name ?? "";
+    return activeToolNameProjection(this.timeline, this.useStreamSession, this.tools);
   }
 
   /** Cached permission scan — invalidated when timeline changes. */
@@ -550,22 +509,11 @@ export class SessionStore {
   }
 
   get totalTokens(): number {
-    return (
-      this.usage.inputTokens +
-      this.usage.outputTokens +
-      this.usage.cacheReadTokens +
-      this.usage.cacheWriteTokens
-    );
+    return totalTokensProjection(this.usage);
   }
 
   get contextWindow(): number {
-    if (!this.usage.modelUsage) return 0;
-    const entries = Object.values(this.usage.modelUsage);
-    let max = 0;
-    for (const e of entries) {
-      if (e.context_window && e.context_window > max) max = e.context_window;
-    }
-    return max;
+    return contextWindowProjection(this.usage);
   }
 
   get contextUtilization(): number {
@@ -1672,171 +1620,26 @@ export class SessionStore {
     this._recovery.dispose();
   }
 
-  // ── Snapshot cache helpers ──
+  // ── Snapshot cache helpers (delegating to ./session/snapshot-repository) ──
 
-  /** Maximum tool_use_result size to serialize (bytes). Larger results are skipped in snapshot. */
+  /** Backwards-compat static alias for the repository constant. */
   private static readonly SNAPSHOT_MAX_TOOL_RESULT = 50_000;
 
   /** Serialize current store state into a JSON string for IDB caching.
-   *  Large tool_use_result fields are skipped to keep snapshot size manageable. */
+   *  Delegates to snapshot-repository's pure `buildSnapshot` function. */
   private _buildSnapshot(): string {
-    // Clone timeline with large tool results and image base64 pruned to keep snapshot small
-    const prunedTimeline = this.timeline.map((entry) => {
-      // Strip contentBase64 from user message attachments (images, screenshots)
-      if (entry.kind === "user" && entry.attachments?.length) {
-        return {
-          ...entry,
-          attachments: entry.attachments.map((a) => ({
-            name: a.name,
-            type: a.type,
-            size: a.size,
-          })),
-        };
-      }
-      if (entry.kind !== "tool") return entry;
-      const tur = entry.tool.tool_use_result;
-      if (tur && typeof tur === "object") {
-        const size = JSON.stringify(tur).length;
-        if (size > SessionStore.SNAPSHOT_MAX_TOOL_RESULT) {
-          // Keep metadata but skip the large result body
-          return {
-            ...entry,
-            tool: {
-              ...entry.tool,
-              tool_use_result: { _truncated: true, _size: size },
-            },
-          };
-        }
-      }
-      return entry;
-    });
-
-    const obj: Record<string, unknown> = {
-      // A group (ReduceCtx-derived)
-      timeline: prunedTimeline,
-      tools: this.tools,
-      hookEvents: this.hookEvents,
-      streamingText: this.streamingText,
-      thinkingText: this.thinkingText,
-      model: this.model,
-      usage: this.usage,
-      turnUsages: this.turnUsages,
-      _seenMessageIds: [...this._seenMessageIds],
-      _seenToolIds: [...this._seenToolIds],
-      // B group (direct fields)
-      systemStatus: this.systemStatus,
-      authStatus: this.authStatus,
-      cliVersion: this.cliVersion,
-      // NOTE: permissionMode intentionally excluded — user-level preference, not snapshot state.
-      fastModeState: this.fastModeState,
-      apiKeySource: this.apiKeySource,
-      sessionCommands: this.sessionCommands,
-      mcpServers: this.mcpServers,
-      sessionTools: this.sessionTools,
-      availableAgents: this.availableAgents,
-      availableSkills: this.availableSkills,
-      availablePlugins: this.availablePlugins,
-      sessionCwd: this.sessionCwd,
-      outputStyle: this.outputStyle,
-      sessionInitReceived: this.sessionInitReceived,
-      numTurns: this.numTurns,
-      durationMs: this.durationMs,
-      compactCount: this.compactCount,
-      microcompactCount: this.microcompactCount,
-      persistedFiles: this.persistedFiles,
-      unknownEventCount: this.unknownEventCount,
-      rawFallbackCount: this.rawFallbackCount,
-      taskNotifications: [...this.taskNotifications.entries()],
-      _lastProcessedSeq: this._lastProcessedSeq,
-    };
-    return JSON.stringify(obj);
+    return buildSnapshot(this as unknown as Parameters<typeof buildSnapshot>[0]);
   }
 
   /** Parse snapshot body string. Returns parsed object or null if invalid JSON. */
   private _parseSnapshotBody(body: string): Record<string, unknown> | null {
-    try {
-      return JSON.parse(body) as Record<string, unknown>;
-    } catch {
-      return null;
-    }
+    return parseSnapshotBody(body);
   }
 
   /** Try to restore store state from a pre-parsed snapshot object (or string for compat).
-   *  Returns true on success, false if shape validation fails. */
+   *  Delegates to snapshot-repository's pure `applySnapshot` function. */
   private _tryApplySnapshot(bodyOrObj: string | Record<string, unknown>): boolean {
-    try {
-      const obj =
-        typeof bodyOrObj === "string"
-          ? (JSON.parse(bodyOrObj) as Record<string, unknown>)
-          : bodyOrObj;
-      // Shape validation: timeline must be array, usage must be object
-      if (!Array.isArray(obj.timeline) || typeof obj.usage !== "object" || obj.usage === null) {
-        dbgWarn("snapshot", "apply:shape-fail", {
-          hasTimeline: Array.isArray(obj.timeline),
-          hasUsage: typeof obj.usage,
-        });
-        return false;
-      }
-
-      // A group
-      // Backfill anchorId for old snapshots that predate the anchor system
-      this.timeline = (obj.timeline as TimelineEntry[]).map(backfillAnchorId);
-      this.tools = (obj.tools ?? []) as HookEvent[];
-      this.hookEvents = (obj.hookEvents ?? []) as typeof this.hookEvents;
-      this.streamingText = (obj.streamingText as string) ?? "";
-      this.thinkingText = (obj.thinkingText as string) ?? "";
-      this.model = (obj.model as string) ?? "";
-      this.usage = obj.usage as UsageState;
-      this.turnUsages = (obj.turnUsages ?? []) as TurnUsage[];
-      this._seenMessageIds = new Set((obj._seenMessageIds ?? []) as string[]);
-      this._seenToolIds = new Set((obj._seenToolIds ?? []) as string[]);
-
-      // B group
-      this.systemStatus = (obj.systemStatus as typeof this.systemStatus) ?? null;
-      this.authStatus = (obj.authStatus as typeof this.authStatus) ?? null;
-      this.cliVersion = (obj.cliVersion as string) ?? "";
-      // NOTE: permissionMode intentionally NOT restored from snapshot — user-level preference.
-      this.fastModeState = (obj.fastModeState as string) ?? "";
-      this.apiKeySource = (obj.apiKeySource as string) ?? "";
-      this.sessionCommands = (obj.sessionCommands ?? []) as CliCommand[];
-      this.mcpServers = dedupeMcpServersByName((obj.mcpServers ?? []) as McpServerInfo[]);
-      this.sessionTools = (obj.sessionTools ?? []) as string[];
-      this.availableAgents = (obj.availableAgents ?? []) as string[];
-      this.availableSkills = (obj.availableSkills ?? []) as string[];
-      this.availablePlugins = (obj.availablePlugins ?? []) as unknown[];
-      this.sessionCwd = (obj.sessionCwd as string) ?? "";
-      this.outputStyle = (obj.outputStyle as string) ?? "";
-      this.sessionInitReceived = (obj.sessionInitReceived as boolean) ?? false;
-      this.numTurns = (obj.numTurns as number) ?? 0;
-      this.durationMs = (obj.durationMs as number) ?? 0;
-      this.compactCount = (obj.compactCount as number) ?? 0;
-      this.microcompactCount = (obj.microcompactCount as number) ?? 0;
-      this.persistedFiles = (obj.persistedFiles ?? []) as unknown[];
-      this.unknownEventCount = (obj.unknownEventCount as number) ?? 0;
-      this.rawFallbackCount = (obj.rawFallbackCount as number) ?? 0;
-      this.taskNotifications = new Map(
-        (obj.taskNotifications ?? []) as Array<[string, TaskNotificationItem]>,
-      );
-      this._lastProcessedSeq = (obj._lastProcessedSeq as number) ?? 0;
-
-      // Rebuild runtime tool indexes from restored state
-      this._toolTlIndex.clear();
-      for (let i = 0; i < this.timeline.length; i++) {
-        const e = this.timeline[i];
-        if (e.kind === "tool" && !this._toolTlIndex.has(e.id)) this._toolTlIndex.set(e.id, i);
-      }
-      this._toolHeIndex.clear();
-      for (let i = 0; i < this.tools.length; i++) {
-        const tid = (this.tools[i] as Record<string, unknown>).tool_use_id as string | undefined;
-        if (tid && !this._toolHeIndex.has(tid)) this._toolHeIndex.set(tid, i);
-      }
-
-      dbg("snapshot", "apply:ok", { timeline: this.timeline.length });
-      return true;
-    } catch (err) {
-      dbgWarn("snapshot", "apply:error", err);
-      return false;
-    }
+    return applySnapshot(this as unknown as Parameters<typeof applySnapshot>[0], bodyOrObj);
   }
 
   /** Fire-and-forget: serialize current state and write to IDB.
@@ -1846,30 +1649,16 @@ export class SessionStore {
     if (!this.run) return;
     const runStatus = this.run.status;
     const gen = this._asyncLifecycle.currentGeneration;
-    const doSave = () => {
-      // Guard: still viewing the same run (user may have navigated away)
-      if (this._asyncLifecycle.isStale(gen) || this.run?.id !== runId) return;
-      // Guard: status must still match (prevents stale write after idle→running transition)
-      if (this.run.status !== runStatus) {
-        dbg("snapshot", "save:skipped (status changed)", {
-          runId,
-          expected: runStatus,
-          actual: this.run.status,
-        });
-        return;
-      }
-      const body = this._buildSnapshot();
-      dbg("snapshot", "save", { runId, runStatus, bytes: body.length });
-      snapshotCache
-        .writeSnapshot(runId, runStatus, body)
-        .catch((e) => dbgWarn("snapshot", "write failed", e));
-    };
-    // Use requestIdleCallback when available to avoid blocking main thread
-    if (typeof requestIdleCallback !== "undefined") {
-      requestIdleCallback(doSave, { timeout: 2000 });
-    } else {
-      setTimeout(doSave, 50);
-    }
+    saveSnapshotToIdb(
+      this as unknown as Parameters<typeof saveSnapshotToIdb>[0],
+      runId,
+      runStatus,
+      {
+        isStale: () => this._asyncLifecycle.isStale(gen),
+        matchesRun: () => this.run?.id === runId,
+        currentStatus: () => this.run?.status,
+      },
+    );
   }
 
   /** Load a run by ID. Handles replay of bus events / run events. */
