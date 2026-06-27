@@ -9,15 +9,16 @@
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
   import type { UserSettings } from "$lib/types";
+  import type { AiSettings } from "./settings-slice";
   import Icon from "$lib/components/Icon.svelte";
   import PersonalSection from "./PersonalSection.svelte";
 
   let {
-    settings,
+    aiSettings,
     runtimes,
     onCommit,
   }: {
-    settings: UserSettings;
+    aiSettings: AiSettings;
     /** Available runtime ids from the control plane (e.g. ["claude", "codex"]). */
     runtimes: string[];
     onCommit: (patch: Partial<UserSettings>) => Promise<void>;
@@ -28,17 +29,21 @@
   }
 
   const RUNTIME_OPTIONS = $derived(
-    runtimes.length > 0 ? runtimes : settings.default_agent ? [settings.default_agent] : ["claude"],
+    runtimes.length > 0
+      ? runtimes
+      : aiSettings.default_agent
+        ? [aiSettings.default_agent]
+        : ["claude"],
   );
 
   async function pickRuntime(id: string) {
-    if (id === settings.default_agent) return;
+    if (id === aiSettings.default_agent) return;
     await onCommit({ default_agent: id });
   }
 
   async function commitModel(field: "default_model" | "fallback_model", value: string) {
     const trimmed = value.trim();
-    const current = (settings[field] as string | undefined) ?? "";
+    const current = (aiSettings[field] as string | undefined) ?? "";
     if (trimmed === current) return;
     await onCommit({ [field]: trimmed || undefined } as Partial<UserSettings>);
   }
@@ -78,9 +83,9 @@
           <button
             type="button"
             role="radio"
-            aria-checked={settings.default_agent === id}
+            aria-checked={aiSettings.default_agent === id}
             class="rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150
-              {settings.default_agent === id
+              {aiSettings.default_agent === id
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'}"
             onclick={() => pickRuntime(id)}
@@ -102,7 +107,7 @@
         <input
           id="personal-default-model"
           type="text"
-          value={settings.default_model ?? ""}
+          value={aiSettings.default_model ?? ""}
           placeholder={lk("personal_ai_defaultModelPlaceholder")}
           autocomplete="off"
           onblur={(e) => commitModel("default_model", (e.currentTarget as HTMLInputElement).value)}
@@ -126,7 +131,7 @@
         <input
           id="personal-fallback-model"
           type="text"
-          value={settings.fallback_model ?? ""}
+          value={aiSettings.fallback_model ?? ""}
           placeholder={lk("personal_ai_fallbackModelPlaceholder")}
           autocomplete="off"
           onblur={(e) => commitModel("fallback_model", (e.currentTarget as HTMLInputElement).value)}

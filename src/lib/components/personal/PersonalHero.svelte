@@ -6,14 +6,14 @@
    */
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
-  import type { UserSettings } from "$lib/types";
+  import type { IdentitySettings } from "./settings-slice";
   import Icon from "$lib/components/Icon.svelte";
 
   let {
-    settings,
+    identitySettings,
     stats,
   }: {
-    settings: UserSettings;
+    identitySettings: IdentitySettings;
     stats: {
       runs7d: number | null;
       skills: number;
@@ -26,10 +26,10 @@
     return t(key as MessageKey);
   }
 
-  const displayName = $derived((settings.user_display_name ?? "").trim() || "MiWarp user");
-  const handle = $derived((settings.user_handle ?? "").trim());
-  const role = $derived((settings.user_role ?? "").trim());
-  const timezone = $derived((settings.user_timezone ?? "").trim());
+  const displayName = $derived((identitySettings.user_display_name ?? "").trim() || "MiWarp user");
+  const handle = $derived((identitySettings.user_handle ?? "").trim());
+  const role = $derived((identitySettings.user_role ?? "").trim());
+  const timezone = $derived((identitySettings.user_timezone ?? "").trim());
   const initials = $derived(
     displayName
       .split(/\s+/)

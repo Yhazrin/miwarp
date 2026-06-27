@@ -10,14 +10,15 @@
   import type { MessageKey } from "$lib/i18n/types";
   import { LOCALE_REGISTRY, getEntry, currentLocale, switchLocale } from "$lib/i18n/index.svelte";
   import type { UserSettings } from "$lib/types";
+  import type { DisplaySettings } from "./settings-slice";
   import PersonalSection from "./PersonalSection.svelte";
 
   let {
-    settings,
+    displaySettings,
     onCommit,
     onZoom,
   }: {
-    settings: UserSettings;
+    displaySettings: DisplaySettings;
     onCommit: (patch: Partial<UserSettings>) => Promise<void>;
     onZoom?: (factor: number) => void;
   } = $props();
@@ -32,7 +33,7 @@
   }
 
   let zoomDraft = $state<number | null>(null);
-  const zoomValue = $derived(zoomDraft ?? settings.ui_zoom ?? 1);
+  const zoomValue = $derived(zoomDraft ?? displaySettings.ui_zoom ?? 1);
 
   function commitZoom(v: number) {
     zoomDraft = null;

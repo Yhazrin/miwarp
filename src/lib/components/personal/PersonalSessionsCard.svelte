@@ -7,14 +7,15 @@
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
   import type { UserSettings } from "$lib/types";
+  import type { SessionSettings } from "./settings-slice";
   import SettingsToggle from "$lib/components/settings/SettingsToggle.svelte";
   import PersonalSection from "./PersonalSection.svelte";
 
   let {
-    settings,
+    sessionSettings,
     onCommit,
   }: {
-    settings: UserSettings;
+    sessionSettings: SessionSettings;
     onCommit: (patch: Partial<UserSettings>) => Promise<void>;
   } = $props();
 
@@ -28,7 +29,7 @@
   ];
 
   async function pickMode(value: string) {
-    if (value === (settings.default_session_mode ?? "single")) return;
+    if (value === (sessionSettings.default_session_mode ?? "single")) return;
     await onCommit({ default_session_mode: value });
   }
 </script>
@@ -58,9 +59,9 @@
           <button
             type="button"
             role="radio"
-            aria-checked={(settings.default_session_mode ?? "single") === opt.value}
+            aria-checked={(sessionSettings.default_session_mode ?? "single") === opt.value}
             class="rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150
-              {(settings.default_session_mode ?? 'single') === opt.value
+              {(sessionSettings.default_session_mode ?? 'single') === opt.value
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'}"
             onclick={() => pickMode(opt.value)}
@@ -74,7 +75,7 @@
     <div class="rounded-lg border border-border/40 divide-y divide-border/40">
       <div class="px-3 py-2">
         <SettingsToggle
-          checked={!!settings.auto_commit_on_complete}
+          checked={!!sessionSettings.auto_commit_on_complete}
           label={lk("personal_sessions_autoCommit")}
           description={lk("personal_sessions_autoCommitDesc")}
           onchange={(v) => onCommit({ auto_commit_on_complete: v })}
@@ -82,7 +83,7 @@
       </div>
       <div class="px-3 py-2">
         <SettingsToggle
-          checked={!!settings.auto_pr_on_complete}
+          checked={!!sessionSettings.auto_pr_on_complete}
           label={lk("personal_sessions_autoPr")}
           description={lk("personal_sessions_autoPrDesc")}
           onchange={(v) => onCommit({ auto_pr_on_complete: v })}
@@ -90,7 +91,7 @@
       </div>
       <div class="px-3 py-2">
         <SettingsToggle
-          checked={!!settings.auto_cleanup_worktree}
+          checked={!!sessionSettings.auto_cleanup_worktree}
           label={lk("personal_sessions_cleanupWorktree")}
           description={lk("personal_sessions_cleanupWorktreeDesc")}
           onchange={(v) => onCommit({ auto_cleanup_worktree: v })}

@@ -41,6 +41,14 @@
   import PersonalNotificationsCard from "$lib/components/personal/PersonalNotificationsCard.svelte";
   import PersonalDisplayCard from "$lib/components/personal/PersonalDisplayCard.svelte";
   import PersonalDataCard from "$lib/components/personal/PersonalDataCard.svelte";
+  import type {
+    AiSettings,
+    DisplaySettings,
+    IdentitySettings,
+    NotificationSettings,
+    ProviderSettings,
+    SessionSettings,
+  } from "$lib/components/personal/settings-slice";
 
   let loading = $state(true);
   let settings = $state<UserSettings | null>(null);
@@ -53,6 +61,68 @@
     dailyCost: number[];
   }>({ runs7d: null, totalCostUsd: null, dailyCost: [] });
 
+  // 把 settings 按域切成 5 个独立 prop。任意字段编辑只触发对应 slice 的
+  // `$derived` 重算，不会让 9 个 card 同时重渲染（之前传整个 settings 时
+  // 任何字段改动都会触发 9 棵子树级联刷新）。
+  const identitySettings = $derived<IdentitySettings | null>(
+    settings
+      ? {
+          user_display_name: settings.user_display_name,
+          user_handle: settings.user_handle,
+          user_role: settings.user_role,
+          user_timezone: settings.user_timezone,
+          user_email: settings.user_email,
+        }
+      : null,
+  );
+  const aiSettings = $derived<AiSettings | null>(
+    settings
+      ? {
+          default_agent: settings.default_agent,
+          default_model: settings.default_model,
+          fallback_model: settings.fallback_model,
+          allowed_tools: settings.allowed_tools,
+        }
+      : null,
+  );
+  const sessionSettings = $derived<SessionSettings | null>(
+    settings
+      ? {
+          default_session_mode: settings.default_session_mode,
+          auto_commit_on_complete: settings.auto_commit_on_complete,
+          auto_pr_on_complete: settings.auto_pr_on_complete,
+          auto_cleanup_worktree: settings.auto_cleanup_worktree,
+        }
+      : null,
+  );
+  const notificationSettings = $derived<NotificationSettings | null>(
+    settings
+      ? {
+          notifications_enabled: settings.notifications_enabled,
+          notify_on_run_completed: settings.notify_on_run_completed,
+          notify_on_run_failed: settings.notify_on_run_failed,
+          notify_on_approval_required: settings.notify_on_approval_required,
+          notify_on_schedule_completed: settings.notify_on_schedule_completed,
+          notify_on_team_completed: settings.notify_on_team_completed,
+        }
+      : null,
+  );
+  const displaySettings = $derived<DisplaySettings | null>(
+    settings
+      ? {
+          ui_zoom: settings.ui_zoom,
+        }
+      : null,
+  );
+  const providerSettings = $derived<ProviderSettings | null>(
+    settings
+      ? {
+          platform_credentials: settings.platform_credentials,
+          active_platform_id: settings.active_platform_id,
+        }
+      : null,
+  );
+
   function lk(key: string): string {
     return t(key as MessageKey);
   }
@@ -60,6 +130,35 @@
   function applyZoom(factor: number) {
     if (typeof document === "undefined") return;
     document.documentElement.style.setProperty("--miwarp-ui-zoom", String(factor));
+  }
+
+  /**
+   * 把"首次进入页面"分两批：
+   * - 关键路径（getUserSettings / runtimeHubList / loadActivity）保持同步 await，
+   *   否则 loading 骨架会闪烁或 activity 7d 数据延迟太久。
+   * - skillStore.loadSkills + runtimeHubStore.refresh 是 heavy store 写入，
+   *   会触发各自 `$derived` 全量重算。延后到主线程空闲时再启动，避免 mount 期
+   *   4 路并发副作用同时打 IO + 触发 derived 重算。
+   */
+  function scheduleIdleLoad(task: () => Promise<void> | void) {
+    if (typeof window === "undefined") return;
+    const ric = (
+      window as Window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      }
+    ).requestIdleCallback;
+    const runner = () => {
+      try {
+        void task();
+      } catch (e) {
+        dbgWarn("personal", "idle task threw", e);
+      }
+    };
+    if (typeof ric === "function") {
+      ric(runner, { timeout: 1500 });
+    } else {
+      window.setTimeout(runner, 0);
+    }
   }
 
   onMount(async () => {
@@ -78,10 +177,15 @@
       loading = false;
     }
 
-    // Background loads — never block first paint on these.
+    // 关键路径立刻跑：7 天 activity 影响 PersonalHero 渲染。
     void loadActivity();
-    void skillStore.loadSkills().catch((e) => dbgWarn("personal", "load skills failed", e));
-    void runtimeHubStore.refresh().catch(() => {});
+
+    // 重副作用延后到主线程空闲：避免 mount 期 4 路并发 + 2 个 store 的
+    // `$derived` 全部同时重算导致 9 个 card 一起抖动。
+    scheduleIdleLoad(() =>
+      skillStore.loadSkills().catch((e) => dbgWarn("personal", "load skills failed", e)),
+    );
+    scheduleIdleLoad(() => runtimeHubStore.refresh().catch(() => {}));
   });
 
   async function loadActivity() {
@@ -143,21 +247,21 @@
         <div class="h-64 animate-pulse rounded-xl bg-sidebar/40"></div>
         <div class="h-48 animate-pulse rounded-xl bg-sidebar/40"></div>
       </div>
-    {:else}
-      <PersonalHero {settings} stats={heroStats} />
+    {:else if identitySettings && aiSettings && sessionSettings && notificationSettings && displaySettings && providerSettings}
+      <PersonalHero {identitySettings} stats={heroStats} />
 
-      <PersonalIdentityCard {settings} onCommit={commit} />
-      <PersonalAiPrefsCard {settings} {runtimes} onCommit={commit} />
+      <PersonalIdentityCard {identitySettings} onCommit={commit} />
+      <PersonalAiPrefsCard {aiSettings} {runtimes} onCommit={commit} />
       <PersonalMemoryCard {skillCount} />
-      <PersonalSessionsCard {settings} onCommit={commit} />
-      <PersonalProvidersCard {settings} />
+      <PersonalSessionsCard {sessionSettings} onCommit={commit} />
+      <PersonalProvidersCard {providerSettings} />
       <PersonalActivityCard
         totalRuns={activity.runs7d}
         totalCostUsd={activity.totalCostUsd}
         dailyCost={activity.dailyCost}
       />
-      <PersonalNotificationsCard {settings} onCommit={commit} />
-      <PersonalDisplayCard {settings} onCommit={commit} onZoom={applyZoom} />
+      <PersonalNotificationsCard {notificationSettings} onCommit={commit} />
+      <PersonalDisplayCard {displaySettings} onCommit={commit} onZoom={applyZoom} />
       <PersonalDataCard {settings} onReset={handleReset} />
     {/if}
   </div>

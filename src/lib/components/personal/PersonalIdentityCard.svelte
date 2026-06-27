@@ -6,14 +6,15 @@
    */
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
+  import type { IdentitySettings } from "./settings-slice";
   import type { UserSettings } from "$lib/types";
   import PersonalSection from "./PersonalSection.svelte";
 
   let {
-    settings,
+    identitySettings,
     onCommit,
   }: {
-    settings: UserSettings;
+    identitySettings: IdentitySettings;
     onCommit: (patch: Partial<UserSettings>) => Promise<void>;
   } = $props();
 
@@ -25,19 +26,21 @@
     return value.trim();
   }
 
-  async function commitField(field: keyof UserSettings, raw: string) {
+  async function commitField(field: keyof IdentitySettings, raw: string) {
     const value = trim(raw);
-    const current = (settings[field] as string | undefined) ?? "";
+    const current = (identitySettings[field] as string | undefined) ?? "";
     if (value === current) return;
-    const patch: Partial<UserSettings> = { [field]: value || undefined } as Partial<UserSettings>;
-    await onCommit(patch);
+    const patch: Partial<IdentitySettings> = {
+      [field]: value || undefined,
+    } as Partial<IdentitySettings>;
+    await onCommit(patch as Partial<UserSettings>);
   }
 
   let previewLines = $derived.by(() => {
     const lines: string[] = [];
-    const name = trim(settings.user_display_name ?? "");
-    const role = trim(settings.user_role ?? "");
-    const tz = trim(settings.user_timezone ?? "");
+    const name = trim(identitySettings.user_display_name ?? "");
+    const role = trim(identitySettings.user_role ?? "");
+    const tz = trim(identitySettings.user_timezone ?? "");
     if (name) lines.push(`- Display name: ${name}`);
     if (role) lines.push(`- Role: ${role}`);
     if (tz) lines.push(`- Timezone: ${tz}`);
@@ -64,7 +67,7 @@
       <input
         id="personal-display-name"
         type="text"
-        value={settings.user_display_name ?? ""}
+        value={identitySettings.user_display_name ?? ""}
         placeholder={lk("personal_displayNamePlaceholder")}
         autocomplete="off"
         onblur={(e) =>
@@ -91,7 +94,7 @@
         <input
           id="personal-handle"
           type="text"
-          value={settings.user_handle ?? ""}
+          value={identitySettings.user_handle ?? ""}
           placeholder={lk("personal_handlePlaceholder")}
           autocomplete="off"
           onblur={(e) => commitField("user_handle", (e.currentTarget as HTMLInputElement).value)}
@@ -113,7 +116,7 @@
       <input
         id="personal-role"
         type="text"
-        value={settings.user_role ?? ""}
+        value={identitySettings.user_role ?? ""}
         placeholder={lk("personal_rolePlaceholder")}
         autocomplete="off"
         onblur={(e) => commitField("user_role", (e.currentTarget as HTMLInputElement).value)}
@@ -134,7 +137,7 @@
       <input
         id="personal-timezone"
         type="text"
-        value={settings.user_timezone ?? ""}
+        value={identitySettings.user_timezone ?? ""}
         placeholder={lk("personal_timezonePlaceholder")}
         autocomplete="off"
         onblur={(e) => commitField("user_timezone", (e.currentTarget as HTMLInputElement).value)}
@@ -155,7 +158,7 @@
       <input
         id="personal-email"
         type="email"
-        value={settings.user_email ?? ""}
+        value={identitySettings.user_email ?? ""}
         placeholder={lk("personal_emailPlaceholder")}
         autocomplete="off"
         onblur={(e) => commitField("user_email", (e.currentTarget as HTMLInputElement).value)}

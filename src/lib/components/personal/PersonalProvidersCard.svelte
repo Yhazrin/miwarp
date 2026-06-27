@@ -7,18 +7,19 @@
   import { goto } from "$app/navigation";
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
-  import type { UserSettings, PlatformCredential } from "$lib/types";
+  import type { PlatformCredential } from "$lib/types";
+  import type { ProviderSettings } from "./settings-slice";
   import Icon from "$lib/components/Icon.svelte";
   import PersonalSection from "./PersonalSection.svelte";
 
-  let { settings }: { settings: UserSettings } = $props();
+  let { providerSettings }: { providerSettings: ProviderSettings } = $props();
 
   function lk(key: string, params?: Record<string, string>): string {
     return t(key as MessageKey, params);
   }
 
-  const credentials = $derived(settings.platform_credentials ?? []);
-  const activeId = $derived(settings.active_platform_id ?? "");
+  const credentials = $derived(providerSettings.platform_credentials ?? []);
+  const activeId = $derived(providerSettings.active_platform_id ?? "");
   const activeCred = $derived<PlatformCredential | undefined>(
     activeId ? credentials.find((c) => c.platform_id === activeId) : undefined,
   );
