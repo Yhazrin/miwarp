@@ -70,7 +70,7 @@
         </div>
         <button
           type="button"
-          class="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          class="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
           onclick={openWorkspace}
         >
           <Icon name="folder-open" size="sm" />
@@ -78,17 +78,22 @@
         </button>
       </div>
     {:else}
-      <ul class="space-y-1">
+      <ul class="space-y-1" role="list">
         {#each workbenchStore.projects as project (project.id)}
           {@const isSelected = project.id === workbenchStore.selectedProjectId}
           <li>
             <button
               type="button"
-              class="w-full rounded-2xl border px-3.5 py-3 text-left transition-colors
+              class="w-full rounded-2xl border px-3.5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
                 {isSelected
                 ? 'border-primary/30 bg-primary/10 shadow-sm'
                 : 'border-transparent hover:border-border/40 hover:bg-muted/40'}"
               onclick={() => workbenchStore.selectProject(project.id)}
+              aria-current={isSelected ? "page" : undefined}
+              aria-label={t("workbench_projectItemAria", {
+                label: project.label,
+                count: String(project.sessionCount),
+              })}
             >
               <div class="flex items-start justify-between gap-2">
                 <div class="flex min-w-0 items-center gap-2">

@@ -2,7 +2,7 @@
   import { goto } from "$app/navigation";
   import { onMount, tick, getContext } from "svelte";
   import * as api from "$lib/api";
-  import { runProjectCwd, workbenchStore } from "$lib/workbench/workbench-store.svelte";
+  import { workbenchStore } from "$lib/workbench/workbench-store.svelte";
   import {
     sessionStore,
     getEventMiddleware,
@@ -68,32 +68,45 @@
   const ownsCurrentRun = $derived(!!activeRunId && store.run?.id === activeRunId);
   const timeline = $derived(ownsCurrentRun ? store.timeline : []);
   const effectiveModels = $derived(getCliModels(store.agent));
-  const projectRuns = $derived(
-    project ? workbenchStore.allRuns.filter((run) => runProjectCwd(run) === project.cwd) : [],
-  );
-  const activeProjectRuns = $derived(
-    projectRuns.filter(
-      (run) =>
+  // Reuse the store's already-filtered + sorted per-project runs so Hero,
+  // Chat and ControlPanel don't each re-run the same filter.
+  const projectRuns = $derived(workbenchStore.selectedProjectRuns);
+  /** Single reduce pass computing every briefing counter + latest activity
+   *  from the same loop, instead of 4 separate `.filter()` scans. */
+  const briefing = $derived.by(() => {
+    let active = 0;
+    let attention = 0;
+    let desk = 0;
+    let latestTs = 0;
+    for (const run of projectRuns) {
+      if (
         run.status === "running" ||
         run.status === "pending" ||
         run.status === "waiting_input" ||
-        run.status === "waiting_approval",
-    ),
-  );
-  const attentionProjectRuns = $derived(
-    projectRuns.filter(
-      (run) => run.status === "waiting_input" || run.status === "waiting_approval",
-    ),
-  );
-  const projectDeskRunCount = $derived(
-    projectRuns.filter((run) => run.run_surface === "project_desk").length,
-  );
-  const latestProjectActivity = $derived.by(() => {
-    const latest = projectRuns
-      .map((run) => run.last_activity_at ?? run.ended_at ?? run.started_at)
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
-    return latest ? relativeTime(latest) : t("workbench_noProjectActivity");
+        run.status === "waiting_approval"
+      ) {
+        active++;
+      }
+      if (run.status === "waiting_input" || run.status === "waiting_approval") {
+        attention++;
+      }
+      if (run.run_surface === "project_desk") desk++;
+      const ts = new Date(run.last_activity_at ?? run.ended_at ?? run.started_at).getTime();
+      if (ts > latestTs) latestTs = ts;
+    }
+    return {
+      activeProjectRunsCount: active,
+      attentionProjectRunsCount: attention,
+      projectDeskRunCount: desk,
+      latestProjectActivityText: latestTs
+        ? relativeTime(new Date(latestTs).toISOString())
+        : t("workbench_noProjectActivity"),
+    };
   });
+  const activeProjectRunsCount = $derived(briefing.activeProjectRunsCount);
+  const attentionProjectRunsCount = $derived(briefing.attentionProjectRunsCount);
+  const projectDeskRunCount = $derived(briefing.projectDeskRunCount);
+  const latestProjectActivity = $derived(briefing.latestProjectActivityText);
   const cliCommands = $derived(
     store.sessionInitReceived && store.sessionCommands.length > 0
       ? store.sessionCommands
@@ -138,16 +151,16 @@
           {
             icon: "triangle-alert",
             label: t("workbench_briefingNeedsYou"),
-            value: String(attentionProjectRuns.length),
+            value: String(attentionProjectRunsCount),
             prompt: t("workbench_briefingNeedsYouPrompt", { project: project.label }),
-            tone: attentionProjectRuns.length > 0 ? "attention" : "default",
+            tone: attentionProjectRunsCount > 0 ? "attention" : "default",
           },
           {
             icon: "radio",
             label: t("workbench_briefingActive"),
-            value: String(activeProjectRuns.length),
+            value: String(activeProjectRunsCount),
             prompt: t("workbench_briefingActivePrompt", { project: project.label }),
-            tone: activeProjectRuns.length > 0 ? "active" : "default",
+            tone: activeProjectRunsCount > 0 ? "active" : "default",
           },
           {
             icon: "layout",
@@ -378,7 +391,7 @@
   -->
   {#if store.hasInlinePermission}
     <div
-      class="shrink-0 border-b border-[hsl(var(--miwarp-status-warning)/0.32)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-4 py-2"
+      class="motion-slide-up shrink-0 border-b border-[hsl(var(--miwarp-status-warning)/0.32)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-4 py-2"
       role="status"
     >
       <div class="flex items-center justify-between gap-3">
@@ -395,8 +408,9 @@
         </div>
         <button
           type="button"
-          class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-[hsl(var(--miwarp-status-warning)/0.4)] bg-background/80 px-2.5 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-background"
+          class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-[hsl(var(--miwarp-status-warning)/0.4)] bg-background/80 px-2.5 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--miwarp-status-warning)/0.5)]"
           onclick={() => promptRef?.focus()}
+          aria-label={t("workbench_focusPending")}
         >
           <Icon name="target" size="xs" />
           {t("workbench_focusPending")}
@@ -424,13 +438,14 @@
           {#each briefingActions as item (item.label)}
             <button
               type="button"
-              class="group rounded-2xl border px-3 py-2.5 text-left transition-colors {item.tone ===
+              class="group rounded-2xl border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 {item.tone ===
               'attention'
                 ? 'border-[hsl(var(--miwarp-status-warning)/0.32)] bg-[hsl(var(--miwarp-status-warning)/0.08)] hover:bg-[hsl(var(--miwarp-status-warning)/0.12)]'
                 : item.tone === 'active'
                   ? 'border-[hsl(var(--miwarp-status-info)/0.28)] bg-[hsl(var(--miwarp-status-info)/0.07)] hover:bg-[hsl(var(--miwarp-status-info)/0.11)]'
                   : 'border-border/45 bg-background/45 hover:border-primary/30 hover:bg-primary/5'}"
               onclick={() => fillPrompt(item.prompt)}
+              aria-label={t("workbench_stagePromptAria", { label: item.label, value: item.value })}
             >
               <div class="mb-2 flex items-center justify-between gap-2">
                 <Icon name={item.icon} size="sm" class="text-muted-foreground" />
@@ -453,8 +468,12 @@
             {#each deskModes as mode (mode.label)}
               <button
                 type="button"
-                class="group flex min-h-[74px] items-start gap-3 rounded-2xl border border-border/45 bg-background/45 px-3 py-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
+                class="group flex min-h-[74px] items-start gap-3 rounded-2xl border border-border/45 bg-background/45 px-3 py-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 onclick={() => fillPrompt(mode.prompt)}
+                aria-label={t("workbench_stagePromptAria", {
+                  label: mode.label,
+                  value: mode.description,
+                })}
               >
                 <span
                   class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border/45 bg-card/60 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary"
@@ -476,10 +495,11 @@
             {#each workbenchStore.selectedSessions.slice(0, 4) as session (session.id)}
               <button
                 type="button"
-                class="rounded-2xl border border-border/45 bg-background/45 px-3 py-2 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
+                class="rounded-2xl border border-border/45 bg-background/45 px-3 py-2 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 onclick={() => {
                   workbenchStore.setActiveRun(projectId, session.id);
                 }}
+                aria-label={t("workbench_openSessionAria", { title: session.title })}
               >
                 <div class="flex items-center justify-between gap-2">
                   <p class="truncate text-xs font-medium text-foreground">{session.title}</p>
@@ -505,8 +525,9 @@
           {#each quickActions as action}
             <button
               type="button"
-              class="inline-flex h-9 items-center gap-2 rounded-full border border-border/45 bg-background/50 px-3 text-xs font-medium text-foreground transition-colors hover:border-primary/35 hover:bg-primary/5"
+              class="inline-flex h-9 items-center gap-2 rounded-full border border-border/45 bg-background/50 px-3 text-xs font-medium text-foreground transition-colors hover:border-primary/35 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               onclick={() => fillPrompt(action.prompt)}
+              aria-label={t("workbench_stagePromptAria", { label: action.label, value: "" })}
             >
               <Icon name={action.icon} size="sm" class="text-muted-foreground" />
               {action.label}
@@ -520,11 +541,14 @@
           {#if lastRun && lastRun.run_surface === "project_desk"}
             <button
               type="button"
-              class="mt-1 inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 text-sm font-medium text-primary shadow-sm transition-colors hover:bg-primary/15"
+              class="motion-soft-pop mt-1 inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 text-sm font-medium text-primary shadow-sm transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               onclick={() => {
                 workbenchStore.setActiveRun(projectId, lastRun.id);
                 promptRef?.focus();
               }}
+              aria-label={t("workbench_continueLastSessionAria", {
+                time: relativeTime(lastRun.last_activity_at || lastRun.started_at),
+              })}
             >
               <Icon name="message-square" size="sm" />
               {t("workbench_continueLastSession")}
@@ -577,8 +601,9 @@
       <div class="pointer-events-auto mx-auto mb-2 flex w-full max-w-3xl justify-end px-4">
         <button
           type="button"
-          class="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/50 bg-background/70 px-3 text-xs text-muted-foreground shadow-sm backdrop-blur-xl transition-colors hover:bg-muted/70 hover:text-foreground"
+          class="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/50 bg-background/70 px-3 text-xs text-muted-foreground shadow-sm backdrop-blur-xl transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           onclick={openActiveRun}
+          aria-label={t("workbench_openActiveRun")}
         >
           <Icon name="external-link" size="sm" />
           {t("workbench_openActiveRun")}

@@ -3719,5 +3719,10 @@
   "workbench_metricWaitingApproval": "Waiting for you",
   "workbench_metricWaitingInput": "Waiting for input",
   "workbench_metricRunning": "Running now",
-  "workbench_attentionBadge": "Needs attention"
+  "workbench_attentionBadge": "Needs attention",
+  "workbench_stagePromptAria": "Stage prompt: {label}",
+  "workbench_openSessionAria": "Open session: {title}",
+  "workbench_projectItemAria": "Project {label}, {count} sessions",
+  "workbench_continueLastSessionAria": "Continue last project-desk session from {time}",
+  "workbench_riskItemAria": "Risk: {tool} ({status})"
 }

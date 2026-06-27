@@ -3616,5 +3616,10 @@
   "workbench_metricWaitingApproval": "等你审批",
   "workbench_metricWaitingInput": "等你输入",
   "workbench_metricRunning": "正在运行",
-  "workbench_attentionBadge": "需要关注"
+  "workbench_attentionBadge": "需要关注",
+  "workbench_stagePromptAria": "写入提示词：{label}",
+  "workbench_openSessionAria": "打开会话：{title}",
+  "workbench_projectItemAria": "项目 {label}，共 {count} 个会话",
+  "workbench_continueLastSessionAria": "继续 {time} 的上次项目台会话",
+  "workbench_riskItemAria": "风险：{tool}（{status}）"
 }

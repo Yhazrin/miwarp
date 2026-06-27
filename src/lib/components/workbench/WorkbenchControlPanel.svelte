@@ -31,25 +31,50 @@
   );
   const hasProjectDeskContext = $derived(activeRun?.run_surface === "project_desk");
   const ownsCurrentRun = $derived(!!activeRunId && store.run?.id === activeRunId);
-  const pendingTimelineItems = $derived.by(() => {
-    if (!ownsCurrentRun) return [] as Array<Extract<TimelineEntry, { kind: "tool" }>>;
+  /** Single-pass timeline traversal. The previous implementation walked
+   *  store.timeline four times (pending tools, failed tools, then later via
+   *  `pendingTimelineItems` / `failedTools` selectors). One recursive pass
+   *  collects both buckets at the same time, with cheap per-node arithmetic
+   *  instead of repeated `subTimeline` descent. */
+  const timelineBuckets = $derived.by(() => {
+    const empty = {
+      pending: [] as Array<Extract<TimelineEntry, { kind: "tool" }>>,
+      failed: [] as Array<Extract<TimelineEntry, { kind: "tool" }>>,
+    };
+    if (!ownsCurrentRun) return empty;
     const pending: Array<Extract<TimelineEntry, { kind: "tool" }>> = [];
-    const walk = (entries: TimelineEntry[]) => {
+    const failed: Array<Extract<TimelineEntry, { kind: "tool" }>> = [];
+    const walk = (entries: TimelineEntry[]): void => {
       for (const entry of entries) {
-        if (entry.kind !== "tool") continue;
-        if (
-          entry.tool.status === "permission_prompt" ||
-          entry.tool.status === "ask_pending" ||
-          entry.tool.tool_name === "AskUserQuestion"
-        ) {
-          pending.push(entry);
+        if (entry.kind === "tool") {
+          const status = entry.tool.status;
+          const name = entry.tool.tool_name;
+          if (
+            status === "permission_prompt" ||
+            status === "ask_pending" ||
+            name === "AskUserQuestion"
+          ) {
+            pending.push(entry);
+          }
+          if (status === "error" || status === "denied" || status === "permission_denied") {
+            failed.push(entry);
+          }
+          // subTimeline is only defined on `kind: "tool"` entries — narrowing
+          // here is what allows us to walk without an `as` cast.
+          if (entry.subTimeline && entry.subTimeline.length > 0) {
+            walk(entry.subTimeline);
+          }
         }
-        if (entry.subTimeline) walk(entry.subTimeline);
       }
     };
     walk(store.timeline);
-    return pending.slice(0, 4);
+    return {
+      pending: pending.slice(0, 4),
+      failed: failed.slice(-4).reverse(),
+    };
   });
+  const pendingTimelineItems = $derived(timelineBuckets.pending);
+  const failedTools = $derived(timelineBuckets.failed);
   const recentFiles = $derived.by(() => {
     if (!ownsCurrentRun) return [] as Array<{ path: string; name: string }>;
     return store.persistedFiles
@@ -63,25 +88,6 @@
     return Array.from(store.taskNotifications.values())
       .sort((a, b) => b.startedAt - a.startedAt)
       .slice(0, 5);
-  });
-  const failedTools = $derived.by(() => {
-    if (!ownsCurrentRun) return [] as Array<Extract<TimelineEntry, { kind: "tool" }>>;
-    const failed: Array<Extract<TimelineEntry, { kind: "tool" }>> = [];
-    const walk = (entries: TimelineEntry[]) => {
-      for (const entry of entries) {
-        if (entry.kind !== "tool") continue;
-        if (
-          entry.tool.status === "error" ||
-          entry.tool.status === "denied" ||
-          entry.tool.status === "permission_denied"
-        ) {
-          failed.push(entry);
-        }
-        if (entry.subTimeline) walk(entry.subTimeline);
-      }
-    };
-    walk(store.timeline);
-    return failed.slice(-4).reverse();
   });
   const recentSessions = $derived(workbenchStore.selectedSessions.slice(0, 6));
   const takeoverSteps: TakeoverStep[] = $derived(
@@ -208,7 +214,7 @@
         {/if}
         <button
           type="button"
-          class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border/50 bg-background/50 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
+          class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border/50 bg-background/50 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           onclick={openActiveRun}
           aria-label={t("workbench_openActiveRun")}
           title={t("workbench_openActiveRun")}
@@ -254,13 +260,17 @@
           {#each takeoverSteps as step (step.label)}
             <button
               type="button"
-              class="w-full rounded-2xl border px-3 py-2.5 text-left transition-colors {step.tone ===
+              class="w-full rounded-2xl border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 {step.tone ===
               'attention'
                 ? 'border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.08)] hover:bg-[hsl(var(--miwarp-status-warning)/0.12)]'
                 : step.tone === 'complete'
                   ? 'border-[hsl(var(--miwarp-status-success)/0.22)] bg-[hsl(var(--miwarp-status-success)/0.06)] hover:bg-[hsl(var(--miwarp-status-success)/0.1)]'
                   : 'border-border/35 bg-background/35 hover:border-primary/30 hover:bg-primary/5'}"
               onclick={() => stagePrompt(step.prompt)}
+              aria-label={t("workbench_stagePromptAria", {
+                label: step.label,
+                value: step.description,
+              })}
             >
               <div class="flex items-start gap-2.5">
                 <span
@@ -350,9 +360,10 @@
             {#each recentFiles as file (file.path)}
               <button
                 type="button"
-                class="w-full rounded-2xl border border-border/35 bg-background/35 px-3 py-2 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
+                class="w-full rounded-2xl border border-border/35 bg-background/35 px-3 py-2 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 onclick={openActiveRun}
                 title={file.path}
+                aria-label={t("workbench_openSessionAria", { title: file.name })}
               >
                 <div class="flex items-center gap-2">
                   <Icon name="file-text" size="sm" class="shrink-0 text-muted-foreground" />
@@ -409,8 +420,12 @@
             {#each failedTools as item (item.id)}
               <button
                 type="button"
-                class="w-full rounded-2xl border border-[hsl(var(--miwarp-status-error)/0.28)] bg-[hsl(var(--miwarp-status-error)/0.08)] px-3 py-2 text-left transition-colors hover:bg-[hsl(var(--miwarp-status-error)/0.12)]"
+                class="w-full rounded-2xl border border-[hsl(var(--miwarp-status-error)/0.28)] bg-[hsl(var(--miwarp-status-error)/0.08)] px-3 py-2 text-left transition-colors hover:bg-[hsl(var(--miwarp-status-error)/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--miwarp-status-error)/0.4)]"
                 onclick={openActiveRun}
+                aria-label={t("workbench_riskItemAria", {
+                  tool: item.tool.tool_name,
+                  status: item.tool.status,
+                })}
               >
                 <div class="flex items-center gap-2">
                   <Icon name="triangle-alert" size="sm" class="shrink-0 text-miwarp-status-error" />
@@ -443,8 +458,11 @@
         {#if activeRun}
           <button
             type="button"
-            class="w-full rounded-2xl border border-border/40 bg-background/45 px-3 py-2.5 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
+            class="w-full rounded-2xl border border-border/40 bg-background/45 px-3 py-2.5 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             onclick={openActiveRun}
+            aria-label={t("workbench_openSessionAria", {
+              title: activeRun.name || activeRun.prompt || activeRun.id,
+            })}
           >
             <p class="truncate text-xs font-medium text-foreground">
               {activeRun.name || activeRun.prompt || activeRun.id}
@@ -525,7 +543,7 @@
             {#each recentSessions as session (session.id)}
               <button
                 type="button"
-                class="w-full rounded-2xl border px-3 py-2 text-left transition-colors hover:border-border/45 hover:bg-muted/40 {session.id ===
+                class="w-full rounded-2xl border px-3 py-2 text-left transition-colors hover:border-border/45 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 {session.id ===
                 activeRunId
                   ? 'border-primary/30 bg-primary/10'
                   : session.status === 'running' || session.status === 'pending'
@@ -534,6 +552,8 @@
                       ? 'border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.08)]'
                       : 'border-transparent'}"
                 onclick={() => workbenchStore.setActiveRun(project.id, session.id)}
+                aria-current={session.id === activeRunId ? "true" : undefined}
+                aria-label={t("workbench_openSessionAria", { title: session.title })}
               >
                 <div class="flex items-center justify-between gap-2">
                   <p class="truncate text-xs font-medium text-foreground">

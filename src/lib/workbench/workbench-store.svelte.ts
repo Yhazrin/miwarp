@@ -140,14 +140,18 @@ class WorkbenchStore {
 
   selectedProject = $derived(this.projects.find((p) => p.id === this.selectedProjectId) ?? null);
 
-  selectedSessions = $derived(
+  /** Project-scoped runs for the selected project, sorted by most recent activity.
+   *  Shared by Hero / Chat / ControlPanel so we filter + sort once per refresh
+   *  instead of three times across components. */
+  selectedProjectRuns = $derived(
     this.selectedProject
       ? this.allRuns
           .filter((run) => runProjectCwd(run) === this.selectedProject?.cwd)
           .sort((a, b) => compareIsoDesc(runActivityAt(a), runActivityAt(b)))
-          .map(mapRunToSession)
-      : [],
+      : ([] as TaskRun[]),
   );
+
+  selectedSessions = $derived(this.selectedProjectRuns.map(mapRunToSession));
 
   selectedActiveRunId = $derived(
     this.selectedProjectId ? (this.activeRunByProject[this.selectedProjectId] ?? "") : "",

@@ -6,7 +6,6 @@
   import { goto } from "$app/navigation";
   import Icon from "$lib/components/Icon.svelte";
   import { workspacesStore } from "$lib/stores/workspaces-store.svelte";
-  import { runProjectCwd } from "$lib/workbench/workbench-store.svelte";
 
   function openInChat(): void {
     const cwd = workbenchStore.selectedProject?.cwd;
@@ -21,21 +20,27 @@
   const store = sessionStore;
   const project = $derived(workbenchStore.selectedProject);
   const activeRunId = $derived(workbenchStore.selectedActiveRunId);
-  const projectRuns = $derived(
-    project ? workbenchStore.allRuns.filter((run) => runProjectCwd(run) === project.cwd) : [],
-  );
-  const deskSessionCount = $derived(
-    projectRuns.filter((run) => run.run_surface === "project_desk").length,
-  );
-  const waitingApprovalCount = $derived(
-    projectRuns.filter((run) => run.status === "waiting_approval").length,
-  );
-  const waitingInputCount = $derived(
-    projectRuns.filter((run) => run.status === "waiting_input").length,
-  );
-  const runningCount = $derived(
-    projectRuns.filter((run) => run.status === "running" || run.status === "pending").length,
-  );
+  // Reuse the store-derived, already-filtered + sorted runs so we don't
+  // recompute the same per-cwd filter in Hero, Chat, and ControlPanel.
+  const projectRuns = $derived(workbenchStore.selectedProjectRuns);
+  // Single reduce pass for all hero counters (desk / approval / input / running).
+  const heroCounts = $derived.by(() => {
+    let desk = 0;
+    let waitingApproval = 0;
+    let waitingInput = 0;
+    let running = 0;
+    for (const run of projectRuns) {
+      if (run.run_surface === "project_desk") desk++;
+      if (run.status === "waiting_approval") waitingApproval++;
+      else if (run.status === "waiting_input") waitingInput++;
+      else if (run.status === "running" || run.status === "pending") running++;
+    }
+    return { desk, waitingApproval, waitingInput, running };
+  });
+  const deskSessionCount = $derived(heroCounts.desk);
+  const waitingApprovalCount = $derived(heroCounts.waitingApproval);
+  const waitingInputCount = $derived(heroCounts.waitingInput);
+  const runningCount = $derived(heroCounts.running);
   const attentionCount = $derived(waitingApprovalCount + waitingInputCount);
   const status = $derived(project?.status ?? "idle");
   const statusDotClass = $derived(
@@ -54,7 +59,7 @@
     整体高度通过 min-h 与内边距控制在 88–110px，给消息流让出空间。
   -->
   <section
-    class="shrink-0 rounded-2xl border border-border/40 bg-card/60 px-4 py-3 shadow-sm backdrop-blur-xl"
+    class="motion-fade-in shrink-0 rounded-2xl border border-border/40 bg-card/60 px-4 py-3 shadow-sm backdrop-blur-xl"
     aria-label={t("workbench_hero")}
   >
     <div class="flex items-center justify-between gap-3">
@@ -141,7 +146,7 @@
       <div class="flex shrink-0 items-center gap-2">
         <button
           type="button"
-          class="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/45 bg-background/55 px-3 text-xs font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-primary/5"
+          class="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/45 bg-background/55 px-3 text-xs font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
           onclick={refreshWorkbench}
           aria-label={t("workbench_refresh")}
           title={t("workbench_refresh")}
@@ -152,8 +157,9 @@
         </button>
         <button
           type="button"
-          class="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          class="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
           onclick={openInChat}
+          aria-label={t("workbench_openInChat")}
         >
           <Icon name="external-link" size="sm" />
           {t("workbench_openInChat")}
