@@ -7,6 +7,18 @@ fn cli_config_path() -> PathBuf {
     claude_home_dir().join("settings.json")
 }
 
+/// Read a single env var from the user-level CLI config (`~/.claude/settings.json` → `env`).
+/// CC Switch / CC Router write `ANTHROPIC_BASE_URL` here; MiWarp must defer to it in CLI mode.
+pub fn read_cli_env_var(key: &str) -> Option<String> {
+    load_cli_config()
+        .get("env")?
+        .get(key)?
+        .as_str()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
 /// Load user-level CLI config (~/.claude/settings.json).
 /// Returns `{}` if the file doesn't exist or is invalid.
 pub fn load_cli_config() -> Value {

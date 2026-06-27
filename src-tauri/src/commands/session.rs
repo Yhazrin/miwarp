@@ -226,15 +226,28 @@ fn resolve_auth_env(remote: &Option<RemoteHost>, settings: &UserSettings) -> Res
         }
     }
 
-    // CLI mode: never inject a stale base_url — CLI manages its own connection
+    // CLI mode: defer to CC Switch / CC Router env in ~/.claude/settings.json first.
+    if settings.auth_mode == "cli" {
+        if let Some(proxy) = resolve_cli_managed_proxy_auth() {
+            log::debug!(
+                "[session] resolve_auth_env: using CLI settings local proxy base_url={:?}",
+                proxy.base_url
+            );
+            return proxy;
+        }
+        return ResolvedAuth {
+            api_key: None,
+            auth_token: None,
+            base_url: None,
+            models: None,
+            extra_env: None,
+        };
+    }
+
     ResolvedAuth {
         api_key: None,
         auth_token: None,
-        base_url: if settings.auth_mode == "cli" {
-            None
-        } else {
-            base_url
-        },
+        base_url,
         models: None,
         extra_env: None,
     }
@@ -357,6 +370,102 @@ async fn preflight_check_base_url(
             ))
         }
     }
+}
+
+/// Map a local-proxy base URL to a known key-optional platform id.
+fn infer_local_proxy_platform_id(base_url: &str) -> Option<&'static str> {
+    let lower = base_url.to_ascii_lowercase();
+    if lower.contains("127.0.0.1:15721") || lower.contains("localhost:15721") {
+        return Some("ccswitch");
+    }
+    if lower.contains("127.0.0.1:3456") || lower.contains("localhost:3456") {
+        return Some("ccr");
+    }
+    if lower.contains(":11434") {
+        return Some("ollama");
+    }
+    None
+}
+
+fn is_local_proxy_base_url(base_url: &str) -> bool {
+    let lower = base_url.to_ascii_lowercase();
+    lower.contains("127.0.0.1") || lower.contains("localhost")
+}
+
+/// In CLI mode, honor CC Switch / CC Router env written to ~/.claude/settings.json.
+/// MiWarp must not override these with shell-level official API keys.
+fn resolve_cli_managed_proxy_auth() -> Option<ResolvedAuth> {
+    let base_url = crate::storage::cli_config::read_cli_env_var("ANTHROPIC_BASE_URL")?;
+    if !is_local_proxy_base_url(&base_url) {
+        return None;
+    }
+
+    let cli_token = crate::storage::cli_config::read_cli_env_var("ANTHROPIC_AUTH_TOKEN");
+    let cli_key = crate::storage::cli_config::read_cli_env_var("ANTHROPIC_API_KEY");
+
+    let pid = infer_local_proxy_platform_id(&base_url);
+    let info = pid.and_then(storage::settings::get_provider_info);
+
+    let use_bearer = info
+        .as_ref()
+        .and_then(|i| i.auth_env_var.as_deref())
+        .is_some_and(|v| v == "ANTHROPIC_AUTH_TOKEN")
+        || cli_token.is_some();
+
+    if use_bearer {
+        let token = cli_token
+            .or(cli_key)
+            .or_else(|| Some("PROXY_MANAGED".to_string()));
+        return Some(ResolvedAuth {
+            api_key: None,
+            auth_token: token,
+            base_url: Some(base_url),
+            models: info.as_ref().and_then(|i| i.models.clone()),
+            extra_env: info.as_ref().and_then(|i| i.extra_env.clone()),
+        });
+    }
+
+    Some(ResolvedAuth {
+        api_key: cli_key,
+        auth_token: None,
+        base_url: Some(base_url),
+        models: info.as_ref().and_then(|i| i.models.clone()),
+        extra_env: info.as_ref().and_then(|i| i.extra_env.clone()),
+    })
+}
+
+/// Resolve which platform_id drives credential / base_url injection.
+///
+/// API mode: honor IPC param → run snapshot → global active platform.
+/// CLI mode: normally skip platform routing (CLI OAuth manages official auth), except
+/// key-optional local proxies (CC Switch, CCR, Ollama) which still need ANTHROPIC_BASE_URL.
+/// When none is selected, infer from ~/.claude/settings.json env (CC Switch writes there).
+fn effective_platform_id(
+    auth_mode: &str,
+    ipc_platform_id: Option<&str>,
+    run_platform_id: Option<&str>,
+    active_platform_id: Option<&str>,
+) -> Option<String> {
+    let candidate = ipc_platform_id
+        .or(run_platform_id)
+        .or(active_platform_id)
+        .map(str::to_string);
+
+    if auth_mode == "cli" {
+        if let Some(ref pid) = candidate {
+            if storage::settings::is_key_optional_platform(pid) {
+                return Some(pid.clone());
+            }
+        }
+        if let Some(base_url) = crate::storage::cli_config::read_cli_env_var("ANTHROPIC_BASE_URL") {
+            if let Some(pid) = infer_local_proxy_platform_id(&base_url) {
+                return Some(pid.to_string());
+            }
+        }
+        return None;
+    }
+
+    candidate
 }
 
 /// Resolve auth env using per-session platform_id.
@@ -582,14 +691,13 @@ pub(crate) async fn start_session_impl(
 
     // 2b. Resolve remote host from RunMeta (audit #2: single truth source)
     let remote = resolve_remote_host(&meta)?;
-    // Use per-session platform_id: prefer IPC param, fallback to RunMeta's saved platform_id
-    // CLI Auth mode: ignore platform_id — CLI manages its own connection
-    let effective_pid = if user_settings.auth_mode == "cli" {
-        None
-    } else {
-        platform_id.as_deref().or(meta.platform_id.as_deref())
-    };
-    let resolved = resolve_auth_env_for_platform(&remote, &user_settings, effective_pid);
+    let effective_pid = effective_platform_id(
+        &user_settings.auth_mode,
+        platform_id.as_deref(),
+        meta.platform_id.as_deref(),
+        user_settings.active_platform_id.as_deref(),
+    );
+    let resolved = resolve_auth_env_for_platform(&remote, &user_settings, effective_pid.as_deref());
     adapter::clear_model_if_provider_overrides(
         &mut adapter_settings,
         &meta.model,
@@ -641,7 +749,8 @@ pub(crate) async fn start_session_impl(
     // Preflight: check base_url reachability
     // Skip for SSH remote — reachability depends on remote host's network
     if remote.is_none() {
-        if let Err(e) = preflight_check_base_url(resolved.base_url.as_deref(), effective_pid).await
+        if let Err(e) =
+            preflight_check_base_url(resolved.base_url.as_deref(), effective_pid.as_deref()).await
         {
             // Only mark as Failed for new runs still in Pending — don't overwrite history
             if is_new && meta.status == RunStatus::Pending {
@@ -1174,13 +1283,13 @@ pub(crate) async fn fork_session_impl(
     let user_settings = storage::settings::get_user_settings();
     let mut adapter = adapter::build_adapter_settings(&agent_settings, &user_settings, None);
     let remote = resolve_remote_host(&source)?;
-    // CLI Auth mode: ignore platform_id — CLI manages its own connection
-    let effective_pid = if user_settings.auth_mode == "cli" {
-        None
-    } else {
-        source.platform_id.as_deref()
-    };
-    let resolved = resolve_auth_env_for_platform(&remote, &user_settings, effective_pid);
+    let effective_pid = effective_platform_id(
+        &user_settings.auth_mode,
+        None,
+        source.platform_id.as_deref(),
+        user_settings.active_platform_id.as_deref(),
+    );
+    let resolved = resolve_auth_env_for_platform(&remote, &user_settings, effective_pid.as_deref());
     adapter::clear_model_if_provider_overrides(
         &mut adapter,
         &None, // fork has no UI model override
@@ -1321,13 +1430,13 @@ pub(crate) async fn approve_session_tool_impl(
     let refreshed_agent = storage::settings::get_agent_settings(&meta.agent);
     let user = storage::settings::get_user_settings();
     let mut adapter = adapter::build_adapter_settings(&refreshed_agent, &user, None);
-    // CLI Auth mode: ignore platform_id — CLI manages its own connection
-    let effective_pid = if user.auth_mode == "cli" {
-        None
-    } else {
-        meta.platform_id.as_deref()
-    };
-    let resolved = resolve_auth_env_for_platform(&remote, &user, effective_pid);
+    let effective_pid = effective_platform_id(
+        &user.auth_mode,
+        None,
+        meta.platform_id.as_deref(),
+        user.active_platform_id.as_deref(),
+    );
+    let resolved = resolve_auth_env_for_platform(&remote, &user, effective_pid.as_deref());
     adapter::clear_model_if_provider_overrides(
         &mut adapter,
         &None,
@@ -1338,7 +1447,7 @@ pub(crate) async fn approve_session_tool_impl(
 
     // 4. Preflight — before killing old actor so session can recover on failure
     if remote.is_none() {
-        preflight_check_base_url(resolved.base_url.as_deref(), effective_pid).await?;
+        preflight_check_base_url(resolved.base_url.as_deref(), effective_pid.as_deref()).await?;
     }
 
     // 5. Now safe to stop current actor
@@ -1812,7 +1921,12 @@ fn augment_with_shell_auth(
     if is_remote {
         return resolved;
     }
-    if resolved.api_key.is_some() || resolved.auth_token.is_some() {
+    // CC Switch / CC Router write routing to ~/.claude/settings.json — never override with shell keys.
+    if crate::storage::cli_config::read_cli_env_var("ANTHROPIC_BASE_URL").is_some() {
+        log::debug!("[session] CLI settings env has ANTHROPIC_BASE_URL, skip shell auth injection");
+        return resolved;
+    }
+    if resolved.base_url.is_some() || resolved.api_key.is_some() || resolved.auth_token.is_some() {
         return resolved;
     }
     if cli_config_has_auth_key(cwd) {
@@ -2194,12 +2308,13 @@ pub(crate) async fn run_claude_print_prompt(
 
     let user_settings = storage::settings::get_user_settings();
     let remote = resolve_remote_host(meta)?;
-    let effective_pid = if user_settings.auth_mode == "cli" {
-        None
-    } else {
-        meta.platform_id.as_deref()
-    };
-    let resolved = resolve_auth_env_for_platform(&remote, &user_settings, effective_pid);
+    let effective_pid = effective_platform_id(
+        &user_settings.auth_mode,
+        None,
+        meta.platform_id.as_deref(),
+        user_settings.active_platform_id.as_deref(),
+    );
+    let resolved = resolve_auth_env_for_platform(&remote, &user_settings, effective_pid.as_deref());
     let resolved = augment_with_shell_auth(
         resolved,
         &user_settings.auth_mode,
@@ -2340,12 +2455,13 @@ pub async fn side_question(
     // 2. Resolve auth
     let user_settings = storage::settings::get_user_settings();
     let remote = resolve_remote_host(&source)?;
-    let effective_pid = if user_settings.auth_mode == "cli" {
-        None
-    } else {
-        source.platform_id.as_deref()
-    };
-    let resolved = resolve_auth_env_for_platform(&remote, &user_settings, effective_pid);
+    let effective_pid = effective_platform_id(
+        &user_settings.auth_mode,
+        None,
+        source.platform_id.as_deref(),
+        user_settings.active_platform_id.as_deref(),
+    );
+    let resolved = resolve_auth_env_for_platform(&remote, &user_settings, effective_pid.as_deref());
     let resolved = augment_with_shell_auth(
         resolved,
         &user_settings.auth_mode,
@@ -2753,12 +2869,13 @@ async fn respawn_session_actor(
     let mut adapter_settings =
         adapter::build_adapter_settings(&agent_settings, &user_settings, meta.model.clone());
     let remote = resolve_remote_host(&meta)?;
-    let effective_pid = if user_settings.auth_mode == "cli" {
-        None
-    } else {
-        meta.platform_id.as_deref()
-    };
-    let resolved = resolve_auth_env_for_platform(&remote, &user_settings, effective_pid);
+    let effective_pid = effective_platform_id(
+        &user_settings.auth_mode,
+        None,
+        meta.platform_id.as_deref(),
+        user_settings.active_platform_id.as_deref(),
+    );
+    let resolved = resolve_auth_env_for_platform(&remote, &user_settings, effective_pid.as_deref());
     adapter::clear_model_if_provider_overrides(
         &mut adapter_settings,
         &meta.model,
@@ -2988,6 +3105,40 @@ mod tests {
             models: None,
             extra_env: None,
         }
+    }
+
+    #[test]
+    fn cli_mode_uses_key_optional_local_proxy() {
+        let mut settings = default_user_settings();
+        settings.auth_mode = "cli".to_string();
+        settings.active_platform_id = Some("ccr".to_string());
+
+        let pid = effective_platform_id(
+            &settings.auth_mode,
+            None,
+            None,
+            settings.active_platform_id.as_deref(),
+        );
+        assert_eq!(pid.as_deref(), Some("ccr"));
+
+        let resolved = resolve_auth_env_for_platform(&None, &settings, pid.as_deref());
+        assert_eq!(resolved.base_url.as_deref(), Some("http://127.0.0.1:3456"));
+        assert_eq!(resolved.auth_token.as_deref(), Some("PROXY_MANAGED"));
+    }
+
+    #[test]
+    fn cli_mode_ignores_non_local_platform() {
+        let mut settings = default_user_settings();
+        settings.auth_mode = "cli".to_string();
+        settings.active_platform_id = Some("deepseek".to_string());
+
+        let pid = effective_platform_id(
+            &settings.auth_mode,
+            None,
+            None,
+            settings.active_platform_id.as_deref(),
+        );
+        assert_eq!(pid, None);
     }
 
     #[test]
