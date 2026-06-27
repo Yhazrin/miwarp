@@ -17,6 +17,7 @@ pub mod run_index;
 pub mod run_journal;
 pub mod runs;
 pub mod settings;
+pub mod settings_patch;
 pub mod shared;
 pub mod tasks;
 pub mod team_runs;
