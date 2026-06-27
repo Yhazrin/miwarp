@@ -3217,6 +3217,7 @@
   "split_mode_paneLimitReached": "最多 4 个面板，请先关闭一个。",
   "split_mode_duplicateRun": "该会话已打开，正在定位到现有面板。",
   "split_mode_sidebarSuspended": "分屏模式下右侧边栏已暂停",
+  "split_mode_sidebarSuspendedHint": "工具 / 上下文 / 文件面板在分屏期间不再订阅数据，退出分屏即可恢复。",
   "split_mode_layoutSingle": "1 个面板",
   "split_mode_layoutDual": "2 个面板（左右并排）",
   "split_mode_layoutTriple": "3 个面板（左 1 + 右 2）",

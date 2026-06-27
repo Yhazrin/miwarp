@@ -3320,6 +3320,7 @@
   "split_mode_paneLimitReached": "Up to 4 panes. Close one first.",
   "split_mode_duplicateRun": "Already open — focusing existing pane.",
   "split_mode_sidebarSuspended": "Sidebar paused in split mode",
+  "split_mode_sidebarSuspendedHint": "Tool / context / file panels stop subscribing while split mode is active. Exit split to bring them back.",
   "split_mode_layoutSingle": "1 pane",
   "split_mode_layoutDual": "2 panes (side by side)",
   "split_mode_layoutTriple": "3 panes (1 left, 2 right)",
