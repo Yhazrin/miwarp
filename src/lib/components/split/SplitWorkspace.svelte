@@ -21,7 +21,9 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { splitWorkspaceStore, type PaneId } from "$lib/split";
+  import { activateSplitPane, closeSplitPane } from "$lib/split/split-workspace-lifecycle";
   import SplitChatPane from "./SplitChatPane.svelte";
+  import SplitWorkspaceToolbar from "./SplitWorkspaceToolbar.svelte";
   import { fly } from "svelte/transition";
 
   let {
@@ -46,11 +48,12 @@
 </script>
 
 <div
-  class="split-workspace relative h-full w-full"
+  class="split-workspace relative flex h-full w-full flex-col"
   data-split-mode={split.enabled ? "true" : "false"}
 >
   {#if split.enabled}
-    <div class="split-grid h-full w-full" data-layout-mode={split.layoutMode}>
+    <SplitWorkspaceToolbar />
+    <div class="split-grid min-h-0 flex-1 w-full" data-layout-mode={split.layoutMode}>
       {#each split.panes as pane, idx (pane.paneId)}
         <div
           class="split-pane-slot min-w-0 min-h-0"
@@ -60,10 +63,10 @@
         >
           <SplitChatPane
             {pane}
-            onClose={() => split.removePane(pane.paneId)}
+            onClose={() => void closeSplitPane(pane.paneId)}
             activeContent={pane.runtimeState === "active" ? activePaneBody : undefined}
             activeInput={pane.runtimeState === "active" ? activePaneInput : undefined}
-            {onActivate}
+            onActivate={onActivate ?? ((id) => void activateSplitPane(id))}
           />
         </div>
       {/each}

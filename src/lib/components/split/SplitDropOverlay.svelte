@@ -18,13 +18,17 @@
   so users see what's about to happen.
 -->
 <script lang="ts">
+  import { addSplitPane } from "$lib/split/split-workspace-lifecycle";
   import { splitWorkspaceStore, isSplitDrag, readSplitDragRunId } from "$lib/split";
+  import { SESSION_DRAG_EVENT } from "$lib/utils/session-drag-state";
   import { t } from "$lib/i18n/index.svelte";
   import Icon from "$lib/components/Icon.svelte";
 
   let dragDepth = $state(0);
+  let pointerActive = $state(false);
+  let pointerOverSplit = $state(false);
   let overlayEl = $state<HTMLElement | null>(null);
-  const isDragging = $derived(dragDepth > 0);
+  const isDragging = $derived((pointerActive && pointerOverSplit) || dragDepth > 0);
   const canDrop = $derived(!splitWorkspaceStore.enabled || splitWorkspaceStore.panes.length < 4);
 
   function onDragEnter(e: DragEvent) {
@@ -47,15 +51,7 @@
     dragDepth = 0;
     const runId = readSplitDragRunId(e);
     if (!runId) return;
-    if (splitWorkspaceStore.enabled && splitWorkspaceStore.panes.length >= 4) {
-      splitWorkspaceStore.onToast?.("split_mode_paneLimitReached", "error");
-      return;
-    }
-    if (!splitWorkspaceStore.enabled) {
-      splitWorkspaceStore.enter({ activeRunId: runId, cwd: null });
-    } else {
-      splitWorkspaceStore.addPane(runId);
-    }
+    void addSplitPane(runId);
   }
   // Also handle window-level events as fallback (covers Tauri WebView edge cases)
   function onWindowDragEnter(e: DragEvent) {
@@ -79,23 +75,22 @@
     dragDepth = 0;
     const runId = readSplitDragRunId(e);
     if (!runId) return;
-    if (splitWorkspaceStore.enabled && splitWorkspaceStore.panes.length >= 4) {
-      splitWorkspaceStore.onToast?.("split_mode_paneLimitReached", "error");
-      return;
-    }
-    if (!splitWorkspaceStore.enabled) {
-      splitWorkspaceStore.enter({ activeRunId: runId, cwd: null });
-    } else {
-      splitWorkspaceStore.addPane(runId);
-    }
+    void addSplitPane(runId);
   }
 
   $effect(() => {
+    const onSessionDrag = (e: Event) => {
+      const detail = (e as CustomEvent<{ active: boolean; overSplit: boolean }>).detail;
+      pointerActive = detail.active;
+      pointerOverSplit = detail.overSplit;
+    };
+    window.addEventListener(SESSION_DRAG_EVENT, onSessionDrag);
     window.addEventListener("dragenter", onWindowDragEnter);
     window.addEventListener("dragleave", onWindowDragLeave);
     window.addEventListener("dragover", onWindowDragOver);
     window.addEventListener("drop", onWindowDrop);
     return () => {
+      window.removeEventListener(SESSION_DRAG_EVENT, onSessionDrag);
       window.removeEventListener("dragenter", onWindowDragEnter);
       window.removeEventListener("dragleave", onWindowDragLeave);
       window.removeEventListener("dragover", onWindowDragOver);

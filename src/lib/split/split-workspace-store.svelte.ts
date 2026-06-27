@@ -183,6 +183,11 @@ export class SplitWorkspaceStore {
     };
     this.panes = [...this.panes, pane];
     if (pane.runtimeState === "active") {
+      for (const existing of this.panes) {
+        if (existing.paneId !== pane.paneId) {
+          existing.runtimeState = "inactive";
+        }
+      }
       this.activePaneId = pane.paneId;
     }
     // Keep layoutMode consistent with pane count (caller may still override).
@@ -209,7 +214,9 @@ export class SplitWorkspaceStore {
     if (wasActive) {
       if (this.panes.length > 0) {
         const next = this.panes[0];
-        next.runtimeState = "active";
+        for (const p of this.panes) {
+          p.runtimeState = p.paneId === next.paneId ? "active" : "inactive";
+        }
         this.activePaneId = next.paneId;
       } else {
         this.exit();

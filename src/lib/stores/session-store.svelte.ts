@@ -19,6 +19,7 @@ import type {
   SessionMode,
 } from "$lib/types";
 import { usesStreamSession } from "$lib/runtime";
+import { isKeyOptionalPlatform } from "$lib/utils/platform-presets";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { t } from "$lib/i18n/index.svelte";
 import { yieldToMain } from "$lib/utils/yield";
@@ -1360,6 +1361,89 @@ export class SessionStore {
     }
   }
 
+  /**
+   * Offline replay for split-pane inactive snapshots. Does not mutate live
+   * session state — uses an isolated reducer ctx with a temporary `run`.
+   */
+  buildSnapshotFromEvents(
+    run: import("$lib/types").TaskRun,
+    events: import("$lib/types").BusEvent[],
+  ): {
+    timeline: TimelineEntry[];
+    tools: HookEvent[];
+    turnUsages: TurnUsage[];
+  } {
+    const prevRun = this.run;
+    this.run = run;
+    try {
+      const ctx = this._createReduceCtx();
+      ctx.tl = [];
+      ctx.he = [];
+      ctx.streamText = "";
+      ctx.thinkingText = "";
+      ctx.turnUsages = [];
+      ctx.seenMessageIds = new Set();
+      ctx.seenToolIds = new Set();
+      ctx.toolTlIndex = new Map();
+      ctx.toolHeIndex = new Map();
+      ctx.isStream = run.execution_path === "session_actor";
+      ctx.model = run.model ?? "";
+      ctx.phase = "idle";
+      ctx.error = "";
+      ctx.usage = {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        cost: 0,
+      };
+
+      for (const ev of events) {
+        if (ev.type === "attention_changed" || ev.type === "runtime_health_changed") continue;
+        if (ev.run_id && ev.run_id !== run.id) continue;
+        this._reduce(ev, ctx, true);
+      }
+
+      this._finalizeSnapshotCtxTools(ctx, run.status);
+      return {
+        timeline: ctx.tl,
+        tools: ctx.he,
+        turnUsages: ctx.turnUsages,
+      };
+    } finally {
+      this.run = prevRun;
+    }
+  }
+
+  private _finalizeSnapshotCtxTools(
+    ctx: ReduceCtx,
+    runStatus: import("$lib/types").RunStatus,
+  ): void {
+    const sessionDead =
+      runStatus === "stopped" || runStatus === "completed" || runStatus === "failed";
+    if (!sessionDead) return;
+    const staleStatuses = new Set(["running", "ask_pending", "permission_prompt"]);
+    const finalizeTools = (tl: TimelineEntry[]): TimelineEntry[] => {
+      let changed = false;
+      const result = tl.map((e) => {
+        if (e.kind !== "tool") return e;
+        const newSub = e.subTimeline ? finalizeTools(e.subTimeline) : e.subTimeline;
+        const needsFinalize = staleStatuses.has(e.tool.status);
+        if (!needsFinalize && newSub === e.subTimeline) return e;
+        changed = true;
+        return {
+          ...e,
+          ...(newSub !== e.subTimeline ? { subTimeline: newSub } : {}),
+          tool: needsFinalize
+            ? { ...e.tool, status: "error" as const, output: { error: "Session ended" } }
+            : e.tool,
+        };
+      });
+      return changed ? result : tl;
+    };
+    ctx.tl = finalizeTools(ctx.tl);
+  }
+
   /** Apply a hook event (from hook-event Tauri listener). */
   applyHookEvent(event: HookEvent): void {
     if (!this.run || event.run_id !== this.run.id) return;
@@ -2087,8 +2171,8 @@ export class SessionStore {
       // if the user changed settings without navigating away from chat.
       try {
         const freshSettings = await api.getUserSettings();
-        if (freshSettings.auth_mode === "api") {
-          const freshPid = freshSettings.active_platform_id ?? "anthropic";
+        const freshPid = freshSettings.active_platform_id ?? "anthropic";
+        if (freshSettings.auth_mode === "api" || isKeyOptionalPlatform(freshPid)) {
           if (freshPid !== this.platformId) {
             dbg("store", "startSession: refreshing platformId", {
               old: this.platformId,

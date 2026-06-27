@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from "$app/stores";
+  import { get } from "svelte/store";
   import { goto, replaceState, beforeNavigate } from "$app/navigation";
   import { tick, onMount, untrack, getContext } from "svelte";
   import { LAYOUT_CHROME_CONTEXT_KEY, type LayoutChromeContext } from "$lib/layout-chrome-context";
@@ -36,6 +37,7 @@
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import { t } from "$lib/i18n/index.svelte";
   import { showToast as _showToast } from "$lib/stores/toast-store.svelte";
+  import { registerSessionIslandNotify } from "$lib/stores/session-island-notify.svelte";
   import { workspacesStore } from "$lib/stores/workspaces-store.svelte";
   import { getTransport } from "$lib/transport";
   import { dbg, dbgWarn } from "$lib/utils/debug";
@@ -85,8 +87,16 @@
   import SplitWorkspace from "$lib/components/split/SplitWorkspace.svelte";
   import SplitSidebarPlaceholder from "$lib/components/split/SplitSidebarPlaceholder.svelte";
   import SplitDropOverlay from "$lib/components/split/SplitDropOverlay.svelte";
-  import { splitWorkspaceStore, splitPaneSessionAdapter } from "$lib/split";
-  import type { PaneId } from "$lib/split";
+  import { splitWorkspaceStore } from "$lib/split";
+  import {
+    setSplitWorkspaceXtermRef,
+    reconcileSplitFromUrl,
+    activateSplitPane,
+    toggleSplitWorkspace,
+    exitSplitWorkspace,
+    isSplitUrlSyncLocked,
+  } from "$lib/split/split-workspace-lifecycle";
+  import { SESSION_DROP_SPLIT_ATTR } from "$lib/utils/session-drag-state";
   import RewindModal from "$lib/components/RewindModal.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import HtmlReportPreview from "$lib/components/insight/HtmlReportPreview.svelte";
@@ -306,6 +316,11 @@
       _showToast(t(key as never), kind ?? "info");
     };
 
+    setSplitWorkspaceXtermRef(() => xtermRef);
+    void reconcileSplitFromUrl(get(page).url.searchParams);
+
+    registerSessionIslandNotify(pushPermissionStatus);
+
     const onSessionIslandAlignmentChanged = (event: Event) => {
       const detail = (event as CustomEvent<{ alignment?: unknown }>).detail;
       sessionIslandAlignmentOverride = normalizeSessionIslandAlignment(detail?.alignment);
@@ -322,6 +337,8 @@
     );
     window.addEventListener(api.USER_SETTINGS_CHANGED_EVENT, onUserSettingsChanged);
     return () => {
+      setSplitWorkspaceXtermRef(null);
+      registerSessionIslandNotify(null);
       window.removeEventListener(
         SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT,
         onSessionIslandAlignmentChanged,
@@ -331,43 +348,11 @@
   });
 
   // ── Split workspace integration ──────────────────────────────────────────
-  // Reactive: detect `?split=1` URL flag and enter split mode. The first
-  // pane is seeded with the current run (loaded by the existing runId
-  // effect above) so the active pane is whatever was already loaded.
   $effect(() => {
-    const wantSplit = $page.url.searchParams.get("split") === "1";
-    if (wantSplit && !splitWorkspaceStore.enabled) {
-      // Enter after a tick so the runId effect has fired and store.run is
-      // populated; we want to capture the current run as the first pane.
-      tick().then(() => {
-        const cwd = store.effectiveCwd || folderCwdOverride || null;
-        const activeRunId = store.run?.id ?? (runId || null);
-        splitWorkspaceStore.enter({ cwd, activeRunId });
-      });
-    } else if (!wantSplit && splitWorkspaceStore.enabled) {
-      // User navigated away from split mode (e.g. clicked a single chat
-      // link); restore normal layout.
-      splitWorkspaceStore.exit();
-    }
+    if (isSplitUrlSyncLocked()) return;
+    const params = $page.url.searchParams;
+    void reconcileSplitFromUrl(params);
   });
-
-  /**
-   * Pane activation callback — wired into SplitChatPane via SplitWorkspace's
-   * `onActivate` plumbing. Calls the adapter to capture the leaving pane's
-   * snapshot AND load the entering pane into sessionStore atomically. If
-   * the user is already on the active pane, this is a no-op.
-   */
-  async function handlePaneActivate(paneId: PaneId): Promise<void> {
-    const entering = splitWorkspaceStore.panes.find((p) => p.paneId === paneId);
-    if (!entering) return;
-    if (entering.runtimeState === "active") return;
-    const leaving =
-      splitWorkspaceStore.panes.find((p) => p.paneId === splitWorkspaceStore.activePaneId) ?? null;
-    // Mark metadata first so the UI flips to active immediately; the
-    // snapshot capture + loadRun happen in the background.
-    splitWorkspaceStore.setActive(paneId);
-    await splitPaneSessionAdapter.switchActive(store, leaving, entering, xtermRef);
-  }
 
   // Auto-name one-shot latch: reset only on actual run ID change
   let prevAutoNameRunId = "";
@@ -430,6 +415,28 @@
   let statusBarRef: SessionStatusBar | undefined = $state();
   let stashedInput: PromptInputSnapshot | null = $state(null);
   let sidebarRequestedTab = $state<ToolActivityPanelTab | null>(null);
+  /**
+   * Permission-mode notifications are surfaced through the unified
+   * SessionStatusBar overlay (same channel as send-status), not via the
+   * standalone ToastHost capsule. Bumping the `version` key on each push
+   * guarantees the overlay swaps to the new payload even when the text
+   * is identical to a previous one.
+   */
+  let permissionStatusOverlay = $state<{
+    payload: import("$lib/chat/send-status-presentation").PermissionStatusInput;
+    version: number;
+  } | null>(null);
+  function pushPermissionStatus(
+    payload: import("$lib/chat/send-status-presentation").PermissionStatusInput,
+  ): void {
+    // Leave `transient` unset so SessionStatusBar's auto-dismiss timer
+    // (default 2400ms) clears the overlay and calls back to wipe our
+    // local mirror — no sticky banner.
+    permissionStatusOverlay = { payload, version: Date.now() };
+  }
+  function clearPermissionStatusOverlay(): void {
+    permissionStatusOverlay = null;
+  }
   let toolPanelActiveTab = $state<ToolActivityPanelTab>(chatViewCache.toolPanelActiveTab);
   let toolPanelIndicators = $state({ context: false, files: false, tasks: false });
   let requestedPreviewPath = $state<string | null>(chatViewCache.requestedPreviewPath);
@@ -1217,7 +1224,7 @@
   const handlePermissionModeChange = createPermissionModeHandler({
     store,
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
-    showToast: _showToast,
+    showPermissionStatus: pushPermissionStatus,
     getPermModeLabel,
   });
 
@@ -1465,7 +1472,7 @@
     // store. When staying inside chat (e.g. switching run within the same
     // route), the split workspace's own $effect handles the toggle.
     if (!to || !to.url.pathname.startsWith("/chat")) {
-      splitWorkspaceStore.exit();
+      void exitSplitWorkspace({ restoreRun: false });
     }
   });
 
@@ -1741,9 +1748,7 @@
       handleRalphCancel,
       showChatToast: _showToast,
     }}
-    sendCoordinator={send.coordinator}
     sendBusy={send.inFlight}
-    onSendRetry={(event) => handleSendRetry(event)}
     bind:stashedInput
     bind:shortcutHelpOpen
     bind:promptRef
@@ -1760,7 +1765,10 @@
   <SplitDropOverlay />
 
   <!-- Main content area -->
-  <div class="chat-pane flex flex-1 flex-col min-w-0 relative">
+  <div
+    class="chat-pane flex flex-1 flex-col min-w-0 relative"
+    {...{ [SESSION_DROP_SPLIT_ATTR]: "true" }}
+  >
     <!-- Status bar -->
     <SessionStatusBar
       bind:this={statusBarRef}
@@ -1835,6 +1843,12 @@
       onOpenSettings={layoutChrome.openSettings}
       onOpenCliImport={layoutChrome.openCliBrowser}
       onNewChat={layoutChrome.newChat}
+      splitModeEnabled={splitWorkspaceStore.enabled}
+      onToggleSplitMode={() => void toggleSplitWorkspace()}
+      sendCoordinator={send.coordinator}
+      onSendRetry={(event) => handleSendRetry(event)}
+      permissionStatus={permissionStatusOverlay?.payload ?? null}
+      onPermissionStatusDismiss={clearPermissionStatusOverlay}
     />
 
     <!-- MCP panel (floating below status bar) -->
@@ -1865,7 +1879,7 @@
          direct child otherwise) so the dock stays mounted when the
          conversation body swaps. -->
     {#if splitWorkspaceStore.enabled}
-      <SplitWorkspace onActivate={(id) => void handlePaneActivate(id)}>
+      <SplitWorkspace onActivate={(id) => void activateSplitPane(id)}>
         {#snippet activePaneBody()}
           <ChatConversationStage
             {store}

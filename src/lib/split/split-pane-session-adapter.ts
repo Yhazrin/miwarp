@@ -69,7 +69,11 @@ class SplitPaneSessionAdapter {
    * Populate `pane.cachedSnapshot` with a read-only view of the run. Idempotent
    * — skips if the snapshot is already populated. Re-fetches if `force`.
    */
-  async fetchSnapshot(pane: PaneState, force = false): Promise<PaneSnapshot | null> {
+  async fetchSnapshot(
+    sessionStore: SessionStore,
+    pane: PaneState,
+    force = false,
+  ): Promise<PaneSnapshot | null> {
     if (!force && pane.cachedSnapshot) return pane.cachedSnapshot;
     const gen = pane.loadGeneration;
     try {
@@ -79,17 +83,16 @@ class SplitPaneSessionAdapter {
       const events = await api.getBusEvents(pane.runId);
       if (pane.loadGeneration !== gen) return null;
 
+      const { timeline, tools, turnUsages } = sessionStore.buildSnapshotFromEvents(run, events);
+
       const snapshot: PaneSnapshotWithRaw = {
         run,
-        timeline: [],
-        tools: [],
-        turnUsages: [],
+        timeline,
+        tools,
+        turnUsages,
         rawBusEvents: events,
         fetchedAt: Date.now(),
       };
-      // PaneSnapshot is a structural subset of PaneSnapshotWithRaw; cast is
-      // safe because the extra `rawBusEvents` field is only consumed via the
-      // narrower type above.
       pane.cachedSnapshot = snapshot as PaneSnapshot;
       pane.loadState = "ready";
       pane.errorState = null;
@@ -138,7 +141,7 @@ class SplitPaneSessionAdapter {
     // Snapshot the leaving pane BEFORE awaiting so we don't miss events that
     // arrive between the await below and the snapshot.
     if (leaving && !leaving.cachedSnapshot) {
-      await this.fetchSnapshot(leaving);
+      await this.fetchSnapshot(store, leaving);
     }
     await this.activate(store, entering, xtermRef);
   }

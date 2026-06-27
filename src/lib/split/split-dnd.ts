@@ -15,21 +15,48 @@
  */
 
 export const SPLIT_DRAG_MIME = "application/x-miwarp-split-pane";
+export const RUN_DRAG_MIME = "application/x-miwarp-run";
 
-/** Returns true iff the drag event carries our MIME type. */
-export function isSplitDrag(e: DragEvent | null | undefined): boolean {
-  if (!e?.dataTransfer) return false;
-  const types = e.dataTransfer.types;
+/** Active sidebar session drag (HTML5 path). Pointer drags use session-drag-state instead. */
+let activeSplitDragRunId: string | null = null;
+
+export function beginSplitDrag(runId: string): void {
+  activeSplitDragRunId = runId;
+}
+
+export function endSplitDrag(): void {
+  activeSplitDragRunId = null;
+}
+
+export function getActiveSplitDragRunId(): string | null {
+  return activeSplitDragRunId;
+}
+
+function dataTransferHasSplitMime(e: DragEvent): boolean {
+  const types = e.dataTransfer?.types;
   if (!types) return false;
-  // dataTransfer.types is a DOMStringList in browsers; normalize to array.
   for (let i = 0; i < types.length; i++) {
-    if (types[i] === SPLIT_DRAG_MIME) return true;
+    const t = types[i];
+    if (t === SPLIT_DRAG_MIME || t === RUN_DRAG_MIME) return true;
   }
   return false;
 }
 
+/** Returns true for HTML5 sidebar drags (incl. WebKit where custom MIME is hidden until drop). */
+export function isSplitDrag(e: DragEvent | null | undefined): boolean {
+  if (activeSplitDragRunId) return true;
+  if (!e?.dataTransfer) return false;
+  return dataTransferHasSplitMime(e);
+}
+
 /** Extract the runId from a drop event's dataTransfer. */
 export function readSplitDragRunId(e: DragEvent): string | null {
-  const v = e.dataTransfer?.getData(SPLIT_DRAG_MIME);
-  return v || null;
+  const fromSplit = e.dataTransfer?.getData(SPLIT_DRAG_MIME);
+  if (fromSplit) return fromSplit;
+  const fromRun = e.dataTransfer?.getData(RUN_DRAG_MIME);
+  if (fromRun) return fromRun;
+  if (activeSplitDragRunId) return activeSplitDragRunId;
+  const plain = e.dataTransfer?.getData("text/plain")?.trim();
+  if (plain && plain.length >= 8) return plain;
+  return null;
 }

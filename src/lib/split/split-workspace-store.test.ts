@@ -279,6 +279,28 @@ describe("SplitWorkspaceStore — layout mode", () => {
   });
 });
 
+describe("SplitWorkspaceStore — active pane switching on add", () => {
+  it("addPane demotes previous active pane when adding a new active pane", () => {
+    const { store } = makeStore();
+    store.enter();
+    const first = store.addPane("run-1");
+    const second = store.addPane("run-2");
+    expect(first?.runtimeState).toBe("inactive");
+    expect(second?.runtimeState).toBe("active");
+    expect(store.activePaneId).toBe(second?.paneId);
+  });
+
+  it("addPane with makeActive false keeps current active pane", () => {
+    const { store } = makeStore();
+    store.enter({ activeRunId: "run-1" });
+    const activeId = store.activePaneId;
+    const second = store.addPane("run-2", { makeActive: false });
+    expect(second?.runtimeState).toBe("inactive");
+    expect(store.activePaneId).toBe(activeId);
+    expect(store.panes.find((p) => p.paneId === activeId)?.runtimeState).toBe("active");
+  });
+});
+
 describe("SplitWorkspaceStore — toast sink", () => {
   it("onToast null is safe (toasts become no-ops)", () => {
     const store = new SplitWorkspaceStore();
