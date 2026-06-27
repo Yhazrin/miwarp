@@ -16,4 +16,4 @@ pub const DEFAULT_SMOKE_TIMEOUT_SECS: u64 = 120;
 pub const DEFAULT_PROBE_TIMEOUT_SECS: u64 = 30;
 pub const DEFAULT_CANCEL_GRACE_MS: u64 = 5_000;
 
-pub const STARTABLE_RUNTIMES: &[&str] = &["claude", "codex", "mimo", "opencode"];
+pub const STARTABLE_RUNTIMES: &[&str] = &["claude", "codex", "mimo", "opencode", "cursor"];

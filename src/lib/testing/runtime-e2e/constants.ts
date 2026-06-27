@@ -7,7 +7,7 @@ export const RUNTIME_SMOKE_TIMEOUT_ENV = "MIWARP_RUNTIME_SMOKE_TIMEOUT_SECS";
 
 export const SKIPPED_ENVIRONMENT = "SKIPPED_ENVIRONMENT";
 
-export const STARTABLE_RUNTIMES = ["claude", "codex", "mimo", "opencode"] as const;
+export const STARTABLE_RUNTIMES = ["claude", "codex", "mimo", "opencode", "cursor"] as const;
 export type StartableRuntimeId = (typeof STARTABLE_RUNTIMES)[number];
 
 export type ProbeState = "binary_missing" | "unauthenticated" | "unsupported" | "ready";

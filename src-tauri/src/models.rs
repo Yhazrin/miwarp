@@ -150,12 +150,60 @@ impl std::fmt::Display for AgentRuntimeKind {
 impl AgentRuntimeKind {
     /// Parse from the agent string stored in RunMeta.
     pub fn from_agent(agent: &str) -> Self {
+        Self::try_parse_agent(agent).unwrap_or(Self::ClaudeCode)
+    }
+
+    /// Parse a known agent key, or None for unrecognized values.
+    pub fn try_parse_agent(agent: &str) -> Option<Self> {
         match agent {
-            "mimo" | "mimocode" => Self::MiMoCode,
-            "codex" => Self::Codex,
-            "opencode" => Self::OpenCode,
-            "cursor" => Self::Cursor,
-            _ => Self::ClaudeCode,
+            "claude" => Some(Self::ClaudeCode),
+            "mimo" | "mimocode" => Some(Self::MiMoCode),
+            "codex" => Some(Self::Codex),
+            "opencode" => Some(Self::OpenCode),
+            "cursor" => Some(Self::Cursor),
+            _ => None,
+        }
+    }
+
+    /// Strict parse for run creation — rejects unknown agent strings.
+    pub fn parse_agent(agent: &str) -> Result<Self, String> {
+        Self::try_parse_agent(agent).ok_or_else(|| {
+            format!(
+                "unknown agent '{}': supported agents are {}",
+                agent,
+                Self::supported_agent_keys().join(", ")
+            )
+        })
+    }
+
+    pub fn supported_agent_keys() -> &'static [&'static str] {
+        &["claude", "codex", "mimo", "opencode", "cursor"]
+    }
+
+    pub fn default_execution_path(&self) -> ExecutionPath {
+        match self {
+            Self::ClaudeCode | Self::MiMoCode | Self::Cursor => ExecutionPath::SessionActor,
+            Self::Codex | Self::OpenCode => ExecutionPath::PipeExec,
+        }
+    }
+
+    pub fn supports_execution_path(&self, path: &ExecutionPath) -> bool {
+        matches!(
+            (self, path),
+            (Self::ClaudeCode, _)
+                | (Self::MiMoCode | Self::Cursor, ExecutionPath::SessionActor)
+                | (Self::Codex | Self::OpenCode, ExecutionPath::PipeExec)
+        )
+    }
+
+    pub fn validate_execution_path(&self, path: &ExecutionPath) -> Result<(), String> {
+        if self.supports_execution_path(path) {
+            Ok(())
+        } else {
+            Err(format!(
+                "agent '{}' does not support execution_path {:?}",
+                self, path
+            ))
         }
     }
 }
@@ -1102,7 +1150,8 @@ pub struct SystemDiagnostics {
 }
 
 /// Raw usage data extracted from a run's events.jsonl (no RunMeta fields).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RawRunUsage {
     pub total_cost_usd: f64,
     pub input_tokens: u64,

@@ -107,7 +107,7 @@ pub fn build_agent_command(
             Ok(("opencode".to_string(), args))
         }
         _ => Err(format!(
-            "Unsupported agent: {}. Supported: claude, mimo, codex, opencode",
+            "Unsupported agent: {}. Supported: claude, mimo, codex, opencode, cursor",
             agent
         )),
     }

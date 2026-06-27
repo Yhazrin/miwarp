@@ -23,7 +23,13 @@ describe("runtime real e2e constants", () => {
 
   it("parses runtime filters", () => {
     expect(parseSelectedRuntimes("claude,mimo")).toEqual(["claude", "mimo"]);
-    expect(parseSelectedRuntimes(undefined)).toEqual(["claude", "codex", "mimo", "opencode"]);
+    expect(parseSelectedRuntimes(undefined)).toEqual([
+      "claude",
+      "codex",
+      "mimo",
+      "opencode",
+      "cursor",
+    ]);
     expect(parseSelectedRuntimes("claude,gemini")).toEqual(["claude"]);
   });
 });

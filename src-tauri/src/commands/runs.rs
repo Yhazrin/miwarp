@@ -1,7 +1,7 @@
 use crate::agent::adapter::ActorSessionMap;
 use crate::models::{
-    now_iso, ExecutionPath, PromptFavorite, PromptSearchResult, RunStatus, SessionCreationMode,
-    TaskRun,
+    now_iso, AgentRuntimeKind, ExecutionPath, PromptFavorite, PromptSearchResult, RunStatus,
+    SessionCreationMode, TaskRun,
 };
 use crate::storage;
 use crate::storage::tasks::TaskMutation;
@@ -10,23 +10,8 @@ use std::collections::{HashMap, HashSet};
 
 /// Validate that agent supports the requested execution path.
 fn validate_agent_path(agent: &str, path: &ExecutionPath) -> Result<(), String> {
-    match agent {
-        "claude" => Ok(()), // Claude supports both session_actor and pipe_exec
-        "codex" => {
-            if *path == ExecutionPath::PipeExec {
-                Ok(())
-            } else {
-                Err(format!(
-                    "agent 'codex' does not support execution_path {:?}",
-                    path
-                ))
-            }
-        }
-        _ => Err(format!(
-            "unknown agent '{}': supported agents are 'claude' and 'codex'",
-            agent
-        )),
-    }
+    let kind = AgentRuntimeKind::parse_agent(agent)?;
+    kind.validate_execution_path(path)
 }
 
 #[tauri::command]
@@ -118,6 +103,8 @@ pub fn start_run(
         cwd
     );
 
+    let runtime_kind = AgentRuntimeKind::parse_agent(&agent)?;
+
     // Resolve execution_path: explicit (must be valid) > agent-based default
     let path: ExecutionPath = match execution_path {
         Some(s) => serde_json::from_value(serde_json::Value::String(s.clone())).map_err(|_| {
@@ -126,13 +113,7 @@ pub fn start_run(
                 s
             )
         })?,
-        None => {
-            if agent == "claude" {
-                ExecutionPath::SessionActor
-            } else {
-                ExecutionPath::PipeExec
-            }
-        }
+        None => runtime_kind.default_execution_path(),
     };
 
     // Validate agent/path combination
@@ -527,5 +508,37 @@ pub fn cleanup_worktrees_for_runs(ids: &[String]) {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::AgentRuntimeKind;
+
+    #[test]
+    fn validate_agent_path_accepts_cursor_session_actor() {
+        validate_agent_path("cursor", &ExecutionPath::SessionActor).unwrap();
+    }
+
+    #[test]
+    fn validate_agent_path_rejects_cursor_pipe_exec() {
+        assert!(validate_agent_path("cursor", &ExecutionPath::PipeExec).is_err());
+    }
+
+    #[test]
+    fn validate_agent_path_accepts_extended_agents() {
+        for agent in ["mimo", "opencode", "cursor"] {
+            let kind = AgentRuntimeKind::parse_agent(agent).unwrap();
+            validate_agent_path(agent, &kind.default_execution_path()).unwrap();
+        }
+    }
+
+    #[test]
+    fn parse_agent_rejects_unknown_with_supported_list() {
+        let err = AgentRuntimeKind::parse_agent("wat").unwrap_err();
+        assert!(err.contains("unknown agent 'wat'"));
+        assert!(err.contains("cursor"));
+        assert!(!err.contains("claude' and 'codex"));
     }
 }
