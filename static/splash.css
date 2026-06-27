@@ -96,11 +96,13 @@ body {
   -webkit-user-drag: none;
 }
 
-/* Theme-aware logo swap — defaults mirror the page theme */
-.splash-logo--dark {
+/* Theme-aware logo swap — mirror resolveTheme effective mode, not just the "light" override. */
+.splash-logo--dark,
+:is(html.dark, html[data-color-scheme="dark"]) .splash-logo--dark {
   display: block;
 }
-.splash-logo--light {
+.splash-logo--light,
+:is(html.dark, html[data-color-scheme="dark"]) .splash-logo--light {
   display: none;
 }
 
@@ -109,6 +111,12 @@ body {
 }
 :is(html.light, html[data-color-scheme="light"]) .splash-logo--light {
   display: block;
+}
+
+/* Dark logo is built for dark surfaces — give it a soft halo so it reads on the splash gradient. */
+:is(html.dark, html[data-color-scheme="dark"]) .splash-logo--dark {
+  filter: drop-shadow(0 0 24px hsl(var(--miwarp-accent-primary) / 0.18))
+    drop-shadow(0 12px 32px rgba(0, 0, 0, 0.45));
 }
 
 .splash-brand {
