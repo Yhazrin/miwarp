@@ -89,8 +89,14 @@ export function treeExpand(
     delay,
     duration,
     easing,
-    // Re-measure each frame so async children (e.g. logical sub-folders) are not clipped at 0px.
-    css: (t) => treeTransitionCss(t, opacity, primary, measureAxisSize(el, axis)),
+    css: (t) => {
+      const size = measureAxisSize(el, axis);
+      // After intro completes, avoid leaving overflow:hidden + fixed height on the node.
+      if (t >= 1) {
+        return `${primary}: auto; overflow: visible; opacity: ${opacity}; min-${primary}: 0;`;
+      }
+      return treeTransitionCss(t, opacity, primary, size);
+    },
   };
 }
 

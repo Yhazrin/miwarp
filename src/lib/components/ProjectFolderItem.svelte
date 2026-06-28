@@ -12,7 +12,7 @@
   import ContextMenu, { type MenuItem } from "./ContextMenu.svelte";
   import Icon from "./Icon.svelte";
   import { t } from "$lib/i18n/index.svelte";
-  import { treeCollapse, treeExpand } from "$lib/utils/tree-expand-transition";
+  import { slide } from "svelte/transition";
   import {
     SESSION_DROP_FOLDER_ATTR,
     SESSION_DROP_UNFOLDERED_ATTR,
@@ -628,15 +628,18 @@
     />
   {/if}
 
-  <!-- Expanded children -->
+  <!-- Expanded children — no height-lock transition on this wrapper; treeExpand clipped logical folders -->
   {#if expanded}
-    <div class="ml-1.5 mt-0.5 border-l border-border/25 pl-2" in:treeExpand out:treeCollapse>
+    <div
+      class="sidebar-folder-children ml-1.5 mt-0.5 border-l border-border/25 pl-2"
+      transition:slide={{ duration: 200 }}
+    >
       {#if children}
         {@render children()}
       {:else}
         <!-- Sub-folders (logical folders nested inside this project) -->
         {#if subFolders.length > 0 || onCreateSubFolder}
-          <div class="mb-1">
+          <div class="sidebar-logical-folders mb-1">
             {#each subFolders as sf (sf.folderKey)}
               {@const sfExpanded = expandedSubFolders.has(sf.folderKey)}
               {@const sfDragOver = dragOverSubFolderKey === sf.folderKey}
@@ -688,9 +691,8 @@
                 <!-- Sub-folder sessions (inside same drop zone) -->
                 {#if sfExpanded}
                   <div
-                    class="ml-1 border-l border-border/20 pl-1.5 pb-0.5 min-h-[1.25rem]"
-                    in:treeExpand
-                    out:treeCollapse
+                    class="sidebar-subfolder-sessions ml-1 border-l border-border/20 pl-1.5 pb-0.5 min-h-[1.25rem]"
+                    transition:slide={{ duration: 180 }}
                   >
                     {#each visibleSubFolderConversations(sf) as conv (conv.groupKey)}
                       <ConversationItem
