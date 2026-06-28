@@ -626,6 +626,8 @@
   "explorer_emptyFile": "空文件",
   "explorer_modified": "已修改",
   "explorer_noChanges": "无更改",
+  "explorer_diffTooLarge": "Diff 行数过多,请在完整 Diff 视图中查看。",
+  "explorer_diffLines": "行",
   "explorer_save": "保存",
   "explorer_saveDisabledInPreview": "切换到编辑模式后可保存",
   "explorer_saving": "保存中...",

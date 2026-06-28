@@ -644,6 +644,8 @@
   "explorer_emptyFile": "Empty file",
   "explorer_modified": "Modified",
   "explorer_noChanges": "No changes",
+  "explorer_diffTooLarge": "Diff too large to render. Open in full diff view.",
+  "explorer_diffLines": "lines",
   "explorer_save": "Save",
   "explorer_saveDisabledInPreview": "Switch to Edit mode to save",
   "explorer_saving": "Saving...",

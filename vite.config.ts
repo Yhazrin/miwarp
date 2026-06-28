@@ -12,6 +12,12 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id: string) {
+          // Vite synthesizes a single shared preload helper for all `import()` calls.
+          // If it lands inside the codemirror-vendor chunk, every consumer of the
+          // preload helper (i.e. every chunk with a dynamic import) ends up with a
+          // static `import "./codemirror-vendor"` — defeating the lazy-load split.
+          // Pin the helper to its own tiny chunk so codemirror-vendor stays leaf-only.
+          if (id.includes("\0vite/preload-helper")) return "vite-preload-helper";
           if (id.includes("node_modules/@codemirror") || id.includes("node_modules/@lezer"))
             return "codemirror-vendor";
           if (id.includes("node_modules/@xterm")) return "xterm-vendor";

@@ -5,12 +5,16 @@
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import Icon from "$lib/components/Icon.svelte";
-  import CodeEditor from "$lib/components/CodeEditor.svelte";
   import HighlightedCode from "$lib/components/HighlightedCode.svelte";
-  import MarkdownContent from "$lib/components/MarkdownContent.svelte";
-  import MiMarkdownRenderer from "$lib/components/MiMarkdownRenderer.svelte";
   import { classifyPath, getExtension, isImage, isPreviewable } from "$lib/utils/preview-ext";
   import { validateInspectorPath } from "$lib/utils/inspector-path";
+  import {
+    shouldLoadCodeEditor,
+    shouldLoadMarkdownRenderer,
+    shouldShowHighlightedCode,
+  } from "./preview-pane-loader";
+  import type CodeEditor from "./CodeEditor.svelte";
+  import type MiMarkdownRenderer from "./MiMarkdownRenderer.svelte";
 
   // ── Props ──
   let {
@@ -70,6 +74,10 @@
 
   /** Files larger than this are not auto-previewed (CodeMirror init becomes very slow). */
   const MAX_PREVIEW_SIZE = 1_000_000; // 1MB
+
+  /** Diff lines beyond this fall back to a summary notice instead of rendering each `<tr>`.
+   *  Full virtualized diff viewer is a separate P2 effort. */
+  const MAX_DIFF_LINES = 5000;
 
   let diffContent = $state("");
   let diffLoading = $state(false);
@@ -321,19 +329,80 @@
   let displayName = $derived(path ? pathFileName(path) : "");
   let canSave = $derived(editable && !isRemote && !fileSaving);
 
-  // CodeEditor visibility: only show when actually viewing a code file. CodeEditor itself
-  // remains mounted in the DOM at all times so CodeMirror's style-mod CSS injection
-  // happens ONCE at FilePreviewPane mount (during files-tab first activation), not on
-  // every file click — which previously caused a 2.5s style recalc storm in WKWebView.
-  let showCodeEditor = $derived(
-    !isRemote &&
-      !!path &&
-      mode === "preview" &&
-      loadState === "ready" &&
-      !fileError &&
-      kind !== "image" &&
-      !(editorMode === "rendered" && kind === "markdown"),
+  const editorLoadInput = $derived({
+    path,
+    mode,
+    editable,
+    isRemote,
+    loadState,
+    editorMode,
+  });
+
+  // ── Lazy-loaded components ──
+  //
+  // CodeEditor and MiMarkdownRenderer each pull a heavy dep graph (CodeMirror ~1.5MB,
+  // markdown + TOC + lightbox). We dynamically import them only when the relevant
+  // state lands, instead of statically importing at module load. The loaded component
+  // is cached: navigating between files that both need CodeEditor does NOT re-import.
+
+  // Type-only imports keep the lazy chunk boundary clean: the *type* is erased at
+  // build time, so this doesn't pull CodeEditor / MiMarkdownRenderer into the
+  // initial bundle — only the dynamic import() below does, and only on demand.
+  let CodeEditorComponent = $state<typeof CodeEditor | null>(null);
+  let MiMarkdownRendererComponent = $state<typeof MiMarkdownRenderer | null>(null);
+  /** Track in-flight imports so concurrent triggers don't double-fetch. */
+  let codeEditorLoading: Promise<void> | null = null;
+  let markdownRendererLoading: Promise<void> | null = null;
+
+  const codeEditorTrigger = $derived(shouldLoadCodeEditor(editorLoadInput));
+
+  const markdownRendererTrigger = $derived(
+    shouldLoadMarkdownRenderer({
+      path,
+      mode,
+      editorMode,
+      loadState,
+      hasContent: !!fileContent,
+    }),
   );
+
+  const showHighlightedCode = $derived(shouldShowHighlightedCode(editorLoadInput));
+
+  // Kick off CodeEditor import the first time the trigger fires. Once loaded,
+  // stays loaded — the chunk is already in memory and CodeMirror's onMount cost is
+  // a one-shot regardless of filePath, so re-importing on every navigation would
+  // just waste a network round-trip.
+  $effect(() => {
+    if (!codeEditorTrigger) return;
+    if (CodeEditorComponent !== null) return;
+    if (codeEditorLoading) return;
+    codeEditorLoading = (async () => {
+      try {
+        const mod = await import("./CodeEditor.svelte");
+        CodeEditorComponent = mod.default;
+      } catch (e) {
+        dbg("preview-pane", "code-editor dynamic import failed", String(e));
+      } finally {
+        codeEditorLoading = null;
+      }
+    })();
+  });
+
+  $effect(() => {
+    if (!markdownRendererTrigger) return;
+    if (MiMarkdownRendererComponent !== null) return;
+    if (markdownRendererLoading) return;
+    markdownRendererLoading = (async () => {
+      try {
+        const mod = await import("./MiMarkdownRenderer.svelte");
+        MiMarkdownRendererComponent = mod.default;
+      } catch (e) {
+        dbg("preview-pane", "markdown renderer dynamic import failed", String(e));
+      } finally {
+        markdownRendererLoading = null;
+      }
+    })();
+  });
 </script>
 
 <!--
@@ -429,28 +498,25 @@
     </div>
   {/if}
 
-  <!-- Content area: editable path uses CodeMirror; readonly path uses hljs <pre> (fast in WKWebView) -->
+  <!-- Content area: renderers mount on-demand — no hidden CodeEditor layer -->
   <div class="flex-1 overflow-hidden min-h-0 relative">
-    <!-- Bottom layer: real renderer chosen by `editable`. Hidden when an overlay is active. -->
-    <div
-      class="absolute inset-0"
-      style:visibility={showCodeEditor ? "visible" : "hidden"}
-      style:pointer-events={showCodeEditor ? "auto" : "none"}
-      aria-hidden={!showCodeEditor}
-    >
-      {#if editable && !isRemote}
-        <CodeEditor
-          bind:content={fileContent}
-          filePath={path || ""}
-          onsave={saveFile}
-          class="h-full"
-        />
-      {:else}
-        <HighlightedCode content={fileContent} filePath={path || ""} class="h-full" />
-      {/if}
-    </div>
+    {#if codeEditorTrigger && CodeEditorComponent}
+      <CodeEditorComponent
+        bind:content={fileContent}
+        filePath={path || ""}
+        onsave={saveFile}
+        class="h-full"
+      />
+    {:else if codeEditorTrigger && editable && !isRemote}
+      <!-- CodeEditor chunk still loading -->
+      <div class="flex h-full items-center justify-center bg-background">
+        <Spinner size="md" />
+      </div>
+    {:else if showHighlightedCode}
+      <HighlightedCode content={fileContent} filePath={path || ""} class="h-full" />
+    {/if}
 
-    <!-- Overlays: only one rendered at a time, absolute on top of CodeEditor -->
+    <!-- Overlays: only one rendered at a time -->
     {#if isRemote}
       <div class="absolute inset-0 flex items-center justify-center p-4 bg-background">
         <div class="flex flex-col items-center gap-2 text-center">
@@ -495,47 +561,60 @@
           </div>
         {:else if diffContent.trim()}
           {@const diffLines = parseDiffLines(diffContent)}
-          <table class="w-full text-xs font-mono border-collapse">
-            <tbody>
-              {#each diffLines as dl}
-                <tr
-                  class={dl.type === "add"
-                    ? "bg-[hsl(var(--miwarp-status-success)/0.1)]"
-                    : dl.type === "del"
-                      ? "bg-[hsl(var(--miwarp-status-error)/0.1)]"
-                      : dl.type === "hunk"
-                        ? "bg-[hsl(var(--miwarp-status-info)/0.05)]"
-                        : ""}
-                >
-                  <td
-                    class="select-none text-right pr-1 pl-2 text-muted-foreground/40 w-[1%] whitespace-nowrap {dl.type ===
-                      'hunk' || dl.type === 'header'
-                      ? 'border-y border-border/30'
-                      : ''}">{dl.oldNum ?? ""}</td
+          {#if diffLines.length > MAX_DIFF_LINES}
+            <div class="flex flex-col items-center gap-2 py-12 text-center px-4">
+              <Icon name="triangle-alert" size="lg" class="text-muted-foreground/40" />
+              <p class="text-sm text-muted-foreground">
+                {t("explorer_diffTooLarge")}
+              </p>
+              <p class="text-xs text-muted-foreground/70">
+                {diffLines.length}
+                {t("explorer_diffLines")}
+              </p>
+            </div>
+          {:else}
+            <table class="w-full text-xs font-mono border-collapse">
+              <tbody>
+                {#each diffLines as dl}
+                  <tr
+                    class={dl.type === "add"
+                      ? "bg-[hsl(var(--miwarp-status-success)/0.1)]"
+                      : dl.type === "del"
+                        ? "bg-[hsl(var(--miwarp-status-error)/0.1)]"
+                        : dl.type === "hunk"
+                          ? "bg-[hsl(var(--miwarp-status-info)/0.05)]"
+                          : ""}
                   >
-                  <td
-                    class="select-none text-right pr-2 text-muted-foreground/40 w-[1%] whitespace-nowrap {dl.type ===
-                      'hunk' || dl.type === 'header'
-                      ? 'border-y border-border/30'
-                      : ''}">{dl.newNum ?? ""}</td
-                  >
-                  <td
-                    class="whitespace-pre pr-4 {dl.type === 'add'
-                      ? 'text-miwarp-status-success'
-                      : dl.type === 'del'
-                        ? 'text-miwarp-status-error'
-                        : dl.type === 'hunk'
-                          ? 'text-miwarp-status-info'
-                          : dl.type === 'header'
-                            ? 'font-bold text-foreground'
-                            : ''} {dl.type === 'hunk' || dl.type === 'header'
-                      ? 'border-y border-border/30 py-1'
-                      : ''}">{dl.text}</td
-                  >
-                </tr>
-              {/each}
-            </tbody>
-          </table>
+                    <td
+                      class="select-none text-right pr-1 pl-2 text-muted-foreground/40 w-[1%] whitespace-nowrap {dl.type ===
+                        'hunk' || dl.type === 'header'
+                        ? 'border-y border-border/30'
+                        : ''}">{dl.oldNum ?? ""}</td
+                    >
+                    <td
+                      class="select-none text-right pr-2 text-muted-foreground/40 w-[1%] whitespace-nowrap {dl.type ===
+                        'hunk' || dl.type === 'header'
+                        ? 'border-y border-border/30'
+                        : ''}">{dl.newNum ?? ""}</td
+                    >
+                    <td
+                      class="whitespace-pre pr-4 {dl.type === 'add'
+                        ? 'text-miwarp-status-success'
+                        : dl.type === 'del'
+                          ? 'text-miwarp-status-error'
+                          : dl.type === 'hunk'
+                            ? 'text-miwarp-status-info'
+                            : dl.type === 'header'
+                              ? 'font-bold text-foreground'
+                              : ''} {dl.type === 'hunk' || dl.type === 'header'
+                        ? 'border-y border-border/30 py-1'
+                        : ''}">{dl.text}</td
+                    >
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          {/if}
         {:else}
           <div class="flex flex-col items-center gap-2 py-12 text-center">
             <Icon name="check" size="lg" class="text-muted-foreground/40" />
@@ -584,18 +663,23 @@
       </div>
     {:else if editorMode === "rendered" && kind === "markdown"}
       <div class="absolute inset-0 overflow-y-auto p-4 bg-background">
-        {#if fileContent}
+        {#if fileContent && MiMarkdownRendererComponent}
           <!-- v1.0.6: use MiMarkdownRenderer for document-level rendering (TOC, callout, lightbox) -->
-          <MiMarkdownRenderer
+          <MiMarkdownRendererComponent
             text={fileContent}
             basePath={path.replace(/[/\\][^/\\]*$/, "")}
             showToc={fileContent.length > 2000}
           />
+        {:else if fileContent}
+          <!-- Markdown renderer chunk still loading — show a lightweight placeholder so the
+               layout doesn't flash. The chunk is small (~30KB) so this is brief. -->
+          <div class="flex items-center justify-center py-12">
+            <Spinner size="md" />
+          </div>
         {:else}
           <p class="text-sm text-muted-foreground italic">{t("explorer_emptyFile")}</p>
         {/if}
       </div>
     {/if}
-    <!-- No overlay branch: CodeEditor is visible (showCodeEditor === true) -->
   </div>
 </div>
