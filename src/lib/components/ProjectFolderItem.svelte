@@ -12,7 +12,7 @@
   import ContextMenu, { type MenuItem } from "./ContextMenu.svelte";
   import Icon from "./Icon.svelte";
   import { t } from "$lib/i18n/index.svelte";
-  import { slide } from "svelte/transition";
+  import { treeCollapse, treeExpand } from "$lib/utils/tree-expand-transition";
   import {
     SESSION_DROP_FOLDER_ATTR,
     SESSION_DROP_UNFOLDERED_ATTR,
@@ -154,8 +154,12 @@
     onMascotClick,
   }: ChatProps | CustomProps = $props();
 
-  let visibleCount = $state(DEFAULT_SESSION_PAGE_SIZE);
+  /** Paginates unfoldered sessions only — never logical folder rows. */
+  let unfolderedVisibleCount = $state(DEFAULT_SESSION_PAGE_SIZE);
   let subFolderVisibleCounts = $state<Record<string, number>>({});
+
+  /** Logical folder headers always render in full; only session lists paginate. */
+  const logicalFolders = $derived(subFolders);
 
   // Header action menus
   let addMenuOpen = $state(false);
@@ -414,7 +418,7 @@
     const current = getSubFolderVisibleCount(sf.folderKey);
     setSubFolderVisibleCount(
       sf.folderKey,
-      Math.min(current + SESSION_PAGE_INCREMENT, sf.conversationCount),
+      Math.min(current + SESSION_PAGE_INCREMENT, sf.conversations.length),
     );
   }
 
@@ -423,7 +427,7 @@
   }
 
   function hiddenSubFolderCount(sf: SessionFolderGroup): number {
-    return sf.conversationCount - getSubFolderVisibleCount(sf.folderKey);
+    return sf.conversations.length - getSubFolderVisibleCount(sf.folderKey);
   }
 
   function ensureSubFolderVisibleForSelection(sf: SessionFolderGroup) {
@@ -440,10 +444,10 @@
     onToggleSubFolder?.(sf.folderKey);
   }
 
-  // Reset visible count when folder collapses
+  // Reset pagination when workspace collapses
   $effect(() => {
     if (!expanded) {
-      visibleCount = DEFAULT_SESSION_PAGE_SIZE;
+      unfolderedVisibleCount = DEFAULT_SESSION_PAGE_SIZE;
       subFolderVisibleCounts = {};
     }
   });
@@ -458,48 +462,37 @@
     }
   });
 
-  // Auto-expand visible count if selected run is beyond current page
+  // Auto-expand unfoldered / sub-folder page when selected run is beyond current page
   $effect(() => {
     if (!expanded || !selectedRunId || children) return;
     const idx = folder.conversations.findIndex((conv) =>
       conv.runs.some((r) => r.id === selectedRunId),
     );
-    if (idx >= 0 && idx >= visibleCount) {
-      visibleCount = idx + 1;
+    if (idx >= 0 && idx >= unfolderedVisibleCount) {
+      unfolderedVisibleCount = idx + 1;
     }
-    for (const sf of subFolders) {
+    for (const sf of logicalFolders) {
       if (!expandedSubFolders.has(sf.folderKey)) continue;
       ensureSubFolderVisibleForSelection(sf);
     }
   });
 
   // Skip conversation-related derivations when using children snippet
-  const visibleConversations = $derived(
-    children ? [] : folder.conversations.slice(0, visibleCount),
+  const visibleUnfolderedConversations = $derived(
+    children ? [] : folder.conversations.slice(0, unfolderedVisibleCount),
   );
-  const hiddenCount = $derived(children ? 0 : folder.conversations.length - visibleCount);
-  const hasMore = $derived(hiddenCount > 0);
+  const hiddenUnfolderedCount = $derived(
+    children ? 0 : folder.conversations.length - unfolderedVisibleCount,
+  );
+  const hasMoreUnfoldered = $derived(hiddenUnfolderedCount > 0);
 
   const workspaceFolderIcon = $derived(expanded ? "folder-open" : "folder");
 
-  function showMore() {
-    visibleCount = Math.min(visibleCount + SESSION_PAGE_INCREMENT, folder.conversations.length);
-  }
-
-  /** Pre-expand visibleCount so tree height is stable before the intro transition measures. */
-  function ensureVisibleCountForSelection() {
-    if (children || !selectedRunId) return;
-    const idx = folder.conversations.findIndex((conv) =>
-      conv.runs.some((r) => r.id === selectedRunId),
+  function showMoreUnfoldered() {
+    unfolderedVisibleCount = Math.min(
+      unfolderedVisibleCount + SESSION_PAGE_INCREMENT,
+      folder.conversations.length,
     );
-    if (idx >= 0 && idx >= visibleCount) {
-      visibleCount = idx + 1;
-    }
-  }
-
-  function handleToggle() {
-    if (!expanded) ensureVisibleCountForSelection();
-    onToggle();
   }
 
   function isConvSelected(conv: { runs: { id: string }[] }): boolean {
@@ -528,12 +521,12 @@
       {isDragOver ? 'bg-primary/15 ring-1 ring-primary/40' : ''}"
     role="button"
     tabindex="0"
-    onclick={handleToggle}
+    onclick={onToggle}
     onkeydown={(e) => {
       if (e.target !== e.currentTarget) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        handleToggle();
+        onToggle();
       }
     }}
     oncontextmenu={openWsContextMenu}
@@ -628,19 +621,20 @@
     />
   {/if}
 
-  <!-- Expanded children — no height-lock transition on this wrapper; treeExpand clipped logical folders -->
+  <!-- Expanded children -->
   {#if expanded}
     <div
       class="sidebar-folder-children ml-1.5 mt-0.5 border-l border-border/25 pl-2"
-      transition:slide={{ duration: 200 }}
+      in:treeExpand
+      out:treeCollapse
     >
       {#if children}
         {@render children()}
       {:else}
         <!-- Sub-folders (logical folders nested inside this project) -->
-        {#if subFolders.length > 0 || onCreateSubFolder}
+        {#if logicalFolders.length > 0 || onCreateSubFolder}
           <div class="sidebar-logical-folders mb-1">
-            {#each subFolders as sf (sf.folderKey)}
+            {#each logicalFolders as sf (sf.folderKey)}
               {@const sfExpanded = expandedSubFolders.has(sf.folderKey)}
               {@const sfDragOver = dragOverSubFolderKey === sf.folderKey}
               <!-- Whole logical folder (header + session list) is a drop target -->
@@ -692,7 +686,8 @@
                 {#if sfExpanded}
                   <div
                     class="sidebar-subfolder-sessions ml-1 border-l border-border/20 pl-1.5 pb-0.5 min-h-[1.25rem]"
-                    transition:slide={{ duration: 180 }}
+                    in:treeExpand
+                    out:treeCollapse
                   >
                     {#each visibleSubFolderConversations(sf) as conv (conv.groupKey)}
                       <ConversationItem
@@ -755,22 +750,22 @@
         {/if}
 
         <!-- Empty state -->
-        {#if folder.conversations.length === 0 && subFolders.length === 0 && scheduledTaskHubs.length === 0}
+        {#if folder.conversations.length === 0 && logicalFolders.length === 0 && scheduledTaskHubs.length === 0}
           <p class="px-3 py-2 text-[11px] text-muted-foreground/40 italic">
             {t("sidebar_noConversationsInFolder") || "暂无会话，点击 + 新建"}
           </p>
         {/if}
 
         <!-- Unfoldered sessions (drop here to move out of logical folders) -->
-        {#if subFolders.length > 0}
+        {#if logicalFolders.length > 0}
           <div
             class="mb-0.5 rounded-md transition-colors
               {dragOverUnfoldered ? 'bg-primary/15 ring-1 ring-primary/40' : ''}"
             {...{ [SESSION_DROP_UNFOLDERED_ATTR]: folder.folderKey }}
           >
-            {#if visibleConversations.length >= VIRTUAL_THRESHOLD}
+            {#if visibleUnfolderedConversations.length >= VIRTUAL_THRESHOLD}
               <VirtualList
-                items={visibleConversations}
+                items={visibleUnfolderedConversations}
                 itemHeight={ITEM_HEIGHT}
                 class="max-h-[60vh]"
               >
@@ -793,8 +788,8 @@
                   />
                 {/snippet}
               </VirtualList>
-            {:else if visibleConversations.length > 0}
-              {#each visibleConversations as conv (conv.groupKey)}
+            {:else if visibleUnfolderedConversations.length > 0}
+              {#each visibleUnfolderedConversations as conv (conv.groupKey)}
                 <ConversationItem
                   conversation={conv}
                   density="sidebar"
@@ -819,20 +814,24 @@
                 {t("sidebar_dropToUnfolder")}
               </p>
             {/if}
-            {#if hasMore}
+            {#if hasMoreUnfoldered}
               <button
                 type="button"
                 class="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
-                onclick={showMore}
+                onclick={showMoreUnfoldered}
               >
                 {t("sidebar_showMore", {
-                  count: String(Math.min(SESSION_PAGE_INCREMENT, hiddenCount)),
+                  count: String(Math.min(SESSION_PAGE_INCREMENT, hiddenUnfolderedCount)),
                 })}
               </button>
             {/if}
           </div>
-        {:else if visibleConversations.length >= VIRTUAL_THRESHOLD}
-          <VirtualList items={visibleConversations} itemHeight={ITEM_HEIGHT} class="max-h-[60vh]">
+        {:else if visibleUnfolderedConversations.length >= VIRTUAL_THRESHOLD}
+          <VirtualList
+            items={visibleUnfolderedConversations}
+            itemHeight={ITEM_HEIGHT}
+            class="max-h-[60vh]"
+          >
             {#snippet item(conv)}
               <ConversationItem
                 conversation={conv}
@@ -853,7 +852,7 @@
             {/snippet}
           </VirtualList>
         {:else}
-          {#each visibleConversations as conv (conv.groupKey)}
+          {#each visibleUnfolderedConversations as conv (conv.groupKey)}
             <ConversationItem
               conversation={conv}
               density="sidebar"
@@ -872,14 +871,14 @@
             />
           {/each}
         {/if}
-        {#if subFolders.length === 0 && hasMore}
+        {#if logicalFolders.length === 0 && hasMoreUnfoldered}
           <button
             type="button"
             class="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
-            onclick={showMore}
+            onclick={showMoreUnfoldered}
           >
             {t("sidebar_showMore", {
-              count: String(Math.min(SESSION_PAGE_INCREMENT, hiddenCount)),
+              count: String(Math.min(SESSION_PAGE_INCREMENT, hiddenUnfolderedCount)),
             })}
           </button>
         {/if}
