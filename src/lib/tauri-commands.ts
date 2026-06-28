@@ -141,6 +141,7 @@ export const CMD = {
   rename_run: "rename_run",
   rename_session_folder: "rename_session_folder",
   reset_user_settings: "reset_user_settings",
+  reset_personal_profile: "reset_personal_profile",
   resolve_remote_home: "resolve_remote_home",
   restart_web_server: "restart_web_server",
   reveal_file_in_finder: "reveal_file_in_finder",

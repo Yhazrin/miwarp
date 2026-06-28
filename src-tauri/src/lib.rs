@@ -247,6 +247,7 @@ pub fn run() {
             commands::settings::get_user_settings,
             commands::settings::update_user_settings,
             commands::settings::reset_user_settings,
+            commands::settings::reset_personal_profile,
             commands::settings::get_agent_settings,
             commands::settings::update_agent_settings,
             commands::settings::detect_mimo_runtime,

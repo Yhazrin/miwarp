@@ -1164,6 +1164,8 @@
   "personal_data_resetConfirm": "再次点击重置以确认,操作不可撤销。",
   "personal_data_resetAgain": "再次点击以确认",
   "personal_reset_done": "个人资料已重置为默认。",
+  "personal_data_resetScopeTitle": "只会重置你的个人资料。",
+  "personal_data_resetScopeKept": "API 密钥、平台凭据、远端主机、Webhook、Web 服务器、快捷键和工作区文件夹都会保留。",
   "personal_settings_load_failed_title": "无法加载设置",
   "personal_settings_load_failed_desc": "暂时无法读取设置中心。你保存的偏好仍在本地磁盘 — 可以重试,或先以空白资料继续浏览。",
   "personal_settings_retry": "重试",

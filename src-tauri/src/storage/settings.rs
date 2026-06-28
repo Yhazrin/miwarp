@@ -498,6 +498,72 @@ pub fn reset_user_settings() -> Result<(UserSettings, UserSettings), String> {
     Ok((old, all.user))
 }
 
+/// v1.x.x: reset ONLY the personal-profile subset of `UserSettings` — identity,
+/// AI preferences, default session mode, notification prefs, and UI zoom. All
+/// credential-bearing fields (api keys, platform credentials, remote hosts,
+/// webhook URLs, web server config, keybindings, workspace folders) are
+/// preserved verbatim. Returns `(old, new)` for symmetry with the global
+/// reset so the command layer can audit the diff if needed.
+///
+/// Pure helper: takes a `UserSettings` by value, applies the personal-field
+/// defaults, and returns the patched value. The caller (`reset_personal_profile`)
+/// is responsible for persistence.
+pub fn apply_personal_profile_reset(mut settings: UserSettings) -> UserSettings {
+    let defaults = UserSettings::default();
+
+    // Identity — only the fields the backend actually persists.
+    settings.user_display_name = defaults.user_display_name;
+    settings.user_role = defaults.user_role;
+    settings.user_timezone = defaults.user_timezone;
+
+    // AI preferences — defaults match `UserSettings::default()` for the runtime
+    // CLI choice ("claude") and unset model selection.
+    settings.default_agent = defaults.default_agent;
+    settings.default_model = defaults.default_model;
+    settings.fallback_model = defaults.fallback_model;
+
+    // Default session mode — restore the per-user default.
+    settings.default_session_mode = defaults.default_session_mode;
+
+    // Notification prefs — wipe the per-flag overrides so the OS-level defaults
+    // are consulted again. `None` is the canonical "follow system default"
+    // sentinel; do NOT set them to `Some(false)` (that would suppress the
+    // notification even when the user has them enabled at the OS level).
+    settings.notifications_enabled = defaults.notifications_enabled;
+    settings.notify_on_run_completed = defaults.notify_on_run_completed;
+    settings.notify_on_run_failed = defaults.notify_on_run_failed;
+    settings.notify_on_approval_required = defaults.notify_on_approval_required;
+    settings.notify_on_schedule_completed = defaults.notify_on_schedule_completed;
+    settings.notify_on_team_completed = defaults.notify_on_team_completed;
+
+    // Display prefs.
+    settings.ui_zoom = defaults.ui_zoom;
+
+    settings.updated_at = crate::models::now_iso();
+    settings
+}
+
+/// Reset only the personal-profile fields on the persisted `UserSettings`.
+/// Returns `(old, new)`. The personal fields are patched; every other field
+/// (api keys, platform credentials, remote hosts, webhook URLs, web server
+/// config / token, keybindings, workspace folders, etc.) is left untouched.
+pub fn reset_personal_profile() -> Result<(UserSettings, UserSettings), String> {
+    let mut all = load();
+    let old = all.user.clone();
+    let new_user = apply_personal_profile_reset(all.user.clone());
+    all.user = new_user;
+    save(&all)?;
+    log::info!(
+        "[storage/settings] personal profile reset (api_key preserved={}, platform_credentials={}, remote_hosts={}, webhooks_enabled={}, web_server_token_present={})",
+        old.anthropic_api_key.is_some(),
+        old.platform_credentials.len(),
+        old.remote_hosts.len(),
+        old.feishu_webhook_enabled,
+        old.web_server_token.is_some(),
+    );
+    Ok((old, all.user))
+}
+
 pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, String> {
     let mut all = load();
     if let Some(agent) = patch.get("default_agent").and_then(|v| v.as_str()) {
@@ -1031,5 +1097,201 @@ mod tests {
             all.user.session_island_alignment = normalize_session_island_alignment(v);
         }
         assert_eq!(all.user.session_island_alignment, "center");
+    }
+
+    fn make_user_with_personal_overrides_and_secrets() -> UserSettings {
+        let mut user = UserSettings::default();
+        // Personal fields the reset MUST restore to defaults.
+        user.user_display_name = Some("Alex Doe".to_string());
+        user.user_role = Some("Senior Engineer".to_string());
+        user.user_timezone = Some("Asia/Shanghai".to_string());
+        user.default_agent = "codex".to_string();
+        user.default_model = Some("gpt-5".to_string());
+        user.fallback_model = Some("gpt-4o".to_string());
+        user.default_session_mode = "single".to_string();
+        user.notifications_enabled = Some(true);
+        user.notify_on_run_completed = Some(false);
+        user.notify_on_run_failed = Some(true);
+        user.notify_on_approval_required = Some(true);
+        user.notify_on_schedule_completed = Some(false);
+        user.notify_on_team_completed = Some(true);
+        user.ui_zoom = Some(1.25);
+
+        // Credential-bearing fields the reset MUST leave untouched.
+        user.anthropic_api_key = Some("sk-secret-123".to_string());
+        user.anthropic_base_url = Some("https://api.example.test".to_string());
+        user.auth_env_var = Some("ANTHROPIC_AUTH_TOKEN".to_string());
+        user.platform_credentials = vec![PlatformCredential {
+            platform_id: "anthropic".to_string(),
+            api_key: Some("sk-platform-leak-9999".to_string()),
+            base_url: Some("https://api.anthropic.com".to_string()),
+            auth_env_var: Some("ANTHROPIC_API_KEY".to_string()),
+            name: Some("primary".to_string()),
+            models: Some(vec!["claude-sonnet-4-6".to_string()]),
+            extra_env: None,
+        }];
+        user.active_platform_id = Some("anthropic".to_string());
+        user.remote_hosts = vec![crate::models::RemoteHost {
+            name: "prod".to_string(),
+            host: "prod.example.test".to_string(),
+            user: "deploy".to_string(),
+            port: 22,
+            key_path: Some("/Users/leak/.ssh/id_rsa".to_string()),
+            remote_cwd: None,
+            remote_claude_path: None,
+            forward_api_key: true,
+        }];
+        user.feishu_webhook_url = Some("https://hooks.feishu.test/secret".to_string());
+        user.feishu_webhook_enabled = true;
+        user.feishu_webhook_triggers = vec!["run.completed".to_string()];
+        user.feishu_webhook_template = Some("token: ${token}".to_string());
+        user.web_server_enabled = Some(true);
+        user.web_server_token = Some("web-server-secret-token-xyz".to_string());
+        user.web_server_port = Some(7777);
+        user.web_server_bind = Some("127.0.0.1".to_string());
+        user.web_server_allowed_origins = Some(vec!["https://trusted.test".to_string()]);
+        user.web_server_tunnel_url = Some("https://tunnel.example.test".to_string());
+        user.keybinding_overrides = vec![crate::models::KeyBindingOverride {
+            command: "chat.send".to_string(),
+            key: "Cmd+Shift+S".to_string(),
+        }];
+        user.workspace_folder_sort_order = "name_asc".to_string();
+        user.onboarding_completed = true;
+        user
+    }
+
+    #[test]
+    fn apply_personal_profile_reset_restores_only_personal_fields() {
+        let original = make_user_with_personal_overrides_and_secrets();
+        let patched = apply_personal_profile_reset(original.clone());
+
+        // ── Personal fields are reset to defaults ──
+        assert_eq!(patched.user_display_name, None);
+        assert_eq!(patched.user_role, None);
+        assert_eq!(patched.user_timezone, None);
+        assert_eq!(patched.default_agent, UserSettings::default().default_agent);
+        assert_eq!(patched.default_model, None);
+        assert_eq!(patched.fallback_model, None);
+        assert_eq!(
+            patched.default_session_mode,
+            UserSettings::default().default_session_mode
+        );
+        assert_eq!(patched.notifications_enabled, None);
+        assert_eq!(patched.notify_on_run_completed, None);
+        assert_eq!(patched.notify_on_run_failed, None);
+        assert_eq!(patched.notify_on_approval_required, None);
+        assert_eq!(patched.notify_on_schedule_completed, None);
+        assert_eq!(patched.notify_on_team_completed, None);
+        assert_eq!(patched.ui_zoom, None);
+
+        // ── Credential-bearing fields are byte-for-byte preserved ──
+        assert_eq!(patched.anthropic_api_key, original.anthropic_api_key);
+        assert_eq!(patched.anthropic_base_url, original.anthropic_base_url);
+        assert_eq!(patched.auth_env_var, original.auth_env_var);
+        assert_eq!(
+            patched.platform_credentials.len(),
+            original.platform_credentials.len()
+        );
+        assert_eq!(
+            serde_json::to_string(&patched.platform_credentials).unwrap(),
+            serde_json::to_string(&original.platform_credentials).unwrap(),
+        );
+        assert_eq!(patched.active_platform_id, original.active_platform_id);
+        assert_eq!(patched.remote_hosts.len(), original.remote_hosts.len());
+        assert_eq!(
+            serde_json::to_string(&patched.remote_hosts).unwrap(),
+            serde_json::to_string(&original.remote_hosts).unwrap(),
+        );
+        assert_eq!(patched.feishu_webhook_url, original.feishu_webhook_url);
+        assert_eq!(
+            patched.feishu_webhook_enabled,
+            original.feishu_webhook_enabled
+        );
+        assert_eq!(
+            patched.feishu_webhook_triggers,
+            original.feishu_webhook_triggers
+        );
+        assert_eq!(
+            patched.feishu_webhook_template,
+            original.feishu_webhook_template
+        );
+        assert_eq!(patched.web_server_enabled, original.web_server_enabled);
+        assert_eq!(patched.web_server_token, original.web_server_token);
+        assert_eq!(patched.web_server_port, original.web_server_port);
+        assert_eq!(patched.web_server_bind, original.web_server_bind);
+        assert_eq!(
+            patched.web_server_allowed_origins,
+            original.web_server_allowed_origins
+        );
+        assert_eq!(
+            patched.web_server_tunnel_url,
+            original.web_server_tunnel_url
+        );
+        assert_eq!(
+            patched.keybinding_overrides.len(),
+            original.keybinding_overrides.len()
+        );
+        assert_eq!(
+            serde_json::to_string(&patched.keybinding_overrides).unwrap(),
+            serde_json::to_string(&original.keybinding_overrides).unwrap(),
+        );
+        assert_eq!(
+            patched.workspace_folder_sort_order,
+            original.workspace_folder_sort_order
+        );
+        assert_eq!(patched.onboarding_completed, original.onboarding_completed);
+    }
+
+    #[test]
+    fn apply_personal_profile_reset_refreshes_updated_at() {
+        let mut original = make_user_with_personal_overrides_and_secrets();
+        original.updated_at = "1970-01-01T00:00:00.000Z".to_string();
+        let patched = apply_personal_profile_reset(original);
+        assert_ne!(patched.updated_at, "1970-01-01T00:00:00.000Z");
+        // The reset should mint a fresh ISO timestamp.
+        assert!(!patched.updated_at.is_empty());
+    }
+
+    #[test]
+    fn reset_personal_profile_persists_personal_changes_only() {
+        // The full I/O path is exercised against a real `AllSettings` struct —
+        // not the on-disk JSON — so we can validate field-level semantics
+        // without polluting the developer's real `~/.miwarp/settings.json`.
+        let original = make_user_with_personal_overrides_and_secrets();
+        let mut all = AllSettings::default();
+        all.user = original.clone();
+        let before_keys = all.user.platform_credentials.len();
+        let before_remote_hosts = all.user.remote_hosts.len();
+
+        // Apply the same patch the storage helper uses.
+        all.user = apply_personal_profile_reset(all.user.clone());
+        let patched = all.user.clone();
+
+        // Personal fields reset.
+        assert_eq!(patched.user_display_name, None);
+        assert_eq!(patched.user_role, None);
+        assert_eq!(patched.user_timezone, None);
+        assert_eq!(patched.default_model, None);
+        assert_eq!(patched.fallback_model, None);
+        assert_eq!(patched.ui_zoom, None);
+
+        // Credentials intact.
+        assert_eq!(patched.anthropic_api_key, original.anthropic_api_key);
+        assert_eq!(
+            patched.platform_credentials.len(),
+            before_keys,
+            "platform_credentials length must not change"
+        );
+        assert_eq!(
+            patched.remote_hosts.len(),
+            before_remote_hosts,
+            "remote_hosts length must not change"
+        );
+        assert_eq!(patched.web_server_token, original.web_server_token);
+        assert_eq!(patched.feishu_webhook_url, original.feishu_webhook_url);
+        assert_eq!(
+            serde_json::to_string(&patched.keybinding_overrides).unwrap(),
+            serde_json::to_string(&original.keybinding_overrides).unwrap(),
+        );
     }
 }

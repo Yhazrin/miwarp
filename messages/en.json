@@ -1124,6 +1124,8 @@
   "personal_data_resetConfirm": "Click reset again to confirm. This cannot be undone.",
   "personal_data_resetAgain": "Click again to confirm",
   "personal_reset_done": "Personal profile reset to defaults.",
+  "personal_data_resetScopeTitle": "Only your personal profile will be reset.",
+  "personal_data_resetScopeKept": "API keys, platform credentials, remote hosts, webhooks, web server, keybindings, and workspace folders are preserved.",
   "personal_settings_load_failed_title": "Couldn't load your settings",
   "personal_settings_load_failed_desc": "We couldn't reach the settings store. Your saved preferences are still on disk — try again, or continue with a blank profile to browse.",
   "personal_settings_retry": "Retry",

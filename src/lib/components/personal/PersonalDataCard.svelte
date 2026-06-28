@@ -106,6 +106,14 @@
       <p class="text-xs text-muted-foreground mt-0.5">
         {confirmReset ? lk("personal_data_resetConfirm") : lk("personal_data_resetDesc")}
       </p>
+      {#if confirmReset}
+        <p class="text-[11px] mt-1 text-amber-700 dark:text-amber-300">
+          {lk("personal_data_resetScopeTitle")}
+        </p>
+        <p class="text-[11px] text-muted-foreground/80">
+          {lk("personal_data_resetScopeKept")}
+        </p>
+      {/if}
     </div>
     <button
       type="button"

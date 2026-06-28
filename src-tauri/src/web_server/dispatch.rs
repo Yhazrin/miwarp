@@ -432,6 +432,14 @@ pub async fn dispatch_command(
             }
             Ok(val)
         }
+        "reset_personal_profile" => {
+            let result = crate::commands::settings::reset_personal_profile()?;
+            let mut val = serde_json::to_value(result).map_err(|e| e.to_string())?;
+            if let Some(obj) = val.as_object_mut() {
+                obj.remove("web_server_token");
+            }
+            Ok(val)
+        }
         "get_agent_settings" => {
             let agent = extract_str(&params, "agent")?;
             let settings = crate::commands::settings::get_agent_settings(agent);

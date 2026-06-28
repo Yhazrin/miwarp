@@ -551,6 +551,21 @@ export async function resetUserSettings(): Promise<UserSettings> {
   return settings;
 }
 
+/**
+ * Reset ONLY the personal-profile subset of `UserSettings` — identity, AI
+ * preferences, default session mode, notification prefs, UI zoom. The full
+ * global `resetUserSettings` is reserved for the Settings page (where the
+ * user types `RESET` to confirm); the Personal page uses this scoped reset
+ * so api keys, platform credentials, remote hosts, webhook URLs, web
+ * server config, keybindings, and workspace folders stay untouched.
+ */
+export async function resetPersonalProfile(): Promise<UserSettings> {
+  dbg("api", "resetPersonalProfile");
+  const settings = await invoke<UserSettings>(CMD.reset_personal_profile);
+  notifyUserSettingsChanged(settings);
+  return settings;
+}
+
 export async function getAgentSettings(agent: string): Promise<AgentSettings> {
   dbg("api", "getAgentSettings", agent);
   return invoke<AgentSettings>(CMD.get_agent_settings, { agent });

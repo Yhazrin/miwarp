@@ -26,7 +26,7 @@
     getUsageOverview,
     getSkillSummary,
     runtimeHubList,
-    resetUserSettings,
+    resetPersonalProfile,
     updateUserSettings,
   } from "$lib/api";
   import { showToast } from "$lib/stores/toast-store.svelte";
@@ -245,7 +245,7 @@
   async function handleReset(): Promise<void> {
     if (!settings) return;
     try {
-      const next = await resetUserSettings();
+      const next = await resetPersonalProfile();
       settings = next;
       showToast(lk("personal_reset_done"), "success");
     } catch (e) {

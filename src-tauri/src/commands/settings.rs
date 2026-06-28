@@ -76,6 +76,19 @@ pub async fn reset_user_settings(
     Ok(new_settings)
 }
 
+/// Reset only the personal-profile subset of `UserSettings` — identity
+/// (display name / role / timezone), AI preferences (default agent + models),
+/// default session mode, notification prefs, and UI zoom. The Personal page
+/// uses this so clicking "Reset profile" never wipes API keys, platform
+/// credentials, remote hosts, webhook URLs, web server config / token,
+/// keybindings, or workspace folders.
+#[tauri::command]
+pub fn reset_personal_profile() -> Result<UserSettings, String> {
+    log::info!("[settings] reset_personal_profile");
+    let (_old, new_settings) = storage::settings::reset_personal_profile()?;
+    Ok(new_settings)
+}
+
 #[tauri::command]
 pub fn update_agent_settings(
     agent: String,
