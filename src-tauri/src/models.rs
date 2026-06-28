@@ -2086,6 +2086,20 @@ pub struct StandaloneSkill {
     pub remote_ref: Option<SkillRemoteRef>,
 }
 
+/// Lightweight skill count payload — returned by the `get_skill_summary` IPC
+/// so cold-start pages (e.g. /personal hero stat) can render a number without
+/// pulling every SKILL.md through the front-end or hydrating the full store.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillSummary {
+    pub total: usize,
+    /// Skills shipped by MiWarp itself (names listed in the built-in manifest
+    /// that are present in `~/.claude/skills/`).
+    pub built_in: usize,
+    /// Skills the user added on top of the built-in catalogue.
+    pub custom: usize,
+}
+
 // ── Skill source / remote skill registry ──
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -16,7 +16,7 @@
     identitySettings: IdentitySettings;
     stats: {
       runs7d: number | null;
-      skills: number;
+      skills: number | null;
       providers: number;
       sinceDays: number | null;
     };
@@ -40,6 +40,8 @@
   );
 
   const subtitleParts = $derived([role, timezone].filter((s) => s.length > 0));
+
+  const skillsStat = $derived(stats.skills === null ? "—" : stats.skills);
 </script>
 
 <div
@@ -92,7 +94,7 @@
         {lk("personal_hero_stat_skills")}
       </dt>
       <dd class="mt-1 text-lg font-semibold tabular-nums text-foreground">
-        {stats.skills}
+        {skillsStat}
         <Icon name="sparkles" size="xs" class="ml-1 text-muted-foreground/60" />
       </dd>
     </div>

@@ -211,12 +211,22 @@ export async function migrateCredentialsIfNeeded(settings: UserSettings): Promis
  * Settings loader with a single-flight promise. Concurrent callers
  * (e.g. /settings page asking for `whenReady()`) receive the same in-flight
  * promise so the layout makes exactly one `getUserSettings()` IPC.
+ *
+ * `refresh()` clears the cached promise so the next call re-runs the IPC —
+ * used by retry paths (e.g. /personal "settings failed → retry" button)
+ * that need to recover after a transient backend failure without
+ * double-fetching while a normal load is still in flight.
  */
 export function createSettingsLoader(): {
   start: () => Promise<UserSettings | null>;
+  refresh: () => Promise<UserSettings | null>;
   promise: () => Promise<UserSettings | null> | null;
 } {
   let inFlight: Promise<UserSettings | null> | null = null;
+  // Refreshes get their own gate: a `refresh()` always issues a fresh IPC,
+  // but concurrent refreshes dedupe with each other so 5 rapid retry clicks
+  // don't fire 5 IPCs.
+  let refreshInFlight: Promise<UserSettings | null> | null = null;
   const load = (): Promise<UserSettings | null> => {
     if (inFlight) return inFlight;
     inFlight = (async () => {
@@ -229,8 +239,21 @@ export function createSettingsLoader(): {
     })();
     return inFlight;
   };
+  const refresh = (): Promise<UserSettings | null> => {
+    if (refreshInFlight) return refreshInFlight;
+    refreshInFlight = (async () => {
+      inFlight = null;
+      try {
+        return await load();
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+    return refreshInFlight;
+  };
   return {
     start: load,
+    refresh,
     promise: () => inFlight,
   };
 }

@@ -102,6 +102,11 @@
       return settings;
     },
     whenReady: async () => settingsLoader.start(),
+    refresh: async () => {
+      const next = await settingsLoader.refresh();
+      if (next) settings = next;
+      return next;
+    },
   });
 
   // ── Runs cache context (gate for downstream pages) ─────────────

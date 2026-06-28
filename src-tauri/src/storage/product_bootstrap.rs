@@ -55,6 +55,16 @@ fn manifest() -> Result<BuiltinManifest, String> {
     serde_json::from_str(MANIFEST_JSON).map_err(|e| format!("Invalid builtin manifest: {e}"))
 }
 
+/// Names of every skill shipped by MiWarp itself (parsed from the embedded
+/// builtin manifest). Used by the `get_skill_summary` IPC to distinguish
+/// shipped skills from user-installed ones without round-tripping the full
+/// skill list to the frontend.
+pub fn builtin_skill_names() -> Vec<String> {
+    manifest()
+        .map(|m| m.skills.into_iter().map(|s| s.name).collect())
+        .unwrap_or_default()
+}
+
 fn state_path() -> PathBuf {
     storage::data_dir().join("product-bootstrap.json")
 }

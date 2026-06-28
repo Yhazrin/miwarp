@@ -10,7 +10,14 @@
   import Icon from "$lib/components/Icon.svelte";
   import PersonalSection from "./PersonalSection.svelte";
 
-  let { skillCount }: { skillCount: number } = $props();
+  let { skillCount }: { skillCount: number | null } = $props();
+
+  const skillCountLabel = $derived(skillCount === null ? "—" : String(skillCount));
+  const skillCountDesc = $derived(
+    skillCount === null
+      ? lk("personal_skills_loading")
+      : lk("personal_memory_skillsDesc", { count: String(skillCount) }),
+  );
 
   function lk(key: string, params: Record<string, string> | undefined = undefined): string {
     return t(key as MessageKey, params);
@@ -34,12 +41,10 @@
     >
       <div class="min-w-0">
         <p class="text-sm font-medium text-foreground">{lk("personal_memory_skills")}</p>
-        <p class="text-xs text-muted-foreground">
-          {lk("personal_memory_skillsDesc", { count: String(skillCount) })}
-        </p>
+        <p class="text-xs text-muted-foreground">{skillCountDesc}</p>
       </div>
       <div class="flex items-center gap-2 text-muted-foreground group-hover:text-foreground">
-        <span class="text-sm font-semibold tabular-nums">{skillCount}</span>
+        <span class="text-sm font-semibold tabular-nums">{skillCountLabel}</span>
         <Icon name="chevron-right" size="sm" />
       </div>
     </a>

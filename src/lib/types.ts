@@ -974,6 +974,15 @@ export interface StandaloneSkill {
   remoteRef?: SkillRemoteRef;
 }
 
+/** Lightweight counts returned by `get_skill_summary`. Used by cold-start
+ *  pages that only need a number (e.g. /personal hero "Skills" stat) without
+ *  paying for the full skill list payload. */
+export interface SkillSummary {
+  total: number;
+  builtIn: number;
+  custom: number;
+}
+
 export interface InstalledPlugin {
   name: string;
   description: string;

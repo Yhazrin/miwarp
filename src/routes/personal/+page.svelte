@@ -14,21 +14,29 @@
    *
    * Every editable field is persisted via the existing `updateUserSettings`
    * partial-patch command — no new backend surface area is required.
+   *
+   * v1.1.0 perf: first paint is gated ONLY on the layout-shared Settings cache.
+   * Runtimes, activity, and skill count each load independently with their
+   * own per-card skeleton, so a slow CLI probe no longer blocks the whole page.
    */
-  import { onMount } from "svelte";
+  import { getContext, onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
   import {
-    getUserSettings,
+    getUsageOverview,
+    getSkillSummary,
+    runtimeHubList,
     resetUserSettings,
     updateUserSettings,
-    getUsageOverview,
-    runtimeHubList,
   } from "$lib/api";
   import { showToast } from "$lib/stores/toast-store.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
-  import { skillStore } from "$lib/stores/skill-store.svelte";
-  import { runtimeHubStore } from "$lib/stores/runtime-hub-store.svelte";
+  import {
+    SETTINGS_CACHE_CONTEXT_KEY,
+    resolveLayoutCachedSettings,
+    type SettingsCacheContext,
+  } from "$lib/layout-chrome-context";
+  import { createPersonalColdStart } from "./personal-cold-start";
   import type { UserSettings } from "$lib/types";
 
   import PersonalHero from "$lib/components/personal/PersonalHero.svelte";
@@ -50,16 +58,26 @@
     SessionSettings,
   } from "$lib/components/personal/settings-slice";
 
-  let loading = $state(true);
+  type LoadState = "pending" | "ready" | "failed";
+  let settingsLoad = $state<LoadState>("pending");
   let settings = $state<UserSettings | null>(null);
-  let runtimes = $state<string[]>([]);
 
-  // Activity (7d)
+  // Runtimes hydrate in the background; the AI Defaults card paints with the
+  // current default_agent first, then re-renders once the list arrives.
+  let runtimes = $state<string[]>([]);
+  let runtimesLoaded = $state(false);
+
+  // Activity (7d) — per-card skeleton, does not block first paint.
   let activity = $state<{
     runs7d: number | null;
     totalCostUsd: number | null;
     dailyCost: number[];
   }>({ runs7d: null, totalCostUsd: null, dailyCost: [] });
+
+  // Skill count — fetched via the lightweight `get_skill_summary` IPC. We do
+  // NOT touch `skillStore.loadSkills()` here; that triggers the full store
+  // re-derivation and is reserved for the dedicated /skills page.
+  let skillCount = $state<number | null>(null);
 
   // 把 settings 按域切成 5 个独立 prop。任意字段编辑只触发对应 slice 的
   // `$derived` 重算，不会让 9 个 card 同时重渲染（之前传整个 settings 时
@@ -133,15 +151,15 @@
   }
 
   /**
-   * 把"首次进入页面"分两批：
-   * - 关键路径（getUserSettings / runtimeHubList / loadActivity）保持同步 await，
-   *   否则 loading 骨架会闪烁或 activity 7d 数据延迟太久。
-   * - skillStore.loadSkills + runtimeHubStore.refresh 是 heavy store 写入，
-   *   会触发各自 `$derived` 全量重算。延后到主线程空闲时再启动，避免 mount 期
-   *   4 路并发副作用同时打 IO + 触发 derived 重算。
+   * Defers work until the main thread is idle so cold-start mount does not
+   * race the render path. Falls back to setTimeout(0) in environments without
+   * `requestIdleCallback` (Safari SSR / test envs).
    */
-  function scheduleIdleLoad(task: () => Promise<void> | void) {
-    if (typeof window === "undefined") return;
+  function scheduleIdleLoad(task: () => void): boolean {
+    if (typeof window === "undefined") {
+      task();
+      return false;
+    }
     const ric = (
       window as Window & {
         requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
@@ -149,75 +167,89 @@
     ).requestIdleCallback;
     const runner = () => {
       try {
-        void task();
+        task();
       } catch (e) {
         dbgWarn("personal", "idle task threw", e);
       }
     };
     if (typeof ric === "function") {
       ric(runner, { timeout: 1500 });
-    } else {
-      window.setTimeout(runner, 0);
+      return true;
     }
+    window.setTimeout(runner, 0);
+    return false;
   }
 
-  onMount(async () => {
-    try {
-      const [s, hub] = await Promise.all([
-        getUserSettings(),
-        runtimeHubList(false).catch(() => null),
-      ]);
-      settings = s;
-      if (hub?.runtimes) {
-        runtimes = hub.runtimes.map((r) => r.runtimeId).filter(Boolean);
-      }
-    } catch (e) {
-      dbgWarn("personal", "load settings failed", e);
-    } finally {
-      loading = false;
-    }
+  const settingsCache = getContext<SettingsCacheContext | undefined>(SETTINGS_CACHE_CONTEXT_KEY);
 
-    // 关键路径立刻跑：7 天 activity 影响 PersonalHero 渲染。
-    void loadActivity();
+  const coldStart = createPersonalColdStart(
+    {
+      resolveSettings: () => resolveLayoutCachedSettings(settingsCache),
+      refreshSettings: async () => (settingsCache ? settingsCache.refresh() : null),
+      runtimeHubList: () => runtimeHubList(false),
+      getUsageOverview: () => getUsageOverview(7),
+      getSkillSummary: () => getSkillSummary(),
+      scheduleIdle: (task) => scheduleIdleLoad(task),
+    },
+    {
+      onSettingsLoad: (state, s) => {
+        settingsLoad = state;
+        settings = s;
+      },
+      onRuntimesLoaded: (ids) => {
+        runtimes = ids;
+      },
+      onRuntimesFailed: () => {
+        runtimes = [];
+      },
+      onRuntimesFinished: () => {
+        runtimesLoaded = true;
+      },
+      onActivityLoaded: (snapshot) => {
+        activity = snapshot;
+      },
+      onSkillCountLoaded: (count) => {
+        skillCount = count;
+      },
+    },
+  );
 
-    // 重副作用延后到主线程空闲：避免 mount 期 4 路并发 + 2 个 store 的
-    // `$derived` 全部同时重算导致 9 个 card 一起抖动。
-    scheduleIdleLoad(() =>
-      skillStore.loadSkills().catch((e) => dbgWarn("personal", "load skills failed", e)),
-    );
-    scheduleIdleLoad(() => runtimeHubStore.refresh().catch(() => {}));
+  onMount(() => {
+    coldStart.start();
   });
 
-  async function loadActivity() {
-    try {
-      const overview = await getUsageOverview(7);
-      const daily = (overview.daily ?? []).slice(-7).map((d) => d.costUsd ?? 0);
-      activity = {
-        runs7d: overview.totalRuns ?? null,
-        totalCostUsd: overview.totalCostUsd ?? null,
-        dailyCost: daily,
-      };
-    } catch (e) {
-      dbgWarn("personal", "load activity failed", e);
-      activity = { runs7d: null, totalCostUsd: null, dailyCost: [] };
-    }
+  async function retrySettings(): Promise<void> {
+    await coldStart.retry();
+  }
+
+  function continueWithoutSettings(): void {
+    // Synthesise an empty UserSettings so the page renders read-only; edits
+    // are best-effort and may fail until the real settings come back.
+    coldStart.continueWithoutSettings({} as UserSettings);
   }
 
   async function commit(patch: Partial<UserSettings>): Promise<void> {
     if (!settings) return;
-    const next = await updateUserSettings(patch);
-    settings = next;
-    dbg("personal", "settings patched", Object.keys(patch));
+    try {
+      const next = await updateUserSettings(patch);
+      settings = next;
+      dbg("personal", "settings patched", Object.keys(patch));
+    } catch (e) {
+      dbgWarn("personal", "patch failed", e);
+    }
   }
 
   async function handleReset(): Promise<void> {
     if (!settings) return;
-    const next = await resetUserSettings();
-    settings = next;
-    showToast(lk("personal_reset_done"), "success");
+    try {
+      const next = await resetUserSettings();
+      settings = next;
+      showToast(lk("personal_reset_done"), "success");
+    } catch (e) {
+      dbgWarn("personal", "reset failed", e);
+    }
   }
 
-  const skillCount = $derived(skillStore.skills?.length ?? 0);
   const providerCount = $derived(settings?.platform_credentials?.length ?? 0);
   const sinceDays = $derived.by(() => {
     if (!settings?.updated_at) return null;
@@ -233,6 +265,8 @@
     providers: providerCount,
     sinceDays,
   });
+
+  const runtimesLoading = $derived(!runtimesLoaded);
 </script>
 
 <svelte:head>
@@ -241,17 +275,46 @@
 
 <div class="min-h-full px-6 py-10 sm:px-10 sm:py-14">
   <div class="mx-auto w-full max-w-3xl space-y-6">
-    {#if loading || !settings}
+    {#if settingsLoad === "pending" || (settingsLoad === "ready" && !settings)}
       <div class="space-y-4">
         <div class="h-40 animate-pulse rounded-xl bg-sidebar/40"></div>
         <div class="h-64 animate-pulse rounded-xl bg-sidebar/40"></div>
         <div class="h-48 animate-pulse rounded-xl bg-sidebar/40"></div>
       </div>
+    {:else if settingsLoad === "failed"}
+      <div class="space-y-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-6">
+        <div class="space-y-1">
+          <h2 class="text-base font-semibold text-foreground">
+            {lk("personal_settings_load_failed_title")}
+          </h2>
+          <p class="text-sm text-muted-foreground">
+            {lk("personal_settings_load_failed_desc")}
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+            onclick={() => {
+              void retrySettings();
+            }}
+          >
+            {lk("personal_settings_retry")}
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            onclick={continueWithoutSettings}
+          >
+            {lk("personal_settings_continue")}
+          </button>
+        </div>
+      </div>
     {:else if identitySettings && aiSettings && sessionSettings && notificationSettings && displaySettings && providerSettings}
       <PersonalHero {identitySettings} stats={heroStats} />
 
       <PersonalIdentityCard {identitySettings} onCommit={commit} />
-      <PersonalAiPrefsCard {aiSettings} {runtimes} onCommit={commit} />
+      <PersonalAiPrefsCard {aiSettings} {runtimes} {runtimesLoading} onCommit={commit} />
       <PersonalMemoryCard {skillCount} />
       <PersonalSessionsCard {sessionSettings} onCommit={commit} />
       <PersonalProvidersCard {providerSettings} />
@@ -262,7 +325,7 @@
       />
       <PersonalNotificationsCard {notificationSettings} onCommit={commit} />
       <PersonalDisplayCard {displaySettings} onCommit={commit} onZoom={applyZoom} />
-      <PersonalDataCard {settings} onReset={handleReset} />
+      <PersonalDataCard settings={settings!} onReset={handleReset} />
     {/if}
   </div>
 </div>
