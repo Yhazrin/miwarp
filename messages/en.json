@@ -890,6 +890,7 @@
   "layout_selectProjectFolder": "Select Project Folder",
   "layout_themeTitle_dark": "Theme: Dark (click for Light)",
   "layout_themeTitle_light": "Theme: Light (click for System)",
+  "layout_themeTitle_system": "Theme: System (click for Light)",
   "mascot_clickToOpen": "View running status",
   "markdown_copy": "Copy",
   "markdown_copied": "Copied!",

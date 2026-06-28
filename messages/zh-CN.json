@@ -924,6 +924,7 @@
   "layout_selectProjectFolder": "选择项目文件夹",
   "layout_themeTitle_dark": "主题：深色（点击切换为浅色）",
   "layout_themeTitle_light": "主题：浅色（点击切换为跟随系统）",
+  "layout_themeTitle_system": "主题：跟随系统（点击切换为浅色）",
   "mascot_clickToOpen": "查看运行状态",
   "markdown_copy": "复制",
   "markdown_copied": "已复制!",
