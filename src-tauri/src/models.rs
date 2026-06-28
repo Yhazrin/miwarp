@@ -529,6 +529,9 @@ pub struct UserSettings {
     /// IANA time zone (e.g. "Asia/Shanghai") appended to every session's system prompt.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user_timezone: Option<String>,
+    /// Sidebar workspace folder sort order.
+    #[serde(default = "default_workspace_folder_sort_order")]
+    pub workspace_folder_sort_order: String,
     pub updated_at: String,
 }
 
@@ -568,6 +571,20 @@ fn default_visual_performance_mode() -> String {
 
 fn default_session_island_alignment() -> String {
     "center".to_string()
+}
+
+fn default_workspace_folder_sort_order() -> String {
+    "last_active".to_string()
+}
+
+/// Canonicalize sidebar workspace folder sort — unknown values fall back to last_active.
+pub fn normalize_workspace_folder_sort_order(value: &str) -> String {
+    match value {
+        "name_asc" | "name_desc" | "created_asc" | "created_desc" | "last_active" => {
+            value.to_string()
+        }
+        _ => default_workspace_folder_sort_order(),
+    }
 }
 
 /// Canonicalize persisted session island alignment — only center | right are stored.
@@ -715,6 +732,7 @@ impl Default for UserSettings {
             user_display_name: None,
             user_role: None,
             user_timezone: None,
+            workspace_folder_sort_order: default_workspace_folder_sort_order(),
             updated_at: now_iso(),
         }
     }

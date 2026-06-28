@@ -1,4 +1,7 @@
-use crate::models::{normalize_session_island_alignment, AgentSettings, AllSettings, UserSettings};
+use crate::models::{
+    normalize_session_island_alignment, normalize_workspace_folder_sort_order, AgentSettings,
+    AllSettings, UserSettings,
+};
 use std::fs;
 use std::path::PathBuf;
 
@@ -692,6 +695,12 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
         .and_then(|v| v.as_str())
     {
         all.user.session_island_alignment = normalize_session_island_alignment(v);
+    }
+    if let Some(v) = patch
+        .get("workspace_folder_sort_order")
+        .and_then(|v| v.as_str())
+    {
+        all.user.workspace_folder_sort_order = normalize_workspace_folder_sort_order(v);
     }
     if let Some(v) = patch.get("session_status_colors") {
         if v.is_null() {

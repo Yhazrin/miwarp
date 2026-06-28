@@ -111,6 +111,34 @@
     },
   ] as const;
 
+  const WORKSPACE_FOLDER_SORT_OPTIONS = [
+    {
+      value: "last_active",
+      labelKey: "settings_workspaceFolderSort_lastActive",
+      descKey: "settings_workspaceFolderSort_lastActiveDesc",
+    },
+    {
+      value: "name_asc",
+      labelKey: "settings_workspaceFolderSort_nameAsc",
+      descKey: "settings_workspaceFolderSort_nameAscDesc",
+    },
+    {
+      value: "name_desc",
+      labelKey: "settings_workspaceFolderSort_nameDesc",
+      descKey: "settings_workspaceFolderSort_nameDescDesc",
+    },
+    {
+      value: "created_asc",
+      labelKey: "settings_workspaceFolderSort_createdAsc",
+      descKey: "settings_workspaceFolderSort_createdAscDesc",
+    },
+    {
+      value: "created_desc",
+      labelKey: "settings_workspaceFolderSort_createdDesc",
+      descKey: "settings_workspaceFolderSort_createdDescDesc",
+    },
+  ] as const;
+
   async function pickVisualPerfMode(mode: string) {
     await onSaveGeneralPatch({ visual_performance_mode: mode });
     window.dispatchEvent(
@@ -300,6 +328,24 @@
               <SettingsWireframePreview variant={opt.preview} />
             {/snippet}
           </SettingsOptionCard>
+        {/each}
+      </div>
+    </div>
+
+    <div class="space-y-2 pt-2">
+      <div>
+        <p class="text-sm font-medium">{t("settings_workspaceFolderSort")}</p>
+        <p class="text-xs text-muted-foreground mt-0.5">{t("settings_workspaceFolderSortDesc")}</p>
+      </div>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {#each WORKSPACE_FOLDER_SORT_OPTIONS as opt (opt.value)}
+          {@const active = (settings?.workspace_folder_sort_order ?? "last_active") === opt.value}
+          <SettingsOptionCard
+            {active}
+            title={t(opt.labelKey as MessageKey)}
+            description={t(opt.descKey as MessageKey)}
+            onclick={() => onSaveGeneralPatch({ workspace_folder_sort_order: opt.value })}
+          />
         {/each}
       </div>
     </div>

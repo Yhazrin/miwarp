@@ -199,7 +199,7 @@ describe("personal cold-start — first paint budget", () => {
       onActivityLoaded: vi.fn(),
       onSkillCountLoaded: vi.fn(),
     }).start();
-    // scheduleIdle is called once per start() — for the runtime probe only.
+    // scheduleIdle is called once per start() — for all non-settings IPC.
     expect(scheduleIdle).toHaveBeenCalledTimes(1);
   });
 });

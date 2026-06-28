@@ -32,7 +32,7 @@ export type NavItem = {
 /**
  * Navigation entries grouped by function:
  *   - core: chat + scheduled-tasks (the day-to-day surfaces)
- *   - workspace: per-cwd project tools (workspace / workbench / explorer / history / personal)
+ *   - workspace: per-cwd project tools (workbench / explorer / history / personal)
  *   - collaboration: teams (multi-agent shared resources)
  *   - extensions: plugin marketplace
  *   - system: usage + settings
@@ -49,9 +49,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: "schedule",
     group: "core",
   },
-  // Workspace hub + project tools (single-user, per-cwd)
-  { path: "/workspace", label: () => t("nav_workspace"), icon: "layout", group: "workspace" },
-  { path: "/workbench", label: () => t("nav_workbench"), icon: "monitor", group: "workspace" },
+  // Project tools (single-user, per-cwd)
+  { path: "/workbench", label: () => t("nav_workbench"), icon: "layout", group: "workspace" },
   { path: "/explorer", label: () => t("nav_explorer"), icon: "folder", group: "workspace" },
   { path: "/history", label: () => t("nav_history"), icon: "clock", group: "workspace" },
   { path: "/personal", label: () => t("nav_personal"), icon: "circle-user", group: "workspace" },
@@ -91,7 +90,6 @@ export interface PageKinds {
   readonly isExplorerPage: boolean;
   readonly isTeamsPage: boolean;
   readonly isScheduledTasksPage: boolean;
-  readonly isWorkspacePage: boolean;
   readonly isWorkbenchPage: boolean;
   readonly isSettingsPage: boolean;
   readonly needsLayoutContentPanel: boolean;
@@ -108,7 +106,6 @@ export function describeCurrentPage(currentPath: string): PageKinds {
     isExplorerPage: currentPath.startsWith("/explorer"),
     isTeamsPage: currentPath.startsWith("/teams"),
     isScheduledTasksPage: currentPath.startsWith("/scheduled-tasks"),
-    isWorkspacePage: currentPath.startsWith("/workspace"),
     isWorkbenchPage: currentPath.startsWith("/workbench"),
     isSettingsPage: pathIsSettings(currentPath),
     needsLayoutContentPanel: routeNeedsLayoutContentPanel(currentPath),

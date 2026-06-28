@@ -80,25 +80,10 @@
     1;
 }
 
-/* Project group expand/collapse */
-.project-group-content {
-  overflow: hidden;
-  transition:
-    max-height 200ms ease-out,
-    opacity 200ms ease-out;
-}
-.project-group-content.collapsed {
-  max-height: 0;
-  opacity: 0;
-}
-.project-group-content.expanded {
-  max-height: 2000px;
-  opacity: 1;
-}
-
-/* Chevron rotation */
+/* Folder tree expand/collapse — see tree-expand-transition.ts for JS transitions.
+   Chevron rotation synced to --motion-slow / --ease-emphasized. */
 .project-group-chevron {
-  transition: transform 200ms ease-out;
+  transition: transform var(--motion-slow) var(--ease-emphasized);
 }
 .project-group-chevron.expanded {
   transform: rotate(90deg);

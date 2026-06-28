@@ -40,8 +40,8 @@
 //!   4. The contract test will fail if you forget step 2 or 3.
 
 use crate::models::{
-    normalize_session_island_alignment, KeyBindingOverride, PlatformCredential, RemoteHost,
-    SessionStatusColors, UserSettings,
+    normalize_session_island_alignment, normalize_workspace_folder_sort_order, KeyBindingOverride,
+    PlatformCredential, RemoteHost, SessionStatusColors, UserSettings,
 };
 use serde::Deserialize;
 
@@ -78,6 +78,8 @@ pub struct UserSettingsPatch {
     pub session_island_alignment: Option<String>,
     #[serde(default)]
     pub native_window_glass_material: Option<String>,
+    #[serde(default)]
+    pub workspace_folder_sort_order: Option<String>,
 
     // ── Boolean scalars ────────────────────────────────────────────────
     #[serde(default)]
@@ -348,6 +350,9 @@ pub fn apply_patch(settings: &mut UserSettings, patch: UserSettingsPatch) -> Res
     }
     if let Some(v) = patch.session_island_alignment {
         settings.session_island_alignment = normalize_session_island_alignment(&v);
+    }
+    if let Some(v) = patch.workspace_folder_sort_order {
+        settings.workspace_folder_sort_order = normalize_workspace_folder_sort_order(&v);
     }
     if let Some(maybe) = patch.session_status_colors {
         settings.session_status_colors = maybe;

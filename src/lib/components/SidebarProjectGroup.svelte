@@ -2,7 +2,7 @@
   import type { Snippet } from "svelte";
   import type { ProjectFolder } from "$lib/utils/sidebar-groups";
   import { t } from "$lib/i18n/index.svelte";
-  import { slide } from "svelte/transition";
+  import { treeCollapse, treeExpand } from "$lib/utils/tree-expand-transition";
   import Icon from "$lib/components/Icon.svelte";
 
   interface Props {
@@ -109,7 +109,7 @@
     {/if}
 
     <svg
-      class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded
+      class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] {expanded
         ? 'rotate-90'
         : ''}"
       viewBox="0 0 24 24"
@@ -126,7 +126,7 @@
 
   <!-- Expanded children -->
   {#if expanded}
-    <div class="pl-3" transition:slide={{ duration: 200 }}>
+    <div class="pl-3" in:treeExpand out:treeCollapse>
       {#if onNewChat}
         <button
           type="button"

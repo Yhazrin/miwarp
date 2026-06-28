@@ -31,16 +31,16 @@ describe("navigation-model predicates", () => {
   it("pathIsChatOrSettingsTransition flips true only across the chat↔settings boundary", () => {
     expect(pathIsChatOrSettingsTransition("/chat", "/settings")).toBe(true);
     expect(pathIsChatOrSettingsTransition("/settings", "/chat")).toBe(true);
-    expect(pathIsChatOrSettingsTransition("/chat", "/workspace")).toBe(false);
+    expect(pathIsChatOrSettingsTransition("/chat", "/workbench")).toBe(false);
     expect(pathIsChatOrSettingsTransition("/teams", "/plugins")).toBe(false);
   });
 });
 
 describe("NAV_ITEMS contract", () => {
-  it("exposes the 11 routes that drive the icon rail", () => {
+  it("exposes the 10 routes that drive the icon rail", () => {
     // Pinned count: don't let the rail shrink or grow without an explicit
     // review — each entry shows up in the icon rail and a group divider.
-    expect(NAV_ITEMS.length).toBe(11);
+    expect(NAV_ITEMS.length).toBe(10);
   });
 
   it("every entry has a unique path and a group classification", () => {
@@ -68,7 +68,7 @@ describe("describeCurrentPage", () => {
     expect(page.selectedScheduledTaskId).toBe("");
   });
 
-  it("exposes the explorer / teams / workbench / workspace booleans from path prefix", () => {
+  it("exposes the explorer / teams / workbench booleans from path prefix", () => {
     const explorer = describeCurrentPage("/explorer/some/path");
     expect(explorer.isExplorerPage).toBe(true);
     expect(explorer.isTeamsPage).toBe(false);
@@ -78,7 +78,6 @@ describe("describeCurrentPage", () => {
 
     const workbench = describeCurrentPage("/workbench");
     expect(workbench.isWorkbenchPage).toBe(true);
-    expect(workbench.isWorkspacePage).toBe(false);
   });
 });
 

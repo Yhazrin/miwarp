@@ -17,6 +17,7 @@
   },
   "scripts": {
     "dev": "vite dev",
+    "dev:desktop": "bash scripts/dev-desktop.sh",
     "prebuild": "node scripts/sync-version.mjs",
     "build": "vite build",
     "preview": "vite preview",

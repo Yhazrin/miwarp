@@ -21,7 +21,6 @@ export function routeNeedsLayoutContentPanel(pathname: string): boolean {
     pathname.startsWith("/teams") ||
     pathname.startsWith("/settings") ||
     pathname.startsWith("/scheduled-tasks") ||
-    pathname.startsWith("/workspace") ||
     // P0-4: cold-start /workbench must mount its project sidebar; without
     // this match the layout treats the route as "no content panel" and the
     // WorkbenchSidebar never renders, hiding every project from the user.

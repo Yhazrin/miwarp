@@ -4,6 +4,7 @@ import {
   buildProjectFolders,
   buildEnrichedProjectFolders,
   autoExpandForRun,
+  subFolderKeyForRun,
   expandForProjectChange,
   normalizeCwd,
   isScheduledTaskRun,
@@ -340,6 +341,41 @@ describe("autoExpandForRun", () => {
     const folders = buildProjectFolders(runs, NO_FAVS, NO_PINS);
     expect(autoExpandForRun(undefined, folders, new Set())).toBeNull();
     expect(autoExpandForRun("", folders, new Set())).toBeNull();
+  });
+
+  it("auto_expand_adds_workspace_when_run_is_in_logical_subfolder", () => {
+    const cwd = "/project/miwarp";
+    const runs = [makeRun({ id: "r-in-folder", cwd, folder_id: "f1", session_id: "s1" })];
+    const sessionFolders: SessionFolder[] = [
+      {
+        id: "f1",
+        name: "Feature",
+        workspaceId: cwd,
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+    const folders = buildEnrichedProjectFolders(runs, sessionFolders, NO_FAVS, NO_PINS);
+    const result = autoExpandForRun("r-in-folder", folders, new Set());
+    expect(result).not.toBeNull();
+    expect(result!.has(`cwd:${cwd}`)).toBe(true);
+  });
+
+  it("subFolderKeyForRun_returns_sf_key_for_foldered_run", () => {
+    const cwd = "/project/miwarp";
+    const runs = [makeRun({ id: "r-in-folder", cwd, folder_id: "f1", session_id: "s1" })];
+    const sessionFolders: SessionFolder[] = [
+      {
+        id: "f1",
+        name: "Feature",
+        workspaceId: cwd,
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+    const folders = buildEnrichedProjectFolders(runs, sessionFolders, NO_FAVS, NO_PINS);
+    expect(subFolderKeyForRun("r-in-folder", folders)).toBe("sf:f1");
+    expect(subFolderKeyForRun("missing", folders)).toBeNull();
   });
 });
 

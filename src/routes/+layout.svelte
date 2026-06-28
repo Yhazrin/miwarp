@@ -129,6 +129,9 @@
     //    auto-check) once resolved.
     void settingsLoader.start().then(async (loaded) => {
       if (!loaded) return;
+      // Publish immediately so child routes (/personal, /settings) can sync-
+      // hydrate on first paint without waiting for applyUserSettings side effects.
+      settings = loaded;
       const applied = await applyUserSettings(loaded);
       settings = applied.settings;
       await applyUserSettingsForShell(applied.settings);

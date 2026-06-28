@@ -59,6 +59,7 @@ export default defineConfig({
         "**/dist/**",
         "**/.claude/**",
         "**/.miwarp/**",
+        "**/.cursor/**",
         "**/tmp/**",
         "**/memory/**",
       ],

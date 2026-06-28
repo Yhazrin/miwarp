@@ -59,8 +59,12 @@
   } from "$lib/components/personal/settings-slice";
 
   type LoadState = "pending" | "ready" | "failed";
-  let settingsLoad = $state<LoadState>("pending");
-  let settings = $state<UserSettings | null>(null);
+
+  const settingsCache = getContext<SettingsCacheContext | undefined>(SETTINGS_CACHE_CONTEXT_KEY);
+  /** Sync-read the layout cache so hot navigation skips the skeleton frame. */
+  const initialSettings = settingsCache?.settings ?? null;
+  let settingsLoad = $state<LoadState>(initialSettings ? "ready" : "pending");
+  let settings = $state<UserSettings | null>(initialSettings);
 
   // Runtimes hydrate in the background; the AI Defaults card paints with the
   // current default_agent first, then re-renders once the list arrives.
@@ -179,8 +183,6 @@
     window.setTimeout(runner, 0);
     return false;
   }
-
-  const settingsCache = getContext<SettingsCacheContext | undefined>(SETTINGS_CACHE_CONTEXT_KEY);
 
   const coldStart = createPersonalColdStart(
     {

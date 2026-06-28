@@ -7,11 +7,16 @@
   职责:展示 workbench 项目列表 + 选中态 + meta 行,不负责右侧 hero / chat 主区。
 -->
 <script lang="ts">
-  import { goto } from "$app/navigation";
   import { workbenchStore } from "$lib/workbench/workbench-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { relativeTime } from "$lib/utils/format";
   import Icon from "$lib/components/Icon.svelte";
+
+  interface Props {
+    onPickFolder?: () => void;
+  }
+
+  let { onPickFolder }: Props = $props();
 
   function statusDotClass(status: "active" | "idle" | "stale"): string {
     if (status === "active") return "bg-[hsl(var(--miwarp-status-info))]";
@@ -19,8 +24,8 @@
     return "bg-muted-foreground/40";
   }
 
-  function openWorkspace(): void {
-    void goto("/workspace");
+  function openAddProject(): void {
+    onPickFolder?.();
   }
 </script>
 
@@ -53,8 +58,8 @@
   <div class="sidebar-scroll flex-1 overflow-y-auto p-2">
     {#if workbenchStore.projects.length === 0}
       <!--
-        空项目态 onboarding：居中 icon + 文案 + 一个跳转按钮。
-        侧边栏窄时不喧宾夺主；点击后跳到 /workspace 让用户先添加工作区。
+        空项目态 onboarding：居中 icon + 文案 + 一个打开文件夹选择器的按钮。
+        侧边栏窄时不喧宾夺主；点击后直接添加项目文件夹。
       -->
       <div class="flex flex-col items-center justify-center gap-3 px-3 py-8 text-center">
         <span
@@ -71,10 +76,10 @@
         <button
           type="button"
           class="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-          onclick={openWorkspace}
+          onclick={openAddProject}
         >
           <Icon name="folder-open" size="sm" />
-          {t("workbench_openWorkspace")}
+          {t("sidebar_openFolder")}
         </button>
       </div>
     {:else}

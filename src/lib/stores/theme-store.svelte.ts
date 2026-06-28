@@ -188,17 +188,14 @@ class ThemeStore {
   }
 
   /**
-   * Toggle the visible light/dark state of the *current* theme.
-   *  - If user is following system, snap out to the opposite of the current effective.
-   *  - Otherwise, just flip light ↔ dark.
-   * Same theme, different mode. This is the sidebar quick-toggle.
+   * Sidebar quick-toggle: cycle appearance mode light → dark → system.
+   * Same theme, different mode.
    */
   cycleTheme() {
-    if (this.mode === "system") {
-      this.setMode(this.effectiveMode === "dark" ? "light" : "dark");
-    } else {
-      this.setMode(this.mode === "dark" ? "light" : "dark");
-    }
+    const order: Array<"light" | "dark" | "system"> = ["light", "dark", "system"];
+    const idx = order.indexOf(this.mode);
+    const next = order[(idx + 1) % order.length] ?? "light";
+    this.setMode(next);
   }
 
   /** Override theme for a specific session */

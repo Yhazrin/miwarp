@@ -245,26 +245,53 @@ export function buildProjectFolders(
 
 // ── Expand helpers ──
 
+/** Folder shape used by sidebar auto-expand (unfoldered + optional logical sub-folders). */
+type AutoExpandFolder = ProjectFolder & Partial<Pick<EnrichedProjectFolder, "subFolders">>;
+
+function folderContainsRun(folder: AutoExpandFolder, runId: string): boolean {
+  if (folder.conversations.some((conv) => conv.runs.some((r) => r.id === runId))) {
+    return true;
+  }
+  for (const sf of folder.subFolders ?? []) {
+    if (sf.conversations.some((conv) => conv.runs.some((r) => r.id === runId))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** Auto-expand the folder containing selectedRunId. Returns new Set or null (no change). */
 export function autoExpandForRun(
   selectedRunId: string | undefined,
-  projectFolders: ProjectFolder[],
+  projectFolders: AutoExpandFolder[],
   expandedProjects: Set<string>,
 ): Set<string> | null {
   if (!selectedRunId) return null;
 
   for (const folder of projectFolders) {
-    const found = folder.conversations.some((conv) =>
-      conv.runs.some((r) => r.id === selectedRunId),
-    );
-    if (found) {
-      if (expandedProjects.has(folder.folderKey)) return null; // already expanded
-      const next = new Set(expandedProjects);
-      next.add(folder.folderKey);
-      return next;
-    }
+    if (!folderContainsRun(folder, selectedRunId)) continue;
+    if (expandedProjects.has(folder.folderKey)) return null; // already expanded
+    const next = new Set(expandedProjects);
+    next.add(folder.folderKey);
+    return next;
   }
 
+  return null;
+}
+
+/** Logical sub-folder key (`sf:<id>`) containing selectedRunId, or null. */
+export function subFolderKeyForRun(
+  selectedRunId: string | undefined,
+  projectFolders: AutoExpandFolder[],
+): string | null {
+  if (!selectedRunId) return null;
+  for (const folder of projectFolders) {
+    for (const sf of folder.subFolders ?? []) {
+      if (sf.conversations.some((conv) => conv.runs.some((r) => r.id === selectedRunId))) {
+        return sf.folderKey;
+      }
+    }
+  }
   return null;
 }
 

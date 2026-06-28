@@ -8,6 +8,7 @@ import {
   type ConversationGroup,
   type ProjectFolder,
 } from "$lib/utils/sidebar-groups";
+import { sortProjectFolders } from "$lib/utils/workspace-folder-sort";
 import type {
   ExecutionTargetLocal,
   WorkspaceAggregateOptions,
@@ -22,12 +23,15 @@ const FAILED_RUN_STATUSES = new Set(["failed", "error"]);
 const DEFAULT_MAX_RECENT = 8;
 
 function resolveFolders(runs: TaskRun[], options: WorkspaceAggregateOptions): ProjectFolder[] {
-  return buildProjectFolders(
+  const folders = buildProjectFolders(
     runs,
     options.favoriteRunIds ?? new Set<string>(),
     options.pinnedCwds ?? [],
     options.removedCwds ?? [],
   );
+  return sortProjectFolders(folders, options.folderSortOrder, {
+    aliases: options.workspaceAliases ?? {},
+  });
 }
 
 /** Coerce unknown API fields to a safe display string. */

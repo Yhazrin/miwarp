@@ -290,6 +290,8 @@ export interface UserSettings {
   session_status_colors?: SessionStatusColors;
   /** Workspace display aliases: normalized_cwd → display_name */
   workspace_aliases?: Record<string, string>;
+  /** Sidebar workspace folder sort: last_active | name_asc | name_desc | created_asc | created_desc */
+  workspace_folder_sort_order?: string;
   /** Enable canvas mascot animation in sidebar. Default true. */
   mascot_enabled?: boolean;
   /** Show the left icon rail (Chat/Teams/Memory/.../Settings). Default true. */

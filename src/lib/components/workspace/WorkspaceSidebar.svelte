@@ -26,6 +26,7 @@
       pinnedCwds,
       removedCwds,
       workspaceAliases: settings?.workspace_aliases ?? {},
+      folderSortOrder: settings?.workspace_folder_sort_order,
       hasAttention,
       resolveCanContinue: (run: TaskRun) =>
         canResumeNow(run, run.status, getNoSessionPersistence(run.agent)),

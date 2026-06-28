@@ -17,6 +17,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import type { TreeNode } from "./explorer-tree-store.svelte";
   import ExplorerTreeNodes from "./ExplorerTreeNodes.svelte";
+  import { treeCollapse, treeExpand } from "$lib/utils/tree-expand-transition";
 
   let {
     nodes,
@@ -99,7 +100,9 @@
           <Icon
             name="chevron-right"
             size="xs"
-            class="shrink-0 transition-transform duration-150 {node.expanded ? 'rotate-90' : ''}"
+            class="shrink-0 transition-transform duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] {node.expanded
+              ? 'rotate-90'
+              : ''}"
           />
         {/if}
         {@render folderIcon()}
@@ -111,6 +114,8 @@
     </button>
   {/if}
   {#if node.is_dir && node.expanded && node.loadState === "ready"}
-    <ExplorerTreeNodes nodes={node.children} {selectedPath} {onToggle} {onSelect} {onRetry} />
+    <div in:treeExpand out:treeCollapse>
+      <ExplorerTreeNodes nodes={node.children} {selectedPath} {onToggle} {onSelect} {onRetry} />
+    </div>
   {/if}
 {/each}

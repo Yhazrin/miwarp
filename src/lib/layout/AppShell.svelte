@@ -35,16 +35,19 @@
   import {
     LAYOUT_CHROME_CONTEXT_KEY,
     SETTINGS_CACHE_CONTEXT_KEY,
+    routeNeedsLayoutContentPanel,
     type LayoutChromeContext,
     type SettingsCacheContext,
   } from "$lib/layout-chrome-context";
   import {
-    NAV_ITEMS,
     describeCurrentPage,
     pathIsChat,
     pathIsChatOrSettingsTransition,
     resolvePageName,
   } from "$lib/layout/navigation-model";
+  import AppIconRail from "$lib/layout/AppIconRail.svelte";
+  import SidebarContentPanel from "$lib/layout/SidebarContentPanel.svelte";
+  import ShellMainSurface from "$lib/layout/ShellMainSurface.svelte";
 
   import { projectSelectionStore as pss } from "$lib/layout/project-selection-store.svelte";
   import { runsSidebarStore as rss } from "$lib/layout/runs-sidebar-store.svelte";
@@ -60,7 +63,6 @@
   import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
   import { getChatTimelineResetHandle } from "$lib/chat/chat-timeline-reset-registry";
   import { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
-  import { themeStore } from "$lib/stores/theme-store.svelte";
 
   import { writeActiveSessionId } from "$lib/utils/chat-persistence";
   import { beginRouteTransition, endRouteTransition } from "$lib/utils/route-transition";
@@ -69,38 +71,23 @@
   import { clampUiZoom, layoutPx } from "$lib/utils/ui-zoom";
   import { IS_MAC } from "$lib/utils/platform";
   import { dbg, dbgWarn } from "$lib/utils/debug";
-  import { openDirectoryInFinder } from "$lib/api";
   import {
     buildEnrichedProjectFolders,
     sessionFoldersForWorkspace,
-    getWorkspaceMascotStatus,
     autoExpandForRun,
+    subFolderKeyForRun,
     expandForProjectChange,
     normalizeCwd,
   } from "$lib/utils/sidebar-groups";
-  import { cwdDisplayLabel, truncate, snippetAround, relativeTime } from "$lib/utils/format";
+  import { sortProjectFolders } from "$lib/utils/workspace-folder-sort";
+  import { cwdDisplayLabel } from "$lib/utils/format";
   import { escapeHtml } from "$lib/utils/ansi";
   import type { PluginSection } from "$lib/utils/plugin-sections";
 
   // ── Components ──────────────────────────────────────────────────
-  import WindowDragArea from "$lib/components/WindowDragArea.svelte";
-  import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
-  import UpdateBanner from "$lib/components/UpdateBanner.svelte";
-  import VersionMismatchBanner from "$lib/components/VersionMismatchBanner.svelte";
-  import SettingsSidebar from "$lib/components/settings/SettingsSidebar.svelte";
-  import ScheduledTasksSidebar from "$lib/components/ScheduledTasksSidebar.svelte";
-  import WorkspaceSidebar from "$lib/components/workspace/WorkspaceSidebar.svelte";
-  import WorkbenchSidebar from "$lib/components/workbench/WorkbenchSidebar.svelte";
-  import ProjectFolderItem from "$lib/components/ProjectFolderItem.svelte";
-  import Spinner from "$lib/components/Spinner.svelte";
-  import EmptyState from "$lib/components/EmptyState.svelte";
-  import Icon from "$lib/components/Icon.svelte";
   import OverlayStack from "$lib/components/layout/OverlayStack.svelte";
-  import ExplorerTreeNodes from "./ExplorerTreeNodes.svelte";
   import ToastHost from "$lib/components/ToastHost.svelte";
   import type { Component } from "svelte";
-
-  import { getLastTarget } from "$lib/utils/remote-cwd";
 
   // ── Props ───────────────────────────────────────────────────────
   let { children } = $props();
@@ -242,7 +229,6 @@
     isExplorerPage,
     isTeamsPage,
     isScheduledTasksPage,
-    isWorkspacePage,
     isWorkbenchPage,
     isSettingsPage,
     needsLayoutContentPanel,
@@ -352,7 +338,7 @@
   // ── Sidebar enrich + selection ──────────────────────────────────
   const enrichedProjectFolders = $derived.by(() => {
     if (!needsLayoutContentPanel) return [];
-    return buildEnrichedProjectFolders(
+    const folders = buildEnrichedProjectFolders(
       rss.runs,
       sfs.sessionFolders,
       rss.favoriteRunIds,
@@ -361,6 +347,9 @@
       scheduledTasksStore.tasks,
       scheduledTasksStore.runs,
     );
+    return sortProjectFolders(folders, settings?.workspace_folder_sort_order, {
+      aliases: settings?.workspace_aliases ?? {},
+    });
   });
   const selectableFolders = $derived(enrichedProjectFolders.filter((f) => !f.isUncategorized));
   const foldersForMoveDialog = $derived(
@@ -766,6 +755,11 @@
     if (!runId) return;
     const next = autoExpandForRun(runId, enrichedProjectFolders, pss.expandedProjects);
     if (next) pss.replaceExpanded(next);
+    const sfKey = subFolderKeyForRun(runId, enrichedProjectFolders);
+    if (sfKey) {
+      const folderId = sfKey.startsWith("sf:") ? sfKey.slice(3) : sfKey;
+      sfs.ensureSubFolderExpanded(folderId);
+    }
   });
 
   let _prevAutoExpandCwd = "";
@@ -872,9 +866,17 @@
   // Route transition + chat/settings hop arming
   beforeNavigate(({ from, to }) => {
     if (!from || !to) return;
-    if (pathIsChatOrSettingsTransition(from.url.pathname, to.url.pathname)) {
+    const fromPath = from.url.pathname;
+    const toPath = to.url.pathname;
+    if (pathIsChatOrSettingsTransition(fromPath, toPath)) {
       beginRouteTransition();
       armChatSettingsHop();
+      return;
+    }
+    // Collapsing/expanding the sidebar content panel (e.g. /chat → /personal)
+    // animates width; skip motion so route entry does not stutter.
+    if (routeNeedsLayoutContentPanel(fromPath) !== routeNeedsLayoutContentPanel(toPath)) {
+      beginRouteTransition();
     }
   });
   afterNavigate(() => {
@@ -917,28 +919,6 @@
   });
 </script>
 
-{#snippet explorerEmptyAction()}
-  {#if !getLastTarget()}
-    <button
-      type="button"
-      class="mt-2 rounded-md border border-sidebar-border bg-sidebar px-3 py-1.5 text-xs font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
-      onclick={() => pickFolder()}
-    >
-      {t("sidebar_openFolder")}
-    </button>
-  {/if}
-{/snippet}
-
-{#snippet treeNodes(nodes: import("$lib/layout/explorer-tree-store.svelte").TreeNode[])}
-  <ExplorerTreeNodes
-    {nodes}
-    selectedPath={ets.explorerSelectedFile}
-    onToggle={(node) => ets.toggleFolder(node)}
-    onSelect={(node) => ets.selectFile(node)}
-    onRetry={(node) => ets.retryFolder(node)}
-  />
-{/snippet}
-
 <svelte:window onkeydown={handleKeydown} />
 
 <div
@@ -956,749 +936,79 @@
     style="width: {sidebarEffectiveWidth}px; --sidebar-inner-width: {sidebarWidth}px"
   >
     {#if iconRailEnabled}
-      <div class="sidebar-icon-rail flex w-[44px] flex-col items-center">
-        <div class="relative w-full shrink-0 h-[var(--miwarp-titlebar-band)]" aria-hidden="true">
-          <WindowDragArea class="absolute inset-0" />
-        </div>
-
-        <nav class="flex flex-1 flex-col items-center gap-1 py-2 pt-2">
-          {#each NAV_ITEMS as item, idx}
-            {#if idx > 0 && item.group !== NAV_ITEMS[idx - 1].group}
-              <div class="my-1 h-px w-5 bg-border/40"></div>
-            {/if}
-            {@const isActive = currentPath.startsWith(item.path)}
-            <a
-              href={getNavItemHref(item)}
-              class="relative flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 no-underline active:scale-95
-                {isActive
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
-              title={item.label()}
-            >
-              {#if isActive}
-                <span class="absolute left-0 top-1.5 h-5 w-[3px] rounded-r-full bg-primary"></span>
-              {/if}
-              {#if item.icon === "message"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg
-                >
-              {:else if item.icon === "folder"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><path
-                    d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
-                  /></svg
-                >
-              {:else if item.icon === "layout"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M3 9h18" /><path
-                    d="M9 21V9"
-                  /></svg
-                >
-              {:else if item.icon === "monitor"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><rect width="20" height="14" x="2" y="3" rx="2" /><path d="M8 21h8" /><path
-                    d="M12 17v4"
-                  /></svg
-                >
-              {:else if item.icon === "clock"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg
-                >
-              {:else if item.icon === "circle-user"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><circle cx="12" cy="12" r="10" /><circle cx="12" cy="10" r="3" /><path
-                    d="M7 20.66A8 8 0 0 1 12 18a8 8 0 0 1 5 2.66"
-                  /></svg
-                >
-              {:else if item.icon === "users"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle
-                    cx="9"
-                    cy="7"
-                    r="4"
-                  /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path
-                    d="M16 3.13a4 4 0 0 1 0 7.75"
-                  /></svg
-                >
-              {:else if item.icon === "zap"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><path
-                    d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"
-                  /></svg
-                >
-              {:else if item.icon === "chart"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="M3 3v18h18" /><path d="M7 16l4-4 4 4 5-7" /></svg
-                >
-              {:else if item.icon === "settings"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><path
-                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-                  /><circle cx="12" cy="12" r="3" /></svg
-                >
-              {:else if item.icon === "schedule"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
-                >
-              {/if}
-            </a>
-          {/each}
-        </nav>
-
-        <div class="flex flex-col items-center gap-1 pb-2">
-          {#if attentionQueueBadgeCount > 0}
-            <span class="h-2 w-2 rounded-full bg-primary" title={String(attentionQueueBadgeCount)}
-            ></span>
-          {/if}
-          <button
-            type="button"
-            class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-            title={`miwarp ${sidebarVersion}`}
-            onclick={() => (showAbout = true)}
-            aria-label={`miwarp ${sidebarVersion}`}
-          >
-            <span class="text-[10px] font-semibold tracking-tight">{sidebarVersion}</span>
-          </button>
-          <button
-            type="button"
-            class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-            title={t("nav_settings")}
-            onclick={() => {
-              beginRouteTransition();
-              void goto("/settings").finally(endRouteTransition);
-            }}
-            aria-label={t("nav_settings")}
-          >
-            <svg
-              class="h-[18px] w-[18px]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              ><path
-                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-              /><circle cx="12" cy="12" r="3" /></svg
-            >
-          </button>
-          <button
-            type="button"
-            class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-            title={themeStore.isDark
-              ? t("layout_themeTitle_dark")
-              : themeStore.mode === "system"
-                ? t("layout_themeTitle_system", { default: t("layout_themeTitle_light") })
-                : t("layout_themeTitle_light")}
-            onclick={() => themeStore.cycleTheme()}
-            aria-label={t("settings_toggleTheme")}
-          >
-            {#if themeStore.mode === "system"}
-              <!-- System mode: half-moon / half-sun -->
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><circle cx="12" cy="12" r="4" /><path
-                  d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
-                /></svg
-              >
-            {:else if themeStore.isDark}
-              <!-- Dark: moon -->
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg
-              >
-            {:else}
-              <!-- Light: sun -->
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><circle cx="12" cy="12" r="4" /><path
-                  d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
-                /></svg
-              >
-            {/if}
-          </button>
-          <button
-            type="button"
-            class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-            title={themeStore.colorScheme === "warm"
-              ? t("layout_schemeTitle_warm")
-              : t("layout_schemeTitle_neutral")}
-            onclick={() =>
-              themeStore.setColorScheme(themeStore.colorScheme === "warm" ? "neutral" : "warm")}
-            aria-label={t("settings_toggleColorScheme")}
-          >
-            <svg
-              class="h-[18px] w-[18px]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              ><circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle
-                cx="17.5"
-                cy="10.5"
-                r=".5"
-                fill="currentColor"
-              /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle
-                cx="6.5"
-                cy="12"
-                r=".5"
-                fill="currentColor"
-              /><path
-                d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"
-              /></svg
-            >
-          </button>
-        </div>
-      </div>
+      <AppIconRail
+        {currentPath}
+        {getNavItemHref}
+        {attentionQueueBadgeCount}
+        {sidebarVersion}
+        {sidebarVersionChecked}
+        {sidebarUpdateAvailable}
+        onShowAbout={() => (showAbout = true)}
+      />
     {/if}
 
     {#if needsLayoutContentPanel}
-      <div class="sidebar-content-panel">
-        <div
-          class="sidebar-inner flex flex-col h-full relative"
-          class:sidebar-inner-collapsed={!sidebarOpen}
-        >
-          <div class="relative shrink-0 h-[var(--miwarp-titlebar-band)]" aria-hidden="true">
-            <WindowDragArea class="absolute inset-0" />
-          </div>
-          {#if isChatPage}
-            <div class="no-drag relative z-10 shrink-0 px-3 pb-2.5 pt-1">
-              <input
-                type="text"
-                bind:value={rss.runSearchQuery}
-                oninput={() => rss.onDeepQueryInput()}
-                placeholder={t("sidebar_searchChats")}
-                class="w-full min-w-0 rounded-full border border-sidebar-border bg-sidebar px-3.5 py-1.5 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
-              />
-            </div>
-          {/if}
-
-          {#if isPluginsPage}
-            <div class="flex-1 overflow-y-auto py-2">
-              {#each pluginSections as section}
-                {@const isActive = pluginActiveSection === section.id}
-                <button
-                  type="button"
-                  class="flex w-full items-center gap-2 py-2 px-3 text-xs font-medium transition-colors
-                  {isActive
-                    ? 'bg-sidebar-accent text-sidebar-foreground'
-                    : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
-                  onclick={() => {
-                    pluginActiveSection = section.id;
-                    goto(`/plugins?section=${section.id}`, { replaceState: true, noScroll: true });
-                  }}
-                >
-                  {#if section.icon === "overview"}
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><rect width="7" height="7" x="3" y="3" rx="1" /><rect
-                        width="7"
-                        height="7"
-                        x="14"
-                        y="3"
-                        rx="1"
-                      /><rect width="7" height="7" x="14" y="14" rx="1" /><rect
-                        width="7"
-                        height="7"
-                        x="3"
-                        y="14"
-                        rx="1"
-                      /></svg
-                    >
-                  {:else if section.icon === "sparkles"}
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><path
-                        d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"
-                      /></svg
-                    >
-                  {:else if section.icon === "sources"}
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path
-                        d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
-                      /><path d="M8 7h8" /><path d="M8 11h8" /></svg
-                    >
-                  {:else if section.icon === "server"}
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><rect width="20" height="8" x="2" y="2" rx="2" ry="2" /><rect
-                        width="20"
-                        height="8"
-                        x="2"
-                        y="14"
-                        rx="2"
-                        ry="2"
-                      /><line x1="6" x2="6.01" y1="6" y2="6" /><line
-                        x1="6"
-                        x2="6.01"
-                        y1="18"
-                        y2="18"
-                      /></svg
-                    >
-                  {:else if section.icon === "webhook"}
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><path
-                        d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"
-                      /><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06" /><path
-                        d="m12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8H12"
-                      /></svg
-                    >
-                  {:else if section.icon === "package"}
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><path d="m7.5 4.27 9 5.15" /><path
-                        d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
-                      /><path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" /></svg
-                    >
-                  {:else if section.icon === "agents"}
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path
-                        d="M2 14h2"
-                      /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" /></svg
-                    >
-                  {/if}
-                  <span class="min-w-0 truncate">{section.label()}</span>
-                </button>
-              {/each}
-            </div>
-          {:else if isExplorerPage}
-            <div class="flex-1 overflow-y-auto px-1 py-1">
-              {#if !pss.projectCwd}
-                {@const lastRemote = getLastTarget()}
-                <EmptyState
-                  iconName="folder-open"
-                  title={lastRemote
-                    ? t("layout_remoteFileTreeUnavailable")
-                    : t("sidebar_selectProjectBrowse")}
-                  action={explorerEmptyAction}
-                  class="py-8"
-                />
-              {:else if ets.treeLoading}
-                <div class="flex items-center justify-center py-12">
-                  <Spinner size="sm" />
-                </div>
-              {:else if ets.treeError}
-                <div class="flex flex-col gap-2 px-3 py-6 text-center">
-                  <div class="flex justify-center">
-                    <Icon name="triangle-alert" size="md" class="text-destructive/70" />
-                  </div>
-                  <p class="text-xs font-medium text-foreground">
-                    {t("explorer_treeLoadFailed")}
-                  </p>
-                  <p class="text-[11px] text-muted-foreground break-all">
-                    {ets.treeError}
-                  </p>
-                  <button
-                    type="button"
-                    class="mx-auto mt-1 rounded-md px-2.5 py-1 text-[11px] font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors"
-                    onclick={() => ets.loadRootTree(pss.projectCwd)}
-                  >
-                    {t("common_retry")}
-                  </button>
-                </div>
-              {:else if ets.fileTree.length === 0}
-                <EmptyState
-                  iconName="folder-open"
-                  title={t("sidebar_emptyDirectory")}
-                  class="py-8"
-                />
-              {:else}
-                {@render treeNodes(ets.fileTree)}
-              {/if}
-            </div>
-          {:else if isTeamsPage}
-            <div class="px-2 pt-2 pb-1 shrink-0 flex items-center justify-between gap-2">
-              <input
-                type="text"
-                bind:value={tss.teamStoreSearchQuery}
-                placeholder={t("sidebar_searchTeams")}
-                class="w-full min-w-0 rounded-md border border-sidebar-border bg-sidebar px-2.5 py-1.5 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
-              />
-              <a
-                href="/teams"
-                class="shrink-0 text-[10px] font-medium text-primary hover:text-primary/80 transition-colors"
-                title={t("teamsPage_quickLaunch")}
-              >
-                +
-              </a>
-            </div>
-            <div class="flex-1 overflow-y-auto px-2 py-1">
-              {#if teamStore.loading}
-                <div class="flex items-center justify-center py-6">
-                  <Spinner size="sm" />
-                </div>
-              {:else if filteredTeams.length === 0}
-                <div class="flex flex-col items-center gap-1.5 px-3 py-6 text-center">
-                  <p class="text-xs text-muted-foreground">{t("sidebar_noActiveTeams")}</p>
-                  <a
-                    href="/teams"
-                    class="text-[10px] font-medium text-primary hover:text-primary/80 transition-colors"
-                  >
-                    {t("teamsPage_quickLaunch")} →
-                  </a>
-                </div>
-              {:else}
-                {#each filteredTeams as team}
-                  <button
-                    type="button"
-                    class="flex w-full flex-col gap-0.5 rounded-md px-2.5 py-2 text-left transition-colors mb-0.5
-                      {teamStore.selectedTeam === team.name
-                      ? 'bg-sidebar-accent text-sidebar-foreground'
-                      : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
-                    onclick={() => teamStore.selectTeam(team.name)}
-                  >
-                    <div class="flex items-center gap-1.5">
-                      <span class="h-2 w-2 rounded-full bg-miwarp-status-info shrink-0"></span>
-                      <span class="text-[13px] font-medium min-w-0 truncate">{team.name}</span>
-                    </div>
-                    {#if team.description}
-                      <p class="text-xs text-muted-foreground truncate pl-3.5">
-                        {team.description}
-                      </p>
-                    {/if}
-                    <div class="flex items-center gap-2 pl-3.5 text-xs text-muted-foreground">
-                      <span>{t("sidebar_members", { count: String(team.member_count) })}</span>
-                      <span>{t("sidebar_tasks", { count: String(team.task_count) })}</span>
-                    </div>
-                  </button>
-                {/each}
-              {/if}
-            </div>
-          {:else if isSettingsPage}
-            <SettingsSidebar />
-          {:else if isScheduledTasksPage}
-            <ScheduledTasksSidebar />
-          {:else if isWorkspacePage}
-            <WorkspaceSidebar settings={null} />
-          {:else if isWorkbenchPage}
-            <WorkbenchSidebar />
-          {:else if isChatPage}
-            {#if rss.runSearchQuery.trim()}
-              <div class="sidebar-scroll flex-1 overflow-y-auto">
-                {#if rss.searching && visibleSearchResults.length === 0}
-                  <div class="flex items-center justify-center py-10">
-                    <Spinner size="sm" />
-                  </div>
-                {:else if !rss.searching && visibleSearchResults.length === 0}
-                  <div class="flex items-center justify-center px-3 py-10 text-center">
-                    <p class="text-xs text-muted-foreground">{t("runs_noMatching")}</p>
-                  </div>
-                {:else}
-                  {#each visibleSearchResults as result}
-                    <button
-                      type="button"
-                      class="w-full text-left flex flex-col gap-0.5 px-3 py-2 hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground"
-                      onclick={() => {
-                        rss.runSearchQuery = "";
-                        rss.searchResults = [];
-                        navigateToChatRun(result.runId, {
-                          scrollTo: result.matchedEventId || result.matchedTs,
-                        });
-                      }}
-                    >
-                      <p class="text-[12px] min-w-0 line-clamp-2 break-all">
-                        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                        {@html highlightMatch(
-                          snippetAround(result.matchedText, rss.runSearchQuery, 80),
-                          rss.runSearchQuery,
-                        )}
-                      </p>
-                      <div class="flex items-center gap-1 text-xs text-muted-foreground min-w-0">
-                        <span class="flex-1 min-w-0 truncate"
-                          >{result.runName || truncate(result.runPrompt, 30)}</span
-                        >
-                        <span class="ml-auto shrink-0">{relativeTime(result.matchedTs)}</span>
-                      </div>
-                    </button>
-                  {/each}
-                {/if}
-              </div>
-            {:else}
-              <div class="sidebar-scroll flex-1 overflow-y-auto px-2 py-1">
-                {#each enrichedProjectFolders as folder (folder.folderKey)}
-                  <ProjectFolderItem
-                    {folder}
-                    label={folder.isUncategorized
-                      ? t("sidebar_uncategorized")
-                      : cwdDisplayLabel(folder.cwd)}
-                    expanded={pss.expandedProjects.has(folder.folderKey)}
-                    {selectedRunId}
-                    onToggle={() => toggleProject(folder.folderKey)}
-                    onSelectConversation={navigateToChatRun}
-                    onDelete={requestDeleteConversation}
-                    onMoveToFolder={(runIds, folderId) => sfs.requestMove(runIds, folderId)}
-                    {selectedGroupKeys}
-                    {batchModeActive}
-                    onBatchClick={toggleSelectConversation}
-                    onLongPressSelect={enterBatchMode}
-                    onSessionDragStart={handleSessionDragStart}
-                    onSessionDragMove={handleSessionDragMove}
-                    onSessionDragEnd={handleSessionDragEnd}
-                    onRemove={folder.isUncategorized
-                      ? undefined
-                      : () => requestRemoveProject(folder.cwd)}
-                    onNewChat={folder.isUncategorized
-                      ? undefined
-                      : () => newChatInFolder(folder.cwd)}
-                    onNewChatInSubFolder={folder.isUncategorized
-                      ? undefined
-                      : (sf) => newChatInSubFolder(folder.cwd, sf.folderId)}
-                    subFolders={folder.subFolders ?? []}
-                    scheduledTaskHubs={folder.scheduledTaskHubs ?? []}
-                    {selectedScheduledTaskId}
-                    onSelectScheduledHub={(taskId) => goto(`/scheduled-tasks/${taskId}`)}
-                    expandedSubFolders={sfs.expandedSubFolders}
-                    onToggleSubFolder={(k) => sfs.toggleSubFolder(k)}
-                    onCreateSubFolder={folder.isUncategorized
-                      ? undefined
-                      : () => sfs.openCreateDialog(folder.cwd)}
-                    onRenameSubFolder={(sf) => {
-                      const f = sfs.sessionFolders.find((x) => x.id === sf.folderId);
-                      if (f) sfs.openRenameDialog(f);
-                    }}
-                    onDeleteSubFolder={(sf) => {
-                      const f = sfs.sessionFolders.find((x) => x.id === sf.folderId);
-                      if (f) sfs.openDeleteDialog(f);
-                    }}
-                    dragOverSubFolderKey={dragOverFolderId ? `sf:${dragOverFolderId}` : null}
-                    dragOverUnfoldered={dragOverUnfolderedKey === folder.folderKey}
-                    {dragRunId}
-                    onOpenDirectory={folder.isUncategorized
-                      ? undefined
-                      : () => {
-                          openDirectoryInFinder(folder.cwd).catch(() => {});
-                        }}
-                    showMascot={mascotEnabled && !folder.isUncategorized}
-                    mascotStatus={getWorkspaceMascotStatus(folder)}
-                  />
-                {/each}
-
-                {#if enrichedProjectFolders.length === 0}
-                  <div class="flex flex-col items-center gap-2 px-3 py-6 text-center">
-                    <Icon name="check" size="md" class="text-muted-foreground/30" />
-                    <p class="text-xs text-muted-foreground">{t("sidebar_workingTreeClean")}</p>
-                  </div>
-                {/if}
-              </div>
-              {#if selectedGroupKeys.size > 0}
-                <div class="flex flex-col gap-0.5 border-t px-2 py-1.5 bg-sidebar-accent/30">
-                  <div class="flex items-center gap-1">
-                    <span class="text-[11px] text-muted-foreground px-1">
-                      {t("sidebar_batchSelected", { count: String(selectedGroupKeys.size) })}
-                    </span>
-                    <button
-                      type="button"
-                      class="ml-auto rounded px-1.5 py-0.5 text-[11px] text-destructive hover:bg-destructive/10 transition-colors"
-                      onclick={() => (batchDeleteConfirmOpen = true)}
-                      title={t("sidebar_batchDelete")}
-                    >
-                      {t("sidebar_batchDelete")}
-                    </button>
-                    <button
-                      type="button"
-                      class="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent transition-colors"
-                      onclick={clearBatchSelection}
-                      title={t("sidebar_batchClear")}
-                    >
-                      {t("sidebar_batchClear")}
-                    </button>
-                  </div>
-                  <p class="px-1 text-[10px] text-muted-foreground/60">
-                    {t("sidebar_batchModeHint")}
-                  </p>
-                </div>
-              {/if}
-            {/if}
-          {/if}
-        </div>
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div
-          class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[hsl(var(--miwarp-accent-primary)/0.3)] active:bg-[hsl(var(--miwarp-accent-primary)/0.5)] transition-colors z-10"
-          onpointerdown={startResize}
-        ></div>
-      </div>
+      <SidebarContentPanel
+        {sidebarOpen}
+        {isChatPage}
+        {isPluginsPage}
+        {isExplorerPage}
+        {isTeamsPage}
+        {isScheduledTasksPage}
+        {isWorkbenchPage}
+        {isSettingsPage}
+        {pluginActiveSection}
+        {pluginSections}
+        {enrichedProjectFolders}
+        {visibleSearchResults}
+        {filteredTeams}
+        {selectedRunId}
+        {selectedScheduledTaskId}
+        {mascotEnabled}
+        {selectedGroupKeys}
+        {batchModeActive}
+        {dragRunId}
+        {dragOverFolderId}
+        {dragOverUnfolderedKey}
+        {highlightMatch}
+        onStartResize={startResize}
+        onPluginSectionChange={(sectionId) => {
+          pluginActiveSection = sectionId;
+          goto(`/plugins?section=${sectionId}`, { replaceState: true, noScroll: true });
+        }}
+        onPickFolder={pickFolder}
+        onNavigateToChatRun={navigateToChatRun}
+        onToggleProject={toggleProject}
+        onRequestDeleteConversation={requestDeleteConversation}
+        onToggleSelectConversation={toggleSelectConversation}
+        onEnterBatchMode={enterBatchMode}
+        onSessionDragStart={handleSessionDragStart}
+        onSessionDragMove={handleSessionDragMove}
+        onSessionDragEnd={handleSessionDragEnd}
+        onRequestRemoveProject={requestRemoveProject}
+        onNewChatInFolder={newChatInFolder}
+        onNewChatInSubFolder={newChatInSubFolder}
+        onBatchDeleteConfirm={() => (batchDeleteConfirmOpen = true)}
+        onClearBatchSelection={clearBatchSelection}
+      />
     {/if}
   </aside>
 
-  <div class="sidebar-main-corner-bridge" aria-hidden="true"></div>
-
-  {#if sidebarResizing}
-    <div
-      bind:this={sidebarGhostEl}
-      class="fixed top-0 bottom-0 z-[9999] pointer-events-none bg-primary"
-      style="left: {sidebarGhostX -
-        1}px; width: 3px; box-shadow: 0 0 8px hsl(var(--primary) / 0.6);"
-    ></div>
-  {/if}
-
-  {#if dragRunId}
-    <div
-      class="fixed z-[9999] pointer-events-none max-w-[220px] truncate rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground shadow-lg"
-      style="left: {sessionDragX + 12}px; top: {sessionDragY + 12}px;"
-    >
-      {sessionDragLabel}
-    </div>
-  {/if}
-
-  <div class="app-main-shell flex flex-col overflow-hidden relative">
-    <div
-      class="absolute top-0 left-0 right-0 h-11 pointer-events-none"
-      data-tauri-drag-region
-      aria-hidden="true"
-      style="-webkit-app-region: drag; z-index: 0;"
-    ></div>
-    <VersionMismatchBanner />
-    <div class="pointer-events-none absolute right-3 top-2 z-20">
-      <UpdateBanner onOpenCenter={() => (updateCenterOpen = true)} />
-    </div>
-    <main class="miwarp-main-surface flex-1 min-h-0 overflow-hidden flex flex-col">
-      <div class="flex-1 min-h-0 flex flex-col">
-        {@render children()}
-      </div>
-    </main>
-  </div>
+  <ShellMainSurface
+    {sidebarResizing}
+    {sidebarGhostX}
+    bind:sidebarGhostEl
+    {dragRunId}
+    {sessionDragLabel}
+    {sessionDragX}
+    {sessionDragY}
+    {titlebarBandHeight}
+    {windowChromeLeftInset}
+    onOpenUpdateCenter={() => (updateCenterOpen = true)}
+  >
+    {@render children()}
+  </ShellMainSurface>
 </div>
-
-<TopWindowDrag height={titlebarBandHeight} leftInset={windowChromeLeftInset} />
 
 <OverlayStack
   bind:commandPaletteOpen

@@ -12,15 +12,18 @@
   import ContextMenu, { type MenuItem } from "./ContextMenu.svelte";
   import Icon from "./Icon.svelte";
   import { t } from "$lib/i18n/index.svelte";
-  import { slide } from "svelte/transition";
+  import { treeCollapse, treeExpand } from "$lib/utils/tree-expand-transition";
   import {
     SESSION_DROP_FOLDER_ATTR,
     SESSION_DROP_UNFOLDERED_ATTR,
   } from "$lib/utils/session-drag-state";
   import { dbgWarn } from "$lib/utils/debug";
   import ClaudeCanvas from "./ClaudeCanvas.svelte";
+  import {
+    DEFAULT_SESSION_PAGE_SIZE,
+    SESSION_PAGE_INCREMENT,
+  } from "$lib/utils/sidebar-session-pagination";
 
-  const PAGE_SIZE = 20;
   const VIRTUAL_THRESHOLD = 40;
   /** Row height for virtualized conversation list (card + bottom margin). */
   const ITEM_HEIGHT = 64;
@@ -151,7 +154,8 @@
     onMascotClick,
   }: ChatProps | CustomProps = $props();
 
-  let visibleCount = $state(PAGE_SIZE);
+  let visibleCount = $state(DEFAULT_SESSION_PAGE_SIZE);
+  let subFolderVisibleCounts = $state<Record<string, number>>({});
 
   // Header action menus
   let addMenuOpen = $state(false);
@@ -398,9 +402,60 @@
     }
   }
 
+  function getSubFolderVisibleCount(folderKey: string): number {
+    return subFolderVisibleCounts[folderKey] ?? DEFAULT_SESSION_PAGE_SIZE;
+  }
+
+  function setSubFolderVisibleCount(folderKey: string, count: number) {
+    subFolderVisibleCounts = { ...subFolderVisibleCounts, [folderKey]: count };
+  }
+
+  function showMoreSubFolder(sf: SessionFolderGroup) {
+    const current = getSubFolderVisibleCount(sf.folderKey);
+    setSubFolderVisibleCount(
+      sf.folderKey,
+      Math.min(current + SESSION_PAGE_INCREMENT, sf.conversationCount),
+    );
+  }
+
+  function visibleSubFolderConversations(sf: SessionFolderGroup) {
+    return sf.conversations.slice(0, getSubFolderVisibleCount(sf.folderKey));
+  }
+
+  function hiddenSubFolderCount(sf: SessionFolderGroup): number {
+    return sf.conversationCount - getSubFolderVisibleCount(sf.folderKey);
+  }
+
+  function ensureSubFolderVisibleForSelection(sf: SessionFolderGroup) {
+    if (children || !selectedRunId) return;
+    const idx = sf.conversations.findIndex((conv) => conv.runs.some((r) => r.id === selectedRunId));
+    if (idx >= 0 && idx >= getSubFolderVisibleCount(sf.folderKey)) {
+      setSubFolderVisibleCount(sf.folderKey, idx + 1);
+    }
+  }
+
+  function toggleSubFolder(sf: SessionFolderGroup) {
+    const willExpand = !expandedSubFolders.has(sf.folderKey);
+    if (willExpand) ensureSubFolderVisibleForSelection(sf);
+    onToggleSubFolder?.(sf.folderKey);
+  }
+
   // Reset visible count when folder collapses
   $effect(() => {
-    if (!expanded) visibleCount = PAGE_SIZE;
+    if (!expanded) {
+      visibleCount = DEFAULT_SESSION_PAGE_SIZE;
+      subFolderVisibleCounts = {};
+    }
+  });
+
+  $effect(() => {
+    const openKeys = expandedSubFolders;
+    const next = Object.fromEntries(
+      Object.entries(subFolderVisibleCounts).filter(([key]) => openKeys.has(key)),
+    );
+    if (Object.keys(next).length !== Object.keys(subFolderVisibleCounts).length) {
+      subFolderVisibleCounts = next;
+    }
   });
 
   // Auto-expand visible count if selected run is beyond current page
@@ -412,19 +467,39 @@
     if (idx >= 0 && idx >= visibleCount) {
       visibleCount = idx + 1;
     }
+    for (const sf of subFolders) {
+      if (!expandedSubFolders.has(sf.folderKey)) continue;
+      ensureSubFolderVisibleForSelection(sf);
+    }
   });
 
   // Skip conversation-related derivations when using children snippet
   const visibleConversations = $derived(
     children ? [] : folder.conversations.slice(0, visibleCount),
   );
-  const hiddenCount = $derived(children ? 0 : folder.conversationCount - visibleCount);
+  const hiddenCount = $derived(children ? 0 : folder.conversations.length - visibleCount);
   const hasMore = $derived(hiddenCount > 0);
 
   const workspaceFolderIcon = $derived(expanded ? "folder-open" : "folder");
 
   function showMore() {
-    visibleCount = Math.min(visibleCount + PAGE_SIZE, folder.conversationCount);
+    visibleCount = Math.min(visibleCount + SESSION_PAGE_INCREMENT, folder.conversations.length);
+  }
+
+  /** Pre-expand visibleCount so tree height is stable before the intro transition measures. */
+  function ensureVisibleCountForSelection() {
+    if (children || !selectedRunId) return;
+    const idx = folder.conversations.findIndex((conv) =>
+      conv.runs.some((r) => r.id === selectedRunId),
+    );
+    if (idx >= 0 && idx >= visibleCount) {
+      visibleCount = idx + 1;
+    }
+  }
+
+  function handleToggle() {
+    if (!expanded) ensureVisibleCountForSelection();
+    onToggle();
   }
 
   function isConvSelected(conv: { runs: { id: string }[] }): boolean {
@@ -453,12 +528,12 @@
       {isDragOver ? 'bg-primary/15 ring-1 ring-primary/40' : ''}"
     role="button"
     tabindex="0"
-    onclick={onToggle}
+    onclick={handleToggle}
     onkeydown={(e) => {
       if (e.target !== e.currentTarget) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        onToggle();
+        handleToggle();
       }
     }}
     oncontextmenu={openWsContextMenu}
@@ -516,7 +591,7 @@
     {/if}
 
     <svg
-      class="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded
+      class="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 transition-transform duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] {expanded
         ? 'rotate-90'
         : ''}"
       viewBox="0 0 24 24"
@@ -555,7 +630,7 @@
 
   <!-- Expanded children -->
   {#if expanded}
-    <div class="ml-1.5 mt-0.5 border-l border-border/25 pl-2" transition:slide={{ duration: 200 }}>
+    <div class="ml-1.5 mt-0.5 border-l border-border/25 pl-2" in:treeExpand out:treeCollapse>
       {#if children}
         {@render children()}
       {:else}
@@ -575,11 +650,11 @@
                   class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] font-medium text-sidebar-foreground/90 hover:bg-sidebar-accent/40 transition-colors cursor-pointer"
                   role="button"
                   tabindex="0"
-                  onclick={() => onToggleSubFolder?.(sf.folderKey)}
+                  onclick={() => toggleSubFolder(sf)}
                   onkeydown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      onToggleSubFolder?.(sf.folderKey);
+                      toggleSubFolder(sf);
                     }
                   }}
                   oncontextmenu={(e) => openSfContextMenu(e, sf)}
@@ -598,7 +673,7 @@
                     </span>
                   {/if}
                   <svg
-                    class="h-3 w-3 shrink-0 text-muted-foreground/50 transition-transform duration-150 {sfExpanded
+                    class="h-3 w-3 shrink-0 text-muted-foreground/50 transition-transform duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] {sfExpanded
                       ? 'rotate-90'
                       : ''}"
                     viewBox="0 0 24 24"
@@ -612,8 +687,12 @@
                 </div>
                 <!-- Sub-folder sessions (inside same drop zone) -->
                 {#if sfExpanded}
-                  <div class="ml-1 border-l border-border/20 pl-1.5 pb-0.5 min-h-[1.25rem]">
-                    {#each sf.conversations as conv (conv.groupKey)}
+                  <div
+                    class="ml-1 border-l border-border/20 pl-1.5 pb-0.5 min-h-[1.25rem]"
+                    in:treeExpand
+                    out:treeCollapse
+                  >
+                    {#each visibleSubFolderConversations(sf) as conv (conv.groupKey)}
                       <ConversationItem
                         conversation={conv}
                         density="sidebar"
@@ -631,6 +710,17 @@
                         {onSessionDragEnd}
                       />
                     {/each}
+                    {#if hiddenSubFolderCount(sf) > 0}
+                      <button
+                        type="button"
+                        class="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
+                        onclick={() => showMoreSubFolder(sf)}
+                      >
+                        {t("sidebar_showMore", {
+                          count: String(Math.min(SESSION_PAGE_INCREMENT, hiddenSubFolderCount(sf))),
+                        })}
+                      </button>
+                    {/if}
                     {#if sf.conversations.length === 0}
                       <p
                         class="px-3 py-1.5 text-[11px] text-muted-foreground/50 italic select-none pointer-events-none"
@@ -733,7 +823,9 @@
                 class="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
                 onclick={showMore}
               >
-                {t("sidebar_showMore", { count: String(Math.min(PAGE_SIZE, hiddenCount)) })}
+                {t("sidebar_showMore", {
+                  count: String(Math.min(SESSION_PAGE_INCREMENT, hiddenCount)),
+                })}
               </button>
             {/if}
           </div>
@@ -784,7 +876,9 @@
             class="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
             onclick={showMore}
           >
-            {t("sidebar_showMore", { count: String(Math.min(PAGE_SIZE, hiddenCount)) })}
+            {t("sidebar_showMore", {
+              count: String(Math.min(SESSION_PAGE_INCREMENT, hiddenCount)),
+            })}
           </button>
         {/if}
       {/if}

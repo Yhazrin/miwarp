@@ -70,6 +70,7 @@ export interface WorkspaceAggregateOptions {
   pinnedCwds?: string[];
   removedCwds?: string[];
   workspaceAliases?: Record<string, string>;
+  folderSortOrder?: string;
   hasAttention?: (runId: string) => boolean;
   resolveCanContinue?: (run: TaskRun) => boolean;
   maxRecentSessions?: number;

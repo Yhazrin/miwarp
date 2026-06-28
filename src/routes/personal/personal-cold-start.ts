@@ -55,8 +55,8 @@ export interface PersonalColdStartCallbacks {
 }
 
 export interface PersonalColdStartHandle {
-  /** Fires `settings` (blocking first paint), then schedules `runtimes` via
-   *  `scheduleIdle`, then kicks off `activity` + `skillCount` in parallel. */
+  /** Fires `settings` (blocking first paint), then schedules runtimes + activity +
+   *  skillCount via `scheduleIdle` so no IPC competes with route entry. */
   start: () => void;
   /** Re-runs only the settings load with `refreshSettings`. */
   retry: () => Promise<void>;
@@ -125,14 +125,13 @@ export function createPersonalColdStart(
     start: () => {
       // 1. Settings — blocks first paint via `settingsLoad` state.
       void runSettings();
-      // 2. Runtimes — defer to idle so a slow CLI probe never blocks mount.
+      // 2–4. Runtimes, activity, skill count — defer to idle so IPC + re-renders
+      // never compete with route entry / first paint (slow CLI probe included).
       deps.scheduleIdle(() => {
         void runRuntimes();
+        void runActivity();
+        void runSkillCount();
       });
-      // 3. Activity + skill count — kick off in parallel, each card paints
-      //    its own skeleton until the data lands.
-      void runActivity();
-      void runSkillCount();
     },
     retry: async () => {
       cb.onSettingsLoad("pending", null);
