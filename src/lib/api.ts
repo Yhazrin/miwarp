@@ -1625,10 +1625,25 @@ export async function getChangelog(): Promise<ChangelogEntry[]> {
   return invoke<ChangelogEntry[]>(CMD.get_changelog);
 }
 
-/** Load app README markdown from repo root (dev) or bundled resources (release). */
-export async function readAppReadme(locale?: string): Promise<string> {
+export type ReadmeOrigin = "remote" | "remote-cache" | "local-fallback";
+
+export interface ReadmeSource {
+  content: string;
+  origin: ReadmeOrigin;
+}
+
+/** Load app README markdown. Tries upstream GitHub (cached 5 min), then falls back
+ * to bundled/repo-local copies. The returned `origin` tells the caller where the
+ * bytes actually came from. */
+export async function readAppReadme(locale?: string): Promise<ReadmeSource> {
   dbg("api", "readAppReadme", { locale });
-  return invoke<string>(CMD.read_app_readme, { locale: locale ?? null });
+  return invoke<ReadmeSource>(CMD.read_app_readme, { locale: locale ?? null });
+}
+
+/** Force a remote README refresh (bypasses the in-memory cache). */
+export async function refreshAppReadme(locale?: string): Promise<ReadmeSource> {
+  dbg("api", "refreshAppReadme", { locale });
+  return invoke<ReadmeSource>(CMD.refresh_app_readme, { locale: locale ?? null });
 }
 
 // ── Onboarding ──

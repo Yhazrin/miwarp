@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { readAppReadme } from "$lib/api";
+  import { readAppReadme, refreshAppReadme } from "$lib/api";
   import { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
   import { renderMarkdown } from "$lib/utils/markdown";
   import { currentLocale, t } from "$lib/i18n/index.svelte";
@@ -14,7 +14,9 @@
 
   let appVersion = $state("");
   let readmeSource = $state("");
+  let readmeOrigin = $state<"remote" | "remote-cache" | "local-fallback" | null>(null);
   let readmeLoading = $state(false);
+  let readmeRefreshing = $state(false);
   let readmeError = $state("");
 
   const updateButtonLabel = $derived.by(() => {
@@ -45,22 +47,51 @@
 
   let readmeHtml = $derived(readmeSource ? processReadme(renderMarkdown(readmeSource)) : "");
 
-  async function loadReadme(locale = currentLocale()) {
-    readmeLoading = true;
+  const readmeOriginLabel = $derived.by(() => {
+    switch (readmeOrigin) {
+      case "remote":
+        return t("about_readmeOriginRemote");
+      case "remote-cache":
+        return t("about_readmeOriginRemoteCache");
+      case "local-fallback":
+        return t("about_readmeOriginLocalFallback");
+      default:
+        return "";
+    }
+  });
+
+  async function loadReadme(locale = currentLocale(), refresh = false) {
+    if (refresh) {
+      readmeRefreshing = true;
+    } else {
+      readmeLoading = true;
+    }
     readmeError = "";
     try {
-      readmeSource = await readAppReadme(locale);
+      const result = refresh ? await refreshAppReadme(locale) : await readAppReadme(locale);
+      readmeSource = result.content;
+      readmeOrigin = result.origin;
     } catch (err) {
       readmeSource = "";
+      readmeOrigin = null;
       readmeError = err instanceof Error ? err.message : String(err);
     } finally {
       readmeLoading = false;
+      readmeRefreshing = false;
     }
   }
 
   $effect(() => {
     if (!open) return;
     void loadReadme(currentLocale());
+  });
+
+  // Re-fetch when locale changes while the modal stays open
+  $effect(() => {
+    const locale = currentLocale();
+    if (open && readmeSource && !readmeLoading && !readmeRefreshing) {
+      void loadReadme(locale);
+    }
   });
 
   async function updateToLatest() {
@@ -81,6 +112,35 @@
         disabled={appUpdateCoordinator.isBusy}
       >
         {updateButtonLabel}
+      </button>
+      {#if readmeOriginLabel && !readmeLoading}
+        <span
+          class="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground"
+          title={readmeOriginLabel}
+        >
+          <span
+            class="inline-block h-1.5 w-1.5 rounded-full {readmeOrigin === 'remote'
+              ? 'bg-emerald-500'
+              : readmeOrigin === 'remote-cache'
+                ? 'bg-amber-500'
+                : 'bg-slate-400'}"
+          ></span>
+          {readmeOriginLabel}
+        </span>
+      {/if}
+      <button
+        type="button"
+        class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+        onclick={() => void loadReadme(currentLocale(), true)}
+        disabled={readmeRefreshing}
+        aria-label={t("about_refreshReadme")}
+        title={t("about_refreshReadme")}
+      >
+        {#if readmeRefreshing}
+          <Spinner size="sm" />
+        {:else}
+          {t("about_refreshReadme")}
+        {/if}
       </button>
     </div>
   </div>

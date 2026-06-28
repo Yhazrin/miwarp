@@ -126,6 +126,7 @@ export const CMD = {
   open_directory_in_finder: "open_directory_in_finder",
   read_agent_file: "read_agent_file",
   read_app_readme: "read_app_readme",
+  refresh_app_readme: "refresh_app_readme",
   read_clipboard_file: "read_clipboard_file",
   read_file_base64: "read_file_base64",
   read_task_output: "read_task_output",

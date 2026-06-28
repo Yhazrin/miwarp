@@ -277,6 +277,7 @@ pub fn run() {
             commands::stats::get_heatmap_daily,
             commands::stats::get_changelog,
             commands::app_readme::read_app_readme,
+            commands::app_readme::refresh_app_readme,
             commands::fleet::list_fleet,
             commands::fleet::get_fleet_member,
             commands::fleet::get_fleet_metrics,
