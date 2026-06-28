@@ -106,35 +106,51 @@ async fn fetch_remote_readme(locale: Option<&str>) -> Result<String, String> {
     let url = remote_readme_url(locale);
     log::debug!("[app_readme] fetching remote README {}", url);
 
-    // Short connect / total budget. AboutModal should never block waiting
-    // on a network that may be offline; 4s is generous for a small markdown file.
+    // Cloudflare-fronted hosts like raw.githubusercontent.com can occasionally
+    // hit TLS handshake timeouts in the ~5s range. Allow generous budget but
+    // retry once on transient network errors before giving up.
     let client = reqwest::Client::builder()
-        .connect_timeout(Duration::from_secs(3))
-        .timeout(Duration::from_secs(4))
+        .connect_timeout(Duration::from_secs(8))
+        .timeout(Duration::from_secs(15))
         .user_agent(concat!("MiWarp/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
 
-    let resp = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("README fetch network error: {}", e))?;
-
-    if !resp.status().is_success() {
-        return Err(format!("README fetch HTTP {}", resp.status()));
+    let mut last_err: Option<String> = None;
+    for attempt in 1..=2u32 {
+        match client.get(&url).send().await {
+            Ok(resp) => {
+                if !resp.status().is_success() {
+                    return Err(format!("README fetch HTTP {}", resp.status()));
+                }
+                match resp.text().await {
+                    Ok(text) => {
+                        if text.trim().is_empty() {
+                            return Err("README fetch returned empty body".to_string());
+                        }
+                        return Ok(text);
+                    }
+                    Err(e) => {
+                        return Err(format!("README fetch decode error: {}", e));
+                    }
+                }
+            }
+            Err(e) => {
+                log::warn!(
+                    "[app_readme] remote fetch attempt {}/2 failed: {}",
+                    attempt,
+                    e
+                );
+                last_err = Some(format!("README fetch network error: {}", e));
+                if attempt < 2 {
+                    // Brief backoff before retry so the second attempt doesn't
+                    // immediately re-hit the same stuck TCP/TLS state.
+                    tokio::time::sleep(Duration::from_millis(300)).await;
+                }
+            }
+        }
     }
-
-    let text = resp
-        .text()
-        .await
-        .map_err(|e| format!("README fetch decode error: {}", e))?;
-
-    if text.trim().is_empty() {
-        return Err("README fetch returned empty body".to_string());
-    }
-
-    Ok(text)
+    Err(last_err.unwrap_or_else(|| "README fetch failed".to_string()))
 }
 
 /// Try remote, fall back to local. Always returns *some* content if either

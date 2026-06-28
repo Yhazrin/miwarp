@@ -86,14 +86,6 @@
     void loadReadme(currentLocale());
   });
 
-  // Re-fetch when locale changes while the modal stays open
-  $effect(() => {
-    const locale = currentLocale();
-    if (open && readmeSource && !readmeLoading && !readmeRefreshing) {
-      void loadReadme(locale);
-    }
-  });
-
   async function updateToLatest() {
     if (appUpdateCoordinator.isBusy) return;
     await appUpdateCoordinator.checkForUpdate();
