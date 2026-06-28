@@ -88,6 +88,7 @@ export const CMD = {
   get_run_events: "get_run_events",
   get_run_files: "get_run_files",
   get_skill_content: "get_skill_content",
+  get_skill_summary: "get_skill_summary",
   get_team_config: "get_team_config",
   get_team_inbox: "get_team_inbox",
   get_team_run: "get_team_run",

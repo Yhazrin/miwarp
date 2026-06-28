@@ -4,7 +4,7 @@
  * (vitest default), so we install a tiny in-memory localStorage shim before
  * importing the module under test.
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 class MemoryStorage {
   private map = new Map<string, string>();
@@ -110,5 +110,22 @@ describe("createSettingsLoader single-flight", () => {
     expect(loader.promise()).toBeNull();
     const p = loader.start();
     expect(loader.promise()).toBe(p);
+  });
+});
+
+describe("createSettingsLoader refresh", () => {
+  it("returns a fresh promise so callers see a new fetch", () => {
+    const loader = createSettingsLoader();
+    const first = loader.start();
+    const refreshed = loader.refresh();
+    expect(refreshed).not.toBe(first);
+  });
+
+  it("dedupes concurrent refresh() calls with each other", () => {
+    const loader = createSettingsLoader();
+    void loader.start();
+    const p1 = loader.refresh();
+    const p2 = loader.refresh();
+    expect(p1).toBe(p2);
   });
 });

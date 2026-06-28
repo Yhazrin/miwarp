@@ -32,6 +32,7 @@ describe("resolveLayoutCachedSettings", () => {
     const cache: SettingsCacheContext = {
       settings: sampleSettings,
       whenReady: vi.fn().mockResolvedValue(null),
+      refresh: vi.fn().mockResolvedValue(null),
     };
 
     await expect(resolveLayoutCachedSettings(cache)).resolves.toEqual(sampleSettings);
@@ -43,6 +44,7 @@ describe("resolveLayoutCachedSettings", () => {
     const cache: SettingsCacheContext = {
       settings: null,
       whenReady: vi.fn().mockResolvedValue(hydrated),
+      refresh: vi.fn().mockResolvedValue(hydrated),
     };
 
     await expect(resolveLayoutCachedSettings(cache)).resolves.toEqual(hydrated);

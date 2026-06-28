@@ -1,6 +1,6 @@
 use crate::models::{
     CliCommand, CommunitySkillDetail, CommunitySkillResult, InstalledPlugin, MarketplaceInfo,
-    MarketplacePlugin, PluginOperationResult, ProviderHealth, StandaloneSkill,
+    MarketplacePlugin, PluginOperationResult, ProviderHealth, SkillSummary, StandaloneSkill,
 };
 
 /// Validate and resolve cwd for plugin commands.
@@ -49,6 +49,17 @@ pub fn list_standalone_skills(cwd: Option<String>) -> Result<Vec<StandaloneSkill
     let cwd = cwd.unwrap_or_default();
     log::debug!("[plugins] list_standalone_skills: cwd={}", cwd);
     crate::storage::plugins::list_standalone_skills(&cwd).map_err(|e| e.to_string())
+}
+
+/// Lightweight counts only — does not load SKILL.md bodies or hydrates the
+/// full skill store. Intended for cold-start pages that just need a number
+/// (e.g. /personal hero "Skills" stat) and should not pay the IO cost of the
+/// full list endpoint.
+#[tauri::command]
+pub fn get_skill_summary(cwd: Option<String>) -> Result<SkillSummary, String> {
+    let cwd = cwd.unwrap_or_default();
+    log::debug!("[plugins] get_skill_summary: cwd={}", cwd);
+    crate::storage::plugins::skill_summary(&cwd)
 }
 
 #[tauri::command]

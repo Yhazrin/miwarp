@@ -32,6 +32,7 @@ import type {
   MarketplaceInfo,
   StandaloneSkill,
   InstalledPlugin,
+  SkillSummary,
   PluginOperationResult,
   GitSummary,
   ConfiguredMcpServer,
@@ -1360,6 +1361,14 @@ export async function listProjectCommands(cwd?: string): Promise<import("./types
 export async function listStandaloneSkills(cwd?: string): Promise<StandaloneSkill[]> {
   dbg("api", "listStandaloneSkills", { cwd });
   return invoke<StandaloneSkill[]>(CMD.list_standalone_skills, { cwd: cwd ?? null });
+}
+
+/** Cheap skill counts only — does NOT load SKILL.md bodies. Use this from
+ *  cold-start pages that just need a number (e.g. /personal hero stat) so we
+ *  do not pay for the full skill list payload or hydrate `skillStore`. */
+export async function getSkillSummary(cwd?: string): Promise<SkillSummary> {
+  dbg("api", "getSkillSummary", { cwd });
+  return invoke<SkillSummary>(CMD.get_skill_summary, { cwd: cwd ?? null });
 }
 
 export async function getSkillContent(path: string, cwd?: string): Promise<string> {

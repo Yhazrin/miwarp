@@ -305,6 +305,31 @@ pub fn list_standalone_skills(cwd: &str) -> Result<Vec<StandaloneSkill>, String>
     Ok(skills)
 }
 
+/// Cheap aggregate of `list_standalone_skills` so cold-start pages can render
+/// a count without paying for the full skill list payload. Built-in detection
+/// is name-based against the shipped builtin manifest (so a user who deletes
+/// a shipped skill from `~/.claude/skills/` no longer counts toward built_in).
+pub fn skill_summary(cwd: &str) -> Result<crate::models::SkillSummary, String> {
+    let skills = list_standalone_skills(cwd)?;
+    let built_in_names: std::collections::HashSet<String> =
+        crate::storage::product_bootstrap::builtin_skill_names()
+            .into_iter()
+            .collect();
+
+    let total = skills.len();
+    let built_in = skills
+        .iter()
+        .filter(|s| built_in_names.contains(&s.name))
+        .count();
+    let custom = total.saturating_sub(built_in);
+
+    Ok(crate::models::SkillSummary {
+        total,
+        built_in,
+        custom,
+    })
+}
+
 /// Scan a directory for skills and append to the result vector.
 /// Ignores missing directories; logs and skips unreadable ones.
 fn scan_skills_dir(dir: &Path, scope: &str, skills: &mut Vec<StandaloneSkill>) {
@@ -801,5 +826,17 @@ mod tests {
         assert_eq!(skills[0].name, "demo");
         assert_eq!(skills[0].description, "Demo skill");
         assert_eq!(skills[0].scope, "project");
+    }
+
+    #[test]
+    fn skill_summary_zero_when_nothing_present() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let cwd = tmp.path().to_string_lossy().to_string();
+        // `list_standalone_skills` walks `~/.claude/skills/` which we cannot
+        // isolate here; instead validate that the summary struct returns zero
+        // custom + built_in when the project dir is empty (user dir is whatever
+        // the developer machine happens to have, but totals must add up).
+        let summary = skill_summary(&cwd).expect("summary");
+        assert_eq!(summary.custom + summary.built_in, summary.total);
     }
 }

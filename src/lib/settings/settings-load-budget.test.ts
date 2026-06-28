@@ -258,6 +258,7 @@ describe("settings cold-start IPC budget", () => {
     const cache: SettingsCacheContext = {
       settings: sampleSettings,
       whenReady: vi.fn().mockResolvedValue(sampleSettings),
+      refresh: vi.fn().mockResolvedValue(sampleSettings),
     };
 
     const resolved = await resolveLayoutCachedSettings(cache);
@@ -272,6 +273,7 @@ describe("settings cold-start IPC budget", () => {
     const cache: SettingsCacheContext = {
       settings: null,
       whenReady,
+      refresh: vi.fn().mockResolvedValue(hydrated),
     };
 
     const resolved = await resolveLayoutCachedSettings(cache);

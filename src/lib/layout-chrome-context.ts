@@ -37,6 +37,10 @@ export type SettingsCacheContext = {
   readonly settings: UserSettings | null;
   /** Awaits the layout's in-flight settings load (dedupes concurrent callers). */
   whenReady: () => Promise<UserSettings | null>;
+  /** Forces a fresh IPC, clearing any cached promise. Used by retry paths
+   *  (e.g. /personal "settings failed → retry") that need to recover from a
+   *  transient backend failure. */
+  refresh: () => Promise<UserSettings | null>;
 };
 
 export async function resolveLayoutCachedSettings(

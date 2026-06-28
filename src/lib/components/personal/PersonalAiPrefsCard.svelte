@@ -16,11 +16,16 @@
   let {
     aiSettings,
     runtimes,
+    runtimesLoading = false,
     onCommit,
   }: {
     aiSettings: AiSettings;
     /** Available runtime ids from the control plane (e.g. ["claude", "codex"]). */
     runtimes: string[];
+    /** When true, render the runtime radio group as a skeleton and hide the
+     *  options. Used so cold-start pages can paint the rest of the card
+     *  before the runtime probe finishes. */
+    runtimesLoading?: boolean;
     onCommit: (patch: Partial<UserSettings>) => Promise<void>;
   } = $props();
 
@@ -79,20 +84,31 @@
         aria-label={lk("personal_ai_defaultRuntime")}
         class="inline-flex rounded-lg border border-border bg-muted/40 p-0.5 gap-0.5"
       >
-        {#each RUNTIME_OPTIONS as id (id)}
-          <button
-            type="button"
-            role="radio"
-            aria-checked={aiSettings.default_agent === id}
-            class="rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150
-              {aiSettings.default_agent === id
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'}"
-            onclick={() => pickRuntime(id)}
+        {#if runtimesLoading}
+          <div
+            class="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground"
+            aria-live="polite"
           >
-            {id}
-          </button>
-        {/each}
+            <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-muted-foreground/60"
+            ></span>
+            {lk("personal_runtime_loading")}
+          </div>
+        {:else}
+          {#each RUNTIME_OPTIONS as id (id)}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={aiSettings.default_agent === id}
+              class="rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150
+                {aiSettings.default_agent === id
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'}"
+              onclick={() => pickRuntime(id)}
+            >
+              {id}
+            </button>
+          {/each}
+        {/if}
       </div>
     </div>
 

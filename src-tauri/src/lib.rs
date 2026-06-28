@@ -345,6 +345,7 @@ pub fn run() {
             commands::plugins::list_marketplaces,
             commands::plugins::list_marketplace_plugins,
             commands::plugins::list_standalone_skills,
+            commands::plugins::get_skill_summary,
             commands::plugins::list_project_commands,
             commands::plugins::get_skill_content,
             commands::plugins::list_installed_plugins,
