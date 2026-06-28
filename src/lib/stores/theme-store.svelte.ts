@@ -313,6 +313,18 @@ class ThemeStore {
     );
   }
 
+  /**
+   * Push the current store state onto `<html>` (data-theme, light/dark class,
+   * color scheme). Idempotent — safe to call after init, on mount, or from
+   * a layout $effect whenever reactive theme state changes.
+   */
+  applyToDom() {
+    if (typeof document === "undefined") return;
+    this._syncSystemListener();
+    this._applyTheme();
+    this._applyColorScheme(this.colorScheme);
+  }
+
   /** Import theme config from JSON */
   importConfig(json: string) {
     try {
@@ -357,77 +369,81 @@ class ThemeStore {
 
   /** Initialize: load persisted settings, migrate old keys, and apply theme */
   async init() {
-    if (this.initialized) return;
+    if (!this.initialized) {
+      let shouldPersist = false;
+      let loaded = false;
 
-    let shouldPersist = false;
-
-    // Try new miwarp-theme key first
-    try {
-      const stored = localStorage.getItem("miwarp-theme");
-      if (stored) {
-        const config = JSON.parse(stored);
-        if (config.customThemes) {
-          this.themes = [...BUILTIN_THEMES, ...config.customThemes];
-        }
-        // Migrate: old theme ids had a "-light" suffix; strip it and store
-        // the variant intent in `mode` instead.
-        if (config.currentTheme) {
-          const migrated = this._migrateThemeId(config.currentTheme);
-          const normalized = this._normalizeThemeId(migrated.base);
-          if (normalized !== migrated.base) {
-            shouldPersist = true;
+      // Try new miwarp-theme key first
+      try {
+        const stored = localStorage.getItem("miwarp-theme");
+        if (stored) {
+          const config = JSON.parse(stored);
+          if (config.customThemes) {
+            this.themes = [...BUILTIN_THEMES, ...config.customThemes];
           }
-          this.currentTheme = normalized;
-          this.mode = migrated.mode;
+          // Migrate: old theme ids had a "-light" suffix; strip it and store
+          // the variant intent in `mode` instead.
+          if (config.currentTheme) {
+            const migrated = this._migrateThemeId(config.currentTheme);
+            const normalized = this._normalizeThemeId(migrated.base);
+            if (normalized !== migrated.base) {
+              shouldPersist = true;
+            }
+            this.currentTheme = normalized;
+            if (!config.mode) {
+              this.mode = migrated.mode;
+            }
+          }
+          if (config.mode) this.mode = config.mode;
+          if (config.colorScheme) this.colorScheme = config.colorScheme;
+          if (config.sessionThemes) {
+            this.sessionThemes = new Map(Object.entries(config.sessionThemes));
+          }
+          if (config.themeOverrides) {
+            this.themeOverrides = config.themeOverrides;
+          }
+          if (shouldPersist) {
+            this._persistSettings();
+          }
+          loaded = true;
         }
-        if (config.mode) this.mode = config.mode;
-        if (config.colorScheme) this.colorScheme = config.colorScheme;
-        if (config.sessionThemes) {
-          this.sessionThemes = new Map(Object.entries(config.sessionThemes));
-        }
-        if (config.themeOverrides) {
-          this.themeOverrides = config.themeOverrides;
-        }
-        this._syncSystemListener();
-        this._applyTheme();
-        this._applyColorScheme(this.colorScheme);
-        if (shouldPersist) {
+      } catch (e) {
+        dbgWarn("theme", "init failed, using defaults", e);
+      }
+
+      // Fallback: migrate from old ocv:theme / ocv:colorScheme
+      if (!loaded) {
+        try {
+          const oldTheme = localStorage.getItem(LS_LEGACY_THEME);
+          const oldScheme = localStorage.getItem(LS_LEGACY_COLOR_SCHEME);
+
+          // Map the old "light"/"dark"/"system" string directly to mode
+          if (oldTheme === "light" || oldTheme === "dark" || oldTheme === "system") {
+            this.mode = oldTheme;
+          }
+          // Keep currentTheme at default "codex"
+
+          if (oldScheme === "neutral") {
+            this.colorScheme = "neutral";
+          } else {
+            this.colorScheme = "warm";
+          }
+
+          // Migrate: write to new key so we don't migrate again
           this._persistSettings();
+        } catch (e) {
+          dbgWarn("theme", "migration failed, using defaults", e);
         }
-        this.initialized = true;
-        return;
       }
-    } catch (e) {
-      dbgWarn("theme", "init failed, using defaults", e);
+
+      this.initialized = true;
     }
 
-    // Fallback: migrate from old ocv:theme / ocv:colorScheme
-    try {
-      const oldTheme = localStorage.getItem(LS_LEGACY_THEME);
-      const oldScheme = localStorage.getItem(LS_LEGACY_COLOR_SCHEME);
-
-      // Map the old "light"/"dark"/"system" string directly to mode
-      if (oldTheme === "light" || oldTheme === "dark" || oldTheme === "system") {
-        this.mode = oldTheme;
-      }
-      // Keep currentTheme at default "codex"
-
-      if (oldScheme === "neutral") {
-        this.colorScheme = "neutral";
-      } else {
-        this.colorScheme = "warm";
-      }
-
-      // Migrate: write to new key so we don't migrate again
-      this._persistSettings();
-    } catch (e) {
-      dbgWarn("theme", "migration failed, using defaults", e);
-    }
-
-    this._syncSystemListener();
-    this._applyTheme();
-    this._applyColorScheme(this.colorScheme);
-    this.initialized = true;
+    // Always mirror store → DOM. Earlier `if (initialized) return` skipped this
+    // on the second init() call (layout module + app-window-controller), so a
+    // late caller could leave bubbles/fonts on codex defaults after AppShell
+    // split even though localStorage had the saved theme.
+    this.applyToDom();
   }
 
   private _normalizeThemeId(themeId: ThemeId): ThemeId {

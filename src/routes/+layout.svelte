@@ -124,6 +124,18 @@
 
   let { children } = $props();
 
+  // Keep `<html>` theme attrs in sync with themeStore (bubbles, fonts, surfaces).
+  // init() loads persisted state; this effect covers setTheme/setMode/setColorScheme
+  // and recovers if a late init() or hydration left the DOM on codex defaults.
+  $effect(() => {
+    if (typeof document === "undefined") return;
+    void themeStore.currentTheme;
+    void themeStore.mode;
+    void themeStore.colorScheme;
+    void themeStore.effectiveMode;
+    themeStore.applyToDom();
+  });
+
   // ── Mount ──────────────────────────────────────────────────────
   onMount(() => {
     // 1. Project-selection: rehydrate from localStorage

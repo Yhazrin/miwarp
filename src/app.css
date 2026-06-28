@@ -47,24 +47,12 @@ html.theme-transitioning .theme-fade {
     --miwarp-chat-corner-radius: 0.75rem;
   }
 
-  /* ── Neutral scheme overrides ── */
-  .scheme-neutral {
-    --primary: 0 0% 30%;
-    --primary-foreground: 0 0% 100%;
-    --ring: 0 0% 30%;
-    --sidebar-primary: 0 0% 30%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-ring: 0 0% 30%;
-  }
-
-  .dark.scheme-neutral {
-    --primary: 0 0% 70%;
-    --primary-foreground: 0 0% 10%;
-    --ring: 0 0% 70%;
-    --sidebar-primary: 0 0% 70%;
-    --sidebar-primary-foreground: 0 0% 10%;
-    --sidebar-ring: 0 0% 70%;
-  }
+  /*
+   * Warm/neutral toggle (scheme-warm / scheme-neutral on <html>) adjusts
+   * surface warmth in future; accent (--primary) always comes from the
+   * active [data-theme] block in design-tokens.css so chat bubbles keep
+   * each theme's low-saturation brand color.
+   */
 }
 
 /* ═══════════════════════════════════════════════════════════
