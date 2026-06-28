@@ -4,12 +4,11 @@
  * Supports: `{variable}` interpolation, fallback chain (locale -> en -> raw key),
  * reactive locale via Svelte 5 $state, localStorage persistence, async loading.
  *
- * Core locales (en, zh-CN) are statically imported for zero-flicker switching.
- * Future locales use dynamic import for code splitting — add a loader in the
- * `loaders` map below and an entry in registry.ts.
+ * Base locale (en) is statically imported for zero-flicker fallback. Other core
+ * locales (zh-CN) load on demand; the inactive locale is idle-prefetched after
+ * first paint so runtime switching stays instant.
  */
 import en from "$messages/en.json";
-import zhCN from "$messages/zh-CN.json";
 import { LOCALE_REGISTRY, SUPPORTED_LOCALES, BASE_LOCALE, isLocale, getEntry } from "./registry";
 import type { Locale } from "./registry";
 import type { MessageKey, MessageParams } from "./types";
@@ -28,16 +27,38 @@ const LOCAL_STORAGE_KEY = "ocv:locale";
 const LEGACY_STORAGE_KEY = "PARAGLIDE_LOCALE";
 
 // ── Message cache ───────────────────────────────────────────────
-// Core locales pre-cached (zero flicker). Future locales async-load via loaders.
+// Base locale is always available synchronously. Others load via `loaders`.
 const messageCache: Record<string, Record<string, string>> = {
   en: en as unknown as Record<string, string>,
-  "zh-CN": zhCN as unknown as Record<string, string>,
 };
 
 // Explicit loader map — one line per locale, deterministic bundling.
-// Pre-cached locales still have loaders (loadMessages checks cache first).
-// To add a language: add a loader here + registry.ts entry + messages/<code>.json
-const loaders: Record<string, () => Promise<{ default: Record<string, string> }>> = {};
+const loaders: Record<string, () => Promise<{ default: Record<string, string> }>> = {
+  "zh-CN": () => import("$messages/zh-CN.json"),
+};
+
+function idlePrefetch(fn: () => void): void {
+  if (typeof window === "undefined") return;
+  const ric = (
+    window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => void;
+    }
+  ).requestIdleCallback;
+  if (ric) {
+    ric(fn, { timeout: 4000 });
+    return;
+  }
+  setTimeout(fn, 1500);
+}
+
+function prefetchAlternateLocale(active: string): void {
+  for (const code of SUPPORTED_LOCALES) {
+    if (code === active || messageCache[code]) continue;
+    idlePrefetch(() => {
+      void loadMessages(code);
+    });
+  }
+}
 
 async function loadMessages(code: string): Promise<Record<string, string>> {
   if (messageCache[code]) return messageCache[code];
@@ -115,15 +136,17 @@ export function initLocale(): void {
   _locale = detected;
   applyHtmlAttrs(detected);
 
-  // Ensure messages are loaded for detected locale
+  // Load the active locale first (en is already cached).
   if (!messageCache[detected] && loaders[detected]) {
     const gen = ++_switchGen;
-    loadMessages(detected).then(() => {
+    void loadMessages(detected).then(() => {
       if (_switchGen === gen) {
-        _locale = detected; // re-assign to trigger $state reactivity once cache is ready
+        _locale = detected;
       }
     });
   }
+
+  prefetchAlternateLocale(detected);
 
   dbg("i18n", "init", { locale: _locale, locales: SUPPORTED_LOCALES });
 }
@@ -163,6 +186,13 @@ export function switchLocale(newLocale: string): void {
  */
 export function currentLocale(): string {
   return _locale;
+}
+
+/** Await message bundle load for a locale (tests + switchLocale recovery). */
+export function whenLocaleMessagesReady(locale?: string): Promise<void> {
+  const code = locale ?? _locale;
+  if (messageCache[code]) return Promise.resolve();
+  return loadMessages(code).then(() => undefined);
 }
 
 // ── Translation function ─────────────────────────────────────────

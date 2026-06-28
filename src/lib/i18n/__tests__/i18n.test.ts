@@ -4,6 +4,7 @@ import {
   initLocale,
   switchLocale,
   currentLocale,
+  whenLocaleMessagesReady,
   locales,
   baseLocale,
   isLocale,
@@ -83,11 +84,9 @@ describe("i18n", () => {
     expect(result).toBe("Last updated: 2026-02-17");
   });
 
-  it("falls back to baseLocale when key is missing in current locale", () => {
-    // Switch to zh-CN, then query a key that only exists in en
+  it("falls back to baseLocale when key is missing in current locale", async () => {
     switchLocale("zh-CN");
-    // 'settings_title' exists in both, so test with a hypothetical missing key
-    // by directly testing the fallback behavior: en key should still work
+    await whenLocaleMessagesReady("zh-CN");
     expect(t("settings_title")).toBe("设置");
   });
 
@@ -105,11 +104,12 @@ describe("i18n", () => {
 
   // ── switchLocale ──
 
-  it("switches locale and t() returns new locale translation", () => {
+  it("switches locale and t() returns new locale translation", async () => {
     initLocale();
     expect(t("settings_title")).toBe("Settings");
 
     switchLocale("zh-CN");
+    await whenLocaleMessagesReady("zh-CN");
     expect(t("settings_title")).toBe("设置");
   });
 
@@ -132,9 +132,10 @@ describe("i18n", () => {
     expect(currentLocale()).toBe("en");
   });
 
-  it("returns zh-CN after switch", () => {
+  it("returns zh-CN after switch", async () => {
     initLocale();
     switchLocale("zh-CN");
+    await whenLocaleMessagesReady("zh-CN");
     expect(currentLocale()).toBe("zh-CN");
   });
 
@@ -146,17 +147,19 @@ describe("i18n", () => {
     expect(lsStore["ocv:locale"]).toBe("zh-CN");
   });
 
-  it("reads locale from localStorage on init", () => {
+  it("reads locale from localStorage on init", async () => {
     lsStore["ocv:locale"] = "zh-CN";
     initLocale();
+    await whenLocaleMessagesReady("zh-CN");
     expect(currentLocale()).toBe("zh-CN");
   });
 
   // ── Legacy localStorage migration ──
 
-  it("migrates PARAGLIDE_LOCALE to ocv:locale on init", () => {
+  it("migrates PARAGLIDE_LOCALE to ocv:locale on init", async () => {
     lsStore["PARAGLIDE_LOCALE"] = "zh-CN";
     initLocale();
+    await whenLocaleMessagesReady("zh-CN");
     expect(currentLocale()).toBe("zh-CN");
     expect(lsStore["ocv:locale"]).toBe("zh-CN");
   });
@@ -175,9 +178,10 @@ describe("i18n", () => {
     expect(document.documentElement.lang).toBe("en");
   });
 
-  it("sets document.documentElement.lang on switch", () => {
+  it("sets document.documentElement.lang on switch", async () => {
     initLocale();
     switchLocale("zh-CN");
+    await whenLocaleMessagesReady("zh-CN");
     expect(document.documentElement.lang).toBe("zh-CN");
   });
 
