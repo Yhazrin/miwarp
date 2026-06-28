@@ -357,6 +357,8 @@ class ThemeStore {
 
   /** Initialize: load persisted settings, migrate old keys, and apply theme */
   async init() {
+    if (this.initialized) return;
+
     let shouldPersist = false;
 
     // Try new miwarp-theme key first

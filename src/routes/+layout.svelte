@@ -29,6 +29,11 @@
   import { initLocale, currentLocale, LOCALE_REGISTRY, switchLocale } from "$lib/i18n/index.svelte";
   initLocale();
 
+  import { themeStore } from "$lib/stores/theme-store.svelte";
+  if (typeof window !== "undefined") {
+    void themeStore.init();
+  }
+
   import { onMount, setContext } from "svelte";
   import { page } from "$app/stores";
   import { get } from "svelte/store";
