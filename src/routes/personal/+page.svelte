@@ -49,6 +49,7 @@
   import PersonalNotificationsCard from "$lib/components/personal/PersonalNotificationsCard.svelte";
   import PersonalDisplayCard from "$lib/components/personal/PersonalDisplayCard.svelte";
   import PersonalDataCard from "$lib/components/personal/PersonalDataCard.svelte";
+  import type { PersonalExportStats } from "$lib/utils/personal-export";
   import type {
     AiSettings,
     DisplaySettings,
@@ -268,6 +269,16 @@
     sinceDays,
   });
 
+  // Stats embedded in the personal profile export. Mirrors `heroStats` minus
+  // `sinceDays` (which is derived from `updated_at` and isn't part of the
+  // export DTO). Fall back to zeros while activity / skillCount are still
+  // hydrating so the export button stays usable from first paint.
+  const exportStats = $derived<PersonalExportStats>({
+    runs7d: activity.runs7d ?? 0,
+    skillCount: skillCount ?? 0,
+    providerCount,
+  });
+
   const runtimesLoading = $derived(!runtimesLoaded);
 </script>
 
@@ -327,7 +338,7 @@
       />
       <PersonalNotificationsCard {notificationSettings} onCommit={commit} />
       <PersonalDisplayCard {displaySettings} onCommit={commit} onZoom={applyZoom} />
-      <PersonalDataCard settings={settings!} onReset={handleReset} />
+      <PersonalDataCard settings={settings!} onReset={handleReset} stats={exportStats} />
     {/if}
   </div>
 </div>

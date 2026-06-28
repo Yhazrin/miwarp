@@ -11,7 +11,7 @@
    *   OS-listener effect so system mode keeps working when this tab is
    *   not mounted.
    */
-  import { themeStore, type ThemeId } from "$lib/stores/theme-store.svelte";
+  import { themeName, themeStore, type ThemeId } from "$lib/stores/theme-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import ThemeEditor from "$lib/components/ThemeEditor.svelte";
   import BackgroundPicker from "$lib/components/BackgroundPicker.svelte";
@@ -66,7 +66,7 @@
           {@const active = themeStore.currentTheme === theme.id}
           <SettingsOptionCard
             {active}
-            title={theme.name}
+            title={themeName(theme)}
             onclick={() => themeStore.setTheme(theme.id as ThemeId)}
           >
             {#snippet preview()}

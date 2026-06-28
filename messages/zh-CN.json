@@ -1156,7 +1156,7 @@
   "personal_section_data_title": "导出与重置",
   "personal_section_data_desc": "把资料带走,或重新开始。",
   "personal_data_export": "导出个人资料",
-  "personal_data_exportDesc": "把本页所有字段下载为 JSON 文件。",
+  "personal_data_exportDesc": "下载你的个人资料 JSON 快照。已排除 API 密钥、令牌和远端主机信息。",
   "personal_data_exportButton": "下载 JSON",
   "personal_data_reset": "重置为默认",
   "personal_data_resetDesc": "清空所有个人字段,其他设置不受影响。",

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { themeStore, type ThemeId } from "../stores/theme-store.svelte";
+  import { themeName, themeStore, type ThemeId } from "../stores/theme-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { slide } from "svelte/transition";
 
@@ -192,7 +192,7 @@
             class="h-4 w-4 rounded-full border border-border"
             style="background: {theme.accent};"
           ></span>
-          <span class="text-miwarp-text-primary">{theme.name}</span>
+          <span class="text-miwarp-text-primary">{themeName(theme)}</span>
           {#if hasOverrides}
             <span
               class="h-1.5 w-1.5 rounded-full bg-miwarp-accent-primary shrink-0"

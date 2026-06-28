@@ -1,9 +1,11 @@
 <script lang="ts">
   /**
-   * Data card — export the full profile as JSON and reset to defaults.
-   * Both actions confirm with the user before running. Export uses the
-   * in-memory settings payload (no secrets — UserSettings is already
-   * pre-scrubbed by the Tauri command on read).
+   * Data card — export the personal profile as JSON and reset to defaults.
+   * Both actions confirm with the user before running. Export goes through
+   * the whitelisted `buildPersonalProfileExport` builder (see
+   * `src/lib/utils/personal-export.ts`) so credential fields on
+   * `UserSettings` (api keys, platform credentials, remote hosts, webhooks,
+   * tokens) never reach the downloaded file.
    */
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
@@ -11,13 +13,25 @@
   import Icon from "$lib/components/Icon.svelte";
   import PersonalSection from "./PersonalSection.svelte";
   import { dbgWarn } from "$lib/utils/debug";
+  import { buildPersonalProfileExport, type PersonalExportStats } from "$lib/utils/personal-export";
+
+  // TODO: stats 后续接入真实数据 — when the parent forgets to forward
+  // `stats` we fall back to zeros so the export stays safe (no leakage)
+  // and the build doesn't crash on the optional prop.
+  const FALLBACK_STATS: PersonalExportStats = {
+    runs7d: 0,
+    skillCount: 0,
+    providerCount: 0,
+  };
 
   let {
     settings,
     onReset,
+    stats,
   }: {
     settings: UserSettings;
     onReset: () => Promise<void>;
+    stats?: PersonalExportStats;
   } = $props();
 
   function lk(key: string): string {
@@ -28,7 +42,11 @@
 
   function exportJson() {
     try {
-      const payload = JSON.stringify(settings, null, 2);
+      const payload = JSON.stringify(
+        buildPersonalProfileExport(settings, stats ?? FALLBACK_STATS),
+        null,
+        2,
+      );
       const blob = new Blob([payload], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

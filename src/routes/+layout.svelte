@@ -67,7 +67,7 @@
   import { createTeamSubscription } from "$lib/layout/team-subscription.svelte";
   import { useKeybindingShortcuts } from "$lib/layout/use-keybinding-shortcuts.svelte";
   import { initSplitWorkspaceLifecycle } from "$lib/split/split-workspace-lifecycle";
-  import { sessionStore } from "$lib/stores";
+  import { getActiveSessionIdentity } from "$lib/utils/active-session";
   import { TeamStore } from "$lib/stores/team-store.svelte";
   import { KeybindingStore } from "$lib/stores/keybindings.svelte";
   import { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
@@ -178,12 +178,16 @@
     // 7. Team subscription: load + listen + poll fallback
     const teamSub = createTeamSubscription(teamStore, () => true);
 
-    // 8. Split-workspace lifecycle (chat → /chat?split=1)
+    // 8. Split-workspace lifecycle (chat → /chat?split=1). Registered
+    //    here so the URL-sync machinery is alive on cold start before
+    //    the chat route mounts. Identity (runId / cwd) is read lazily
+    //    through `getActiveSessionIdentity` so we don't pull SessionStore
+    //    into the root's eager import graph.
     initSplitWorkspaceLifecycle({
       getPageUrl: () => get(page).url,
       replaceState,
-      getCwd: () => sessionStore.effectiveCwd,
-      getCurrentRunId: () => sessionStore.run?.id ?? get(page).url.searchParams.get("run"),
+      getCwd: () => getActiveSessionIdentity().cwd,
+      getCurrentRunId: () => getActiveSessionIdentity().runId,
     });
 
     // 9. Keybindings shortcuts (global app chrome callbacks)

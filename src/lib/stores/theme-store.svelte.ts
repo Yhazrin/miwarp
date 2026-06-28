@@ -19,7 +19,19 @@ import { dbgWarn } from "$lib/utils/debug";
 export interface ThemeDefinition {
   /** Base theme id without any -light/-dark suffix (e.g. "morandi", "codex"). */
   id: string;
-  /** Display name in the picker (e.g. "Morandi", "Codex Dark"). */
+  /**
+   * i18n key for the display name. When set, the picker resolves the name
+   * via `t(nameKey)` at render time so locale switches update the label
+   * reactively. Built-in themes always set this; user-authored custom
+   * themes omit it and use the static `name` field instead.
+   */
+  nameKey?: string;
+  /**
+   * Display name in the picker (e.g. "Morandi", "Codex Dark"). For
+   * built-in themes this is the value resolved at module load time and
+   * is the fallback if `nameKey` is missing. For custom themes this is
+   * the user-typed literal.
+   */
   name: string;
   /** Brand accent color, used for the picker swatch. */
   accent: string;
@@ -41,18 +53,89 @@ const BUILTIN_THEMES: ThemeDefinition[] = [
   //    dark mode. CSS has matching `[data-theme="X"]` (dark) and
   //    `[data-theme="X-light"]` (light) blocks. The picker shows ONE entry
   //    per theme; the mode picker decides which variant is applied.
-  { id: "codex", name: t("theme_codex"), accent: "#33A6FF", variants: "both" },
-  { id: "midnight", name: t("theme_midnight"), accent: "#3B82F6", variants: "both" },
-  { id: "ocean", name: t("theme_ocean"), accent: "#0EA5E9", variants: "both" },
-  { id: "dracula", name: t("theme_dracula"), accent: "#BD93F9", variants: "both" },
-  { id: "nord", name: t("theme_nord"), accent: "#5E81AC", variants: "both" },
-  { id: "morandi", name: t("theme_morandi"), accent: "#A67FA3", variants: "both" },
-  { id: "dev-preview", name: t("theme_devPreview"), accent: "#26C2A3", variants: "both" },
-  { id: "carbonPink", name: t("theme_carbonPink"), accent: "#F43F8A", variants: "both" },
-  { id: "deepSeaMilk", name: t("theme_deepSeaMilk"), accent: "#7DD3FC", variants: "both" },
-  { id: "auroraPomelo", name: t("theme_auroraPomelo"), accent: "#F97316", variants: "both" },
-  { id: "pomegranateMist", name: t("theme_pomegranateMist"), accent: "#E11D48", variants: "both" },
-  { id: "auroraLime", name: t("theme_auroraLime"), accent: "#A3E635", variants: "both" },
+  //
+  //    Each built-in entry carries both a `nameKey` (so the picker reactively
+  //    re-translates the label on locale switch — see themeName() below) and
+  //    a static `name` (the value resolved at module load, used as the
+  //    fallback for serialization / SSR / locale-not-yet-loaded renders).
+  {
+    id: "codex",
+    nameKey: "theme_codex",
+    name: t("theme_codex"),
+    accent: "#33A6FF",
+    variants: "both",
+  },
+  {
+    id: "midnight",
+    nameKey: "theme_midnight",
+    name: t("theme_midnight"),
+    accent: "#3B82F6",
+    variants: "both",
+  },
+  {
+    id: "ocean",
+    nameKey: "theme_ocean",
+    name: t("theme_ocean"),
+    accent: "#0EA5E9",
+    variants: "both",
+  },
+  {
+    id: "dracula",
+    nameKey: "theme_dracula",
+    name: t("theme_dracula"),
+    accent: "#BD93F9",
+    variants: "both",
+  },
+  { id: "nord", nameKey: "theme_nord", name: t("theme_nord"), accent: "#5E81AC", variants: "both" },
+  {
+    id: "morandi",
+    nameKey: "theme_morandi",
+    name: t("theme_morandi"),
+    accent: "#A67FA3",
+    variants: "both",
+  },
+  {
+    id: "dev-preview",
+    nameKey: "theme_devPreview",
+    name: t("theme_devPreview"),
+    accent: "#26C2A3",
+    variants: "both",
+  },
+  {
+    id: "carbonPink",
+    nameKey: "theme_carbonPink",
+    name: t("theme_carbonPink"),
+    accent: "#F43F8A",
+    variants: "both",
+  },
+  {
+    id: "deepSeaMilk",
+    nameKey: "theme_deepSeaMilk",
+    name: t("theme_deepSeaMilk"),
+    accent: "#7DD3FC",
+    variants: "both",
+  },
+  {
+    id: "auroraPomelo",
+    nameKey: "theme_auroraPomelo",
+    name: t("theme_auroraPomelo"),
+    accent: "#F97316",
+    variants: "both",
+  },
+  {
+    id: "pomegranateMist",
+    nameKey: "theme_pomegranateMist",
+    name: t("theme_pomegranateMist"),
+    accent: "#E11D48",
+    variants: "both",
+  },
+  {
+    id: "auroraLime",
+    nameKey: "theme_auroraLime",
+    name: t("theme_auroraLime"),
+    accent: "#A3E635",
+    variants: "both",
+  },
 ];
 
 export type ThemeId = string;
@@ -541,5 +624,24 @@ class ThemeStore {
 }
 
 export { DEFAULT_THEME_ID };
+
+/**
+ * Resolve the display name for a theme reactively.
+ *
+ * - Built-in themes: prefer `theme.nameKey` and translate at call time so
+ *   locale switches update the picker label without a remount.
+ * - Custom themes (no `nameKey`): fall back to the static `theme.name`
+ *   that the user typed at save time.
+ *
+ * Callers should invoke this inside a template (`{themeName(theme)}`) or
+ * inside `$derived(...)` so Svelte 5 wires the `t()` call into the locale
+ * `$state` and re-evaluates on switch.
+ */
+export function themeName(theme: ThemeDefinition): string {
+  if (theme.nameKey) {
+    return t(theme.nameKey as Parameters<typeof t>[0]);
+  }
+  return theme.name;
+}
 
 export const themeStore = new ThemeStore();

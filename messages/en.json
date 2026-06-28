@@ -1116,7 +1116,7 @@
   "personal_section_data_title": "Export & reset",
   "personal_section_data_desc": "Take your profile with you, or start over.",
   "personal_data_export": "Export profile",
-  "personal_data_exportDesc": "Download every field on this page as a JSON file.",
+  "personal_data_exportDesc": "Download a JSON snapshot of your profile. API keys, tokens, and remote hosts are excluded.",
   "personal_data_exportButton": "Download JSON",
   "personal_data_reset": "Reset profile to defaults",
   "personal_data_resetDesc": "Wipe every personal field. Other settings are untouched.",
