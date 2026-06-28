@@ -38,7 +38,6 @@ import { initBackendCapabilities } from "$lib/backend-capabilities.svelte";
 import { loadAgentSettingsCache } from "$lib/stores/agent-settings-cache.svelte";
 import { loadCliInfo } from "$lib/stores/cli-info.svelte";
 import { themeStore } from "$lib/stores/theme-store.svelte";
-import { attentionQueueStore } from "$lib/stores/attention-queue-store.svelte";
 import { readBundledAppVersion } from "$lib/services/app-version.svelte";
 
 export interface WindowControllerOptions {
@@ -220,9 +219,9 @@ export function installAppWindowController(opts: WindowControllerOptions = {}): 
     if (!destroyed) opts.onAppVersion?.(version);
   });
 
-  // 11. Background store loads (fire-and-forget) — these were part of the
-  //     layout onMount: backend capabilities, agent settings cache, cli
-  //     info, theme, attention queue snapshot.
+  // 11. Background store loads (fire-and-forget) — backend capabilities,
+  //     agent settings cache, cli info, theme. Attention queue reconciliation
+  //     is demand-loaded from layout-bootstrap-demand when /workbench opens.
   void (async () => {
     try {
       await initBackendCapabilities();
@@ -237,15 +236,6 @@ export function installAppWindowController(opts: WindowControllerOptions = {}): 
   } catch {
     /* ignore */
   }
-  void (async () => {
-    try {
-      await attentionQueueStore.reconcile();
-      await attentionQueueStore.loadSnapshot();
-      await attentionQueueStore.subscribe();
-    } catch {
-      /* desktop-only durable queue; ignore when transport unavailable */
-    }
-  })();
 
   const dispose = () => {
     if (destroyed) return;

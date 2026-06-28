@@ -71,3 +71,7 @@ export async function resolveLayoutCachedRuns(
   if (cache.runs.length > 0) return cache.runs;
   return cache.whenReady();
 }
+
+/** Demand-driven layout bootstrap (runs / teams / attention). */
+export const BOOTSTRAP_DEMAND_CONTEXT_KEY = "bootstrapDemand";
+export type { BootstrapDemandController } from "$lib/layout/layout-bootstrap-demand";

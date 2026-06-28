@@ -35,9 +35,11 @@
   import {
     LAYOUT_CHROME_CONTEXT_KEY,
     SETTINGS_CACHE_CONTEXT_KEY,
+    BOOTSTRAP_DEMAND_CONTEXT_KEY,
     routeNeedsLayoutContentPanel,
     type LayoutChromeContext,
     type SettingsCacheContext,
+    type BootstrapDemandController,
   } from "$lib/layout-chrome-context";
   import {
     describeCurrentPage,
@@ -245,6 +247,11 @@
   const teamStore = getContext<TeamStore>("teamStore");
   const keybindingStore = getContext<KeybindingStore>("keybindings");
   const settingsCache = getContext<SettingsCacheContext | undefined>(SETTINGS_CACHE_CONTEXT_KEY);
+  const bootstrapDemand = getContext<BootstrapDemandController>(BOOTSTRAP_DEMAND_CONTEXT_KEY);
+
+  $effect(() => {
+    bootstrapDemand.ensureForRoute(currentPath);
+  });
 
   // ── Settings-driven UI flags (consumed from the layout cache) ──
   const settings = $derived(settingsCache?.settings ?? null);
@@ -1024,6 +1031,7 @@
   onCliBrowserClose={() => (showCliBrowser = false)}
   onCliBrowserImported={(runId: string) => {
     showCliBrowser = false;
+    bootstrapDemand.ensureRunsBootstrap();
     void rss.loadRuns();
     navigateToChatRun(runId);
   }}

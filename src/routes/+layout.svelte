@@ -64,7 +64,7 @@
   import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
   import { normalizeCwd } from "$lib/utils/sidebar-groups";
   import { getChatTimelineResetHandle } from "$lib/chat/chat-timeline-reset-registry";
-  import { createTeamSubscription } from "$lib/layout/team-subscription.svelte";
+  import { createBootstrapDemandController } from "$lib/layout/layout-bootstrap-demand";
   import { useKeybindingShortcuts } from "$lib/layout/use-keybinding-shortcuts.svelte";
   import { initSplitWorkspaceLifecycle } from "$lib/split/split-workspace-lifecycle";
   import { getActiveSessionIdentity } from "$lib/utils/active-session";
@@ -78,6 +78,7 @@
   import {
     RUNS_CACHE_CONTEXT_KEY,
     SETTINGS_CACHE_CONTEXT_KEY,
+    BOOTSTRAP_DEMAND_CONTEXT_KEY,
     type RunsCacheContext,
     type SettingsCacheContext,
   } from "$lib/layout-chrome-context";
@@ -122,6 +123,13 @@
     whenReady: async () => runsSidebarStore.whenRunsReady(),
   });
 
+  const bootstrapDemand = createBootstrapDemandController({
+    teamStore,
+    runsStore: runsSidebarStore,
+    sessionFolderStore,
+  });
+  setContext(BOOTSTRAP_DEMAND_CONTEXT_KEY, bootstrapDemand);
+
   let { children } = $props();
 
   // Keep `<html>` theme attrs in sync with themeStore (bubbles, fonts, surfaces).
@@ -154,12 +162,9 @@
       await applyUserSettingsForShell(applied.settings);
     });
 
-    // 3. Runs: cache-first hydration + first IPC + 60s fallback poll.
-    void runsSidebarStore.loadRuns();
-    const stopRunsPoll = runsSidebarStore.startPoll();
-
-    // 4. Session folders: deferred until a sidebar page is mounted
-    //    (the AppShell owns the deferred-load $effect).
+    // 3. Demand bootstrap: runs / teams / attention load when the active
+    //    route needs them (AppShell re-triggers on navigation).
+    bootstrapDemand.ensureForRoute(window.location.pathname);
 
     // 5. Explorer tree: subscribe to EVT_EXPLORER_FILE_SELECTED
     const stopExplorerFileSync = explorerTreeStore.installExplorerFileSync();
@@ -175,10 +180,7 @@
       },
     });
 
-    // 7. Team subscription: load + listen + poll fallback
-    const teamSub = createTeamSubscription(teamStore, () => true);
-
-    // 8. Split-workspace lifecycle (chat → /chat?split=1). Registered
+    // 7. Split-workspace lifecycle (chat → /chat?split=1). Registered
     //    here so the URL-sync machinery is alive on cold start before
     //    the chat route mounts. Identity (runId / cwd) is read lazily
     //    through `getActiveSessionIdentity` so we don't pull SessionStore
@@ -211,6 +213,7 @@
     // 10. Window event re-emitters (the stores don't auto-subscribe to
     //     window events; the layout owns this bridge).
     const onRunsChanged = () => {
+      bootstrapDemand.ensureRunsBootstrap();
       void runsSidebarStore.loadRuns();
       void sessionFolderStore.load();
     };
@@ -277,10 +280,9 @@
     }
 
     return () => {
-      stopRunsPoll();
       stopExplorerFileSync();
       windowCtl.dispose();
-      teamSub.dispose();
+      bootstrapDemand.dispose();
       unregisterKeybindings();
       projectSelectionStore.dispose();
       sessionFolderStore.dispose();
