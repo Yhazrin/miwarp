@@ -22,6 +22,7 @@
     path,
     mode = "preview",
     editable = false,
+    editCapable = false,
     isRemote = false,
     scopeKey = "",
     active = true,
@@ -35,11 +36,14 @@
     onLoadFailed,
     onCloseDiff,
     onDirtyChange,
+    onToggleEditMode,
   }: {
     cwd: string;
     path: string;
     mode?: "preview" | "diff";
     editable?: boolean;
+    /** When true, show explicit enter/exit edit controls (explorer page). */
+    editCapable?: boolean;
     isRemote?: boolean;
     scopeKey?: string;
     /** When false (parent tab inactive), do NOT initiate new loads; existing content is preserved. */
@@ -50,6 +54,8 @@
     onCloseDiff?: () => void;
     /** Fires whenever fileDirty transitions; parents can use this for navigation guards. */
     onDirtyChange?: (dirty: boolean) => void;
+    /** Parent-owned edit toggle (explorer: read-only preview until user clicks Edit). */
+    onToggleEditMode?: (editing: boolean) => void;
   } = $props();
 
   // ── State ──
@@ -464,6 +470,25 @@
           </button>
         </div>
       {/if}
+      {#if editCapable && kind !== "image" && mode === "preview"}
+        {#if editable}
+          <button
+            type="button"
+            class="rounded-md border border-sidebar-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors shrink-0 hover:bg-muted hover:text-foreground"
+            onclick={() => onToggleEditMode?.(false)}
+          >
+            {t("explorer_exitEditMode")}
+          </button>
+        {:else}
+          <button
+            type="button"
+            class="rounded-md border border-sidebar-border px-2.5 py-1 text-[11px] font-medium text-foreground transition-colors shrink-0 hover:bg-muted"
+            onclick={() => onToggleEditMode?.(true)}
+          >
+            {t("explorer_enterEditMode")}
+          </button>
+        {/if}
+      {/if}
       {#if editable && kind !== "image"}
         <button
           type="button"
@@ -507,8 +532,9 @@
         onsave={saveFile}
         class="h-full"
       />
-    {:else if codeEditorTrigger && editable && !isRemote}
-      <!-- CodeEditor chunk still loading -->
+    {:else if codeEditorTrigger}
+      <!-- CodeEditor chunk still loading (post-Edit click) — show a brief spinner so the
+           preview surface doesn't flash empty before CodeMirror mounts. -->
       <div class="flex h-full items-center justify-center bg-background">
         <Spinner size="md" />
       </div>

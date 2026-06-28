@@ -18,6 +18,22 @@
   /** True while we're restoring from cache — onLoadFailed should clear that cache entry. */
   let restoringFromCache = false;
 
+  /** Explorer edit mode — off by default so CodeMirror loads only on explicit Edit. */
+  let editMode = $state(false);
+
+  // Path passed to pane: in diff mode use diffViewFile, else selectedFilePath.
+  let panePath = $derived(activeView === "diff" ? (diffViewFile ?? "") : selectedFilePath);
+
+  $effect(() => {
+    void panePath;
+    editMode = false;
+  });
+
+  function requestEditMode(next: boolean): void {
+    if (!next && paneDirty && !confirm(t("explorer_discardConfirm"))) return;
+    editMode = next;
+  }
+
   /** Mirror of FilePreviewPane.fileDirty for navigation guards. */
   let paneDirty = $state(false);
 
@@ -145,10 +161,6 @@
       window.removeEventListener("ocv:project-changed", onProjectChanged);
     };
   });
-
-  // Path passed to pane: in diff mode use diffViewFile, else selectedFilePath.
-  // Empty string = pane renders its own empty state instead of a Spinner.
-  let panePath = $derived(activeView === "diff" ? (diffViewFile ?? "") : selectedFilePath);
 </script>
 
 <div class="flex h-full flex-col overflow-hidden">
@@ -163,7 +175,8 @@
     cwd={projectCwd}
     path={panePath}
     mode={activeView}
-    editable={true}
+    editable={editMode}
+    editCapable={activeView === "preview"}
     isRemote={false}
     scopeKey={projectCwd}
     {reloadToken}
@@ -171,5 +184,6 @@
     onLoadFailed={handleLoadFailed}
     onCloseDiff={closeDiffView}
     onDirtyChange={(d) => (paneDirty = d)}
+    onToggleEditMode={requestEditMode}
   />
 </div>

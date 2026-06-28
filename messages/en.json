@@ -649,6 +649,8 @@
   "explorer_save": "Save",
   "explorer_saveDisabledInPreview": "Switch to Edit mode to save",
   "explorer_saving": "Saving...",
+  "explorer_enterEditMode": "Switch to edit mode",
+  "explorer_exitEditMode": "Exit edit mode",
   "explorer_treeLoadFailed": "Could not load project files",
   "export_noConversation": "No conversation to export",
   "extensions_configureMcpServer": "Configure an MCP server",
