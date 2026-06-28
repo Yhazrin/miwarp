@@ -28,15 +28,30 @@ import { normalizeCwd } from "$lib/utils/sidebar-groups";
 import { EVT_EXPLORER_FILE, EVT_EXPLORER_FILE_SELECTED } from "$lib/utils/bus-events";
 import type { DirEntry } from "$lib/types";
 
+/**
+ * Per-node load lifecycle:
+ *   - idle    : never fetched (children unknown — do not render)
+ *   - loading : IPC in flight
+ *   - ready   : children loaded (may be empty)
+ *   - error   : IPC failed; loadError holds the reason
+ *
+ * `loaded` remains for backward compatibility with downstream consumers but
+ * is now derived from `loadState === "ready"`.
+ */
+export type NodeLoadState = "idle" | "loading" | "ready" | "error";
+
 export interface TreeNode {
   name: string;
   fullPath: string;
   is_dir: boolean;
   size: number;
   expanded: boolean;
+  /** @deprecated Prefer loadState === "ready". */
   loaded: boolean;
   children: TreeNode[];
   depth: number;
+  loadState: NodeLoadState;
+  loadError?: string;
 }
 
 /** Build TreeNode rows from a DirEntry list. Pure function (testable). */
@@ -50,12 +65,15 @@ export function entriesToNodes(entries: DirEntry[], parentPath: string, depth: n
     loaded: false,
     children: [],
     depth,
+    loadState: "idle",
   }));
 }
 
 export class ExplorerTreeStore {
   fileTree = $state<TreeNode[]>([]);
   treeLoading = $state<boolean>(false);
+  /** Set when the root directory read fails — UI surfaces a retry entry instead of a fake empty list. */
+  treeError = $state<string | null>(null);
   explorerSelectedFile = $state<string>("");
 
   /** Monotonic sequence used to invalidate stale IPC responses. */
@@ -66,10 +84,12 @@ export class ExplorerTreeStore {
     if (this._disposed) return;
     if (!projectCwd) {
       this.fileTree = [];
+      this.treeError = null;
       return;
     }
     const seq = ++this._treeSeq;
     this.treeLoading = true;
+    this.treeError = null;
     try {
       const listing = await listDirectory(projectCwd, true);
       if (seq !== this._treeSeq) return;
@@ -77,8 +97,11 @@ export class ExplorerTreeStore {
       dbg("layout", "file tree loaded", { count: this.fileTree.length });
     } catch (e) {
       if (seq !== this._treeSeq) return;
-      dbgWarn("layout", "file tree load error", e);
-      this.fileTree = [];
+      // Keep the previous tree intact so the user can still navigate; surface the error
+      // so the UI shows a retry entry instead of an empty "no files" placeholder.
+      const message = e instanceof Error ? e.message : String(e);
+      dbgWarn("layout", "file tree load error", message);
+      this.treeError = message;
     } finally {
       if (seq === this._treeSeq) this.treeLoading = false;
     }
@@ -86,23 +109,42 @@ export class ExplorerTreeStore {
 
   /**
    * Toggle a folder node: lazy-load its children on first expansion,
-   * then flip the `expanded` flag. Mutates the node in place to preserve
-   * the existing children reference for already-loaded branches.
+   * then flip the `expanded` flag. On error, the node keeps `expanded=false`
+   * and exposes `loadError` so the UI can offer a retry — it never silently
+   * reports an empty directory.
    */
   async toggleFolder(node: TreeNode): Promise<void> {
-    if (!node.loaded) {
+    if (node.loadState === "idle") {
+      node.loadState = "loading";
+      node.loadError = undefined;
       try {
         const listing = await listDirectory(node.fullPath, true);
         node.children = entriesToNodes(listing.entries, node.fullPath, node.depth + 1);
+        node.loadState = "ready";
         node.loaded = true;
         dbg("layout", "folder loaded", { path: node.fullPath, count: node.children.length });
       } catch (e) {
-        dbgWarn("layout", "folder load error", e);
-        node.children = [];
-        node.loaded = true;
+        const message = e instanceof Error ? e.message : String(e);
+        dbgWarn("layout", "folder load error", { path: node.fullPath, err: message });
+        node.loadError = message;
+        node.loadState = "error";
+        // Deliberately leave `loaded=false` so legacy callers keep working,
+        // and do not flip `expanded` — the UI shows the error in place.
+        return;
       }
+    } else if (node.loadState === "loading") {
+      // Concurrent toggle: ignore second click until the in-flight load finishes.
+      return;
     }
     node.expanded = !node.expanded;
+  }
+
+  /** Retry a failed folder load: resets the error marker and re-issues the IPC. */
+  async retryFolder(node: TreeNode): Promise<void> {
+    if (node.loadState !== "error" && node.loadState !== "idle") return;
+    node.loadState = "idle";
+    node.loadError = undefined;
+    await this.toggleFolder(node);
   }
 
   /** Select a file node and notify the /explorer page via the bus event. */
@@ -152,6 +194,7 @@ export class ExplorerTreeStore {
     ++this._treeSeq;
     this.fileTree = [];
     this.treeLoading = false;
+    this.treeError = null;
   }
 
   /** O(1) derivation used by the layout to seed the explorer cwd. */

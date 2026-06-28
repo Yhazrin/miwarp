@@ -96,6 +96,7 @@
   import EmptyState from "$lib/components/EmptyState.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import OverlayStack from "$lib/components/layout/OverlayStack.svelte";
+  import ExplorerTreeNodes from "./ExplorerTreeNodes.svelte";
   import ToastHost from "$lib/components/ToastHost.svelte";
   import type { Component } from "svelte";
 
@@ -833,11 +834,13 @@
       } else {
         ets.fileTree = [];
         ets.treeLoading = false;
+        ets.treeError = null;
         _prevExplorerCwd = _cwd;
       }
     } else {
       ets.fileTree = [];
       ets.treeLoading = false;
+      ets.treeError = null;
       _prevExplorerCwd = _cwd;
     }
   });
@@ -927,54 +930,13 @@
 {/snippet}
 
 {#snippet treeNodes(nodes: import("$lib/layout/explorer-tree-store.svelte").TreeNode[])}
-  {#each nodes as node}
-    <button
-      type="button"
-      class="flex w-full items-center gap-1 py-0.5 text-[13px] transition-colors
-        text-sidebar-foreground hover:bg-sidebar-accent/50
-        {ets.explorerSelectedFile === node.fullPath ? 'bg-sidebar-accent/70' : ''}"
-      style="padding-left: {8 + node.depth * 12}px"
-      onclick={() => (node.is_dir ? ets.toggleFolder(node) : ets.selectFile(node))}
-    >
-      {#if node.is_dir}
-        <Icon
-          name="chevron-right"
-          size="xs"
-          class="shrink-0 transition-transform duration-150 {node.expanded ? 'rotate-90' : ''}"
-        />
-        <svg
-          class="h-3.5 w-3.5 shrink-0 text-[hsl(var(--miwarp-status-info)/0.7)]"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          ><path
-            d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
-          /></svg
-        >
-      {:else}
-        <span class="w-3 shrink-0"></span>
-        <svg
-          class="h-3.5 w-3.5 shrink-0 opacity-40"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          ><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path
-            d="M14 2v4a2 2 0 0 0 2 2h4"
-          /></svg
-        >
-      {/if}
-      <span class="min-w-0 truncate">{node.name}</span>
-    </button>
-    {#if node.is_dir && node.expanded}
-      {@render treeNodes(node.children)}
-    {/if}
-  {/each}
+  <ExplorerTreeNodes
+    {nodes}
+    selectedPath={ets.explorerSelectedFile}
+    onToggle={(node) => ets.toggleFolder(node)}
+    onSelect={(node) => ets.selectFile(node)}
+    onRetry={(node) => ets.retryFolder(node)}
+  />
 {/snippet}
 
 <svelte:window onkeydown={handleKeydown} />
@@ -1453,6 +1415,25 @@
               {:else if ets.treeLoading}
                 <div class="flex items-center justify-center py-12">
                   <Spinner size="sm" />
+                </div>
+              {:else if ets.treeError}
+                <div class="flex flex-col gap-2 px-3 py-6 text-center">
+                  <div class="flex justify-center">
+                    <Icon name="triangle-alert" size="md" class="text-destructive/70" />
+                  </div>
+                  <p class="text-xs font-medium text-foreground">
+                    {t("explorer_treeLoadFailed")}
+                  </p>
+                  <p class="text-[11px] text-muted-foreground break-all">
+                    {ets.treeError}
+                  </p>
+                  <button
+                    type="button"
+                    class="mx-auto mt-1 rounded-md px-2.5 py-1 text-[11px] font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors"
+                    onclick={() => ets.loadRootTree(pss.projectCwd)}
+                  >
+                    {t("common_retry")}
+                  </button>
                 </div>
               {:else if ets.fileTree.length === 0}
                 <EmptyState

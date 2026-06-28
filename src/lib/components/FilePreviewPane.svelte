@@ -21,6 +21,12 @@
     isRemote = false,
     scopeKey = "",
     active = true,
+    /**
+     * Bumping this value forces the pane to re-fetch the current file even when
+     * `path` and `scopeKey` are unchanged. The parent uses it for "Retry" — the
+     * pane internally listens via $effect alongside the other dependency props.
+     */
+    reloadToken = 0,
     onLoaded,
     onLoadFailed,
     onCloseDiff,
@@ -34,6 +40,7 @@
     scopeKey?: string;
     /** When false (parent tab inactive), do NOT initiate new loads; existing content is preserved. */
     active?: boolean;
+    reloadToken?: number;
     onLoaded?: (path: string) => void;
     onLoadFailed?: (path: string, err: string) => void;
     onCloseDiff?: () => void;
@@ -42,16 +49,23 @@
   } = $props();
 
   // ── State ──
+  /**
+   * Single authoritative load state. The pane itself owns loading/error/too-large
+   * entirely — the parent must NEVER gate mount() on these. They are surfaced as
+   * overlay rendering inside the pane, so the pane remains mounted across file
+   * switches and retries.
+   */
+  type LoadState = "idle" | "loading" | "ready" | "error" | "too_large" | "remote_unsupported";
+
+  let loadState = $state<LoadState>("idle");
+
   let fileContent = $state("");
   let imageDataUrl = $state("");
   let originalContent = "";
-  let fileLoading = $state(false);
   let fileError = $state("");
   let fileDirty = $state(false);
   let fileSaving = $state(false);
   let editorMode = $state<"edit" | "rendered">("edit");
-  /** True when file exceeds size threshold — show warning instead of loading into CodeMirror. */
-  let fileTooLarge = $state(false);
   let fileSize = $state(0);
 
   /** Files larger than this are not auto-previewed (CodeMirror init becomes very slow). */
@@ -59,6 +73,12 @@
 
   let diffContent = $state("");
   let diffLoading = $state(false);
+
+  /**
+   * Local retry counter — the in-pane "Retry" button bumps this to re-fire the
+   * same `$effect` without requiring the parent to track loading state.
+   */
+  let retryCounter = $state(0);
 
   let loadSeq = 0;
 
@@ -111,17 +131,16 @@
     if (!validation.valid) {
       fileError = validation.reason ?? "Path not allowed";
       fileContent = "";
-      fileLoading = false;
+      loadState = "error";
       return;
     }
 
     const seq = ++loadSeq;
     fileError = "";
-    fileTooLarge = false;
     fileSize = 0;
     const ext = getExtension(p);
     editorMode = isPreviewable(ext) ? "rendered" : "edit";
-    fileLoading = true;
+    loadState = "loading";
     fileDirty = false;
     imageDataUrl = "";
 
@@ -145,7 +164,7 @@
         }
         if (preReadSize !== null && preReadSize > MAX_PREVIEW_SIZE) {
           fileSize = preReadSize;
-          fileTooLarge = true;
+          loadState = "too_large";
           fileContent = "";
           originalContent = "";
         } else {
@@ -155,7 +174,7 @@
           // Defense-in-depth: stat may return stale/inaccurate size on some filesystems
           // (e.g. sparse files, network mounts). Re-check after read.
           if (content.length > MAX_PREVIEW_SIZE) {
-            fileTooLarge = true;
+            loadState = "too_large";
             fileContent = "";
             originalContent = "";
           } else {
@@ -167,8 +186,10 @@
       dbg("preview-pane", "file loaded", {
         path: p,
         size: fileSize,
-        tooLarge: fileTooLarge,
+        state: loadState,
       });
+      // Mark ready only when seq still matches (avoid clobbering a newer load).
+      if (seq === loadSeq) loadState = "ready";
       onLoaded?.(p);
     } catch (e) {
       if (seq !== loadSeq) return;
@@ -176,9 +197,8 @@
       originalContent = "";
       imageDataUrl = "";
       fileError = String(e);
+      if (seq === loadSeq) loadState = "error";
       onLoadFailed?.(p, String(e));
-    } finally {
-      if (seq === loadSeq) fileLoading = false;
     }
   }
 
@@ -224,8 +244,12 @@
   // ── Reactive load ──
   // Svelte 5: read all reactive props inside the effect to register dependency tracking.
   $effect(() => {
-    // Establish dependencies: cwd, path, mode, scopeKey, isRemote, active
+    // Establish dependencies: cwd, path, mode, scopeKey, isRemote, active, reloadToken.
+    // reloadToken lets parents force a re-fetch without changing path; retryCounter
+    // lets the pane's own "Retry" button do the same internally.
     void scopeKey;
+    void reloadToken;
+    void retryCounter;
     const _cwd = cwd;
     const _path = path;
     const _mode = mode;
@@ -233,13 +257,12 @@
     const _active = active;
 
     // Inactive (parent tab hidden): keep already-loaded content visible, but don't
-    // initiate new IPC loads on cwd/path/mode/scopeKey changes.
+    // initiate new IPC loads on cwd/path/mode/scopeKey/reloadToken changes.
     if (!_active) return;
 
     // Reset on remote or empty path
-    if (_isRemote || !_path) {
+    if (_isRemote) {
       ++loadSeq;
-      fileLoading = false;
       diffLoading = false;
       fileContent = "";
       originalContent = "";
@@ -247,6 +270,20 @@
       diffContent = "";
       fileError = "";
       fileDirty = false;
+      loadState = "remote_unsupported";
+      return;
+    }
+
+    if (!_path) {
+      ++loadSeq;
+      diffLoading = false;
+      fileContent = "";
+      originalContent = "";
+      imageDataUrl = "";
+      diffContent = "";
+      fileError = "";
+      fileDirty = false;
+      loadState = "idle";
       return;
     }
 
@@ -264,7 +301,7 @@
 
   // Track dirty state when CodeEditor updates content
   $effect(() => {
-    if (!fileLoading) {
+    if (loadState !== "loading") {
       fileDirty = fileContent !== originalContent;
     }
   });
@@ -292,9 +329,8 @@
     !isRemote &&
       !!path &&
       mode === "preview" &&
-      !fileLoading &&
+      loadState === "ready" &&
       !fileError &&
-      !fileTooLarge &&
       kind !== "image" &&
       !(editorMode === "rendered" && kind === "markdown"),
   );
@@ -507,15 +543,30 @@
           </div>
         {/if}
       </div>
-    {:else if fileLoading}
+    {:else if loadState === "loading"}
       <div class="absolute inset-0 flex items-center justify-center bg-background">
         <Spinner size="md" />
       </div>
-    {:else if fileError}
-      <div class="absolute inset-0 flex items-center justify-center p-4 bg-background">
-        <p class="text-sm text-destructive">{fileError}</p>
+    {:else if loadState === "error"}
+      <div
+        class="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 bg-background"
+      >
+        <p class="text-sm text-destructive text-center max-w-[400px]">{fileError}</p>
+        <button
+          type="button"
+          class="rounded-md px-3 py-1.5 text-xs font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors"
+          onclick={() => {
+            // Bumping the local retry counter is enough — the $effect above
+            // watches both `path` and `retryCounter` and re-runs loadPreview
+            // on every change. This keeps the retry self-contained inside the
+            // pane and avoids reintroducing the parent-driven deadlock.
+            retryCounter += 1;
+          }}
+        >
+          {t("common_retry")}
+        </button>
       </div>
-    {:else if fileTooLarge}
+    {:else if loadState === "too_large"}
       <div class="absolute inset-0 flex items-center justify-center p-4 bg-background">
         <p class="text-xs text-muted-foreground text-center">
           {t("preview_tooLarge")} ({Math.round(fileSize / 1024)} KB)

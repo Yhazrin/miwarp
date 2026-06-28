@@ -629,6 +629,7 @@
   "explorer_save": "保存",
   "explorer_saveDisabledInPreview": "切换到编辑模式后可保存",
   "explorer_saving": "保存中...",
+  "explorer_treeLoadFailed": "无法加载项目文件",
   "export_noConversation": "没有可导出的对话",
   "extensions_agentsCount": "{count} 个智能体",
   "extensions_browseMcp": "浏览 MCP 服务器",

@@ -647,6 +647,7 @@
   "explorer_save": "Save",
   "explorer_saveDisabledInPreview": "Switch to Edit mode to save",
   "explorer_saving": "Saving...",
+  "explorer_treeLoadFailed": "Could not load project files",
   "export_noConversation": "No conversation to export",
   "extensions_configureMcpServer": "Configure an MCP server",
   "extensions_confirmDeleteMsg": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
