@@ -218,4 +218,46 @@ describe("ProjectFolderItem logical sub-folders", () => {
     expect(target.querySelector(".sidebar-logical-folders")).not.toBeNull();
     expect(countSubstring(target.textContent ?? "", "unfoldered")).toBe(DEFAULT_SESSION_PAGE_SIZE);
   });
+
+  it("shows all 10 logical folders with 5 sessions each and paginates 20 unfoldered sessions", async () => {
+    const subFolders = Array.from({ length: 10 }, (_, i) =>
+      makeSubFolderWithSessions(`Folder ${i + 1}`, 20, `f-${i + 1}`),
+    );
+    const unfoldered = Array.from({ length: 20 }, (_, i) =>
+      makeConversation(i, `root-r${i}`, `root session ${i + 1}`),
+    );
+    instance = mount(ProjectFolderItem, {
+      target,
+      props: {
+        ...baseProps,
+        folder: makeFolder({
+          conversations: unfoldered,
+          conversationCount: 20 + subFolders.reduce((n, sf) => n + sf.conversationCount, 0),
+        }),
+        subFolders,
+        expandedSubFolders: new Set(subFolders.map((sf) => sf.folderKey)),
+      },
+    });
+
+    await new Promise((r) => setTimeout(r, 300));
+
+    const logical = target.querySelector(".sidebar-logical-folders");
+    expect(logical).not.toBeNull();
+    expect(logical!.querySelectorAll('[class*="group/sf"]').length).toBe(10);
+
+    for (let i = 1; i <= 10; i += 1) {
+      expect(target.textContent).toContain(`Folder ${i}`);
+    }
+
+    const sessionBlocks = target.querySelectorAll(".sidebar-subfolder-sessions");
+    expect(sessionBlocks.length).toBe(10);
+    for (const block of sessionBlocks) {
+      expect(countSubstring(block.textContent ?? "", "session")).toBe(DEFAULT_SESSION_PAGE_SIZE);
+    }
+
+    expect(countSubstring(target.textContent ?? "", "root session")).toBe(
+      DEFAULT_SESSION_PAGE_SIZE,
+    );
+    expect(target.textContent).toMatch(/显示更多|Show.*more/i);
+  });
 });

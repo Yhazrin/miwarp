@@ -21,7 +21,13 @@
   import ClaudeCanvas from "./ClaudeCanvas.svelte";
   import {
     DEFAULT_SESSION_PAGE_SIZE,
-    SESSION_PAGE_INCREMENT,
+    getSessionVisibleCount,
+    hasMoreSessions,
+    hiddenSessionCount,
+    nextVisibleSessionCount,
+    showMoreSessionIncrement,
+    sliceVisibleSessions,
+    visibleCountForSelectedIndex,
   } from "$lib/utils/sidebar-session-pagination";
 
   const VIRTUAL_THRESHOLD = 40;
@@ -407,7 +413,7 @@
   }
 
   function getSubFolderVisibleCount(folderKey: string): number {
-    return subFolderVisibleCounts[folderKey] ?? DEFAULT_SESSION_PAGE_SIZE;
+    return getSessionVisibleCount(subFolderVisibleCounts, folderKey);
   }
 
   function setSubFolderVisibleCount(folderKey: string, count: number) {
@@ -415,26 +421,26 @@
   }
 
   function showMoreSubFolder(sf: SessionFolderGroup) {
-    const current = getSubFolderVisibleCount(sf.folderKey);
     setSubFolderVisibleCount(
       sf.folderKey,
-      Math.min(current + SESSION_PAGE_INCREMENT, sf.conversations.length),
+      nextVisibleSessionCount(getSubFolderVisibleCount(sf.folderKey), sf.conversations.length),
     );
   }
 
   function visibleSubFolderConversations(sf: SessionFolderGroup) {
-    return sf.conversations.slice(0, getSubFolderVisibleCount(sf.folderKey));
+    return sliceVisibleSessions(sf.conversations, getSubFolderVisibleCount(sf.folderKey));
   }
 
   function hiddenSubFolderCount(sf: SessionFolderGroup): number {
-    return sf.conversations.length - getSubFolderVisibleCount(sf.folderKey);
+    return hiddenSessionCount(sf.conversations.length, getSubFolderVisibleCount(sf.folderKey));
   }
 
   function ensureSubFolderVisibleForSelection(sf: SessionFolderGroup) {
     if (children || !selectedRunId) return;
     const idx = sf.conversations.findIndex((conv) => conv.runs.some((r) => r.id === selectedRunId));
-    if (idx >= 0 && idx >= getSubFolderVisibleCount(sf.folderKey)) {
-      setSubFolderVisibleCount(sf.folderKey, idx + 1);
+    const next = visibleCountForSelectedIndex(idx, getSubFolderVisibleCount(sf.folderKey));
+    if (next !== getSubFolderVisibleCount(sf.folderKey)) {
+      setSubFolderVisibleCount(sf.folderKey, next);
     }
   }
 
@@ -468,9 +474,7 @@
     const idx = folder.conversations.findIndex((conv) =>
       conv.runs.some((r) => r.id === selectedRunId),
     );
-    if (idx >= 0 && idx >= unfolderedVisibleCount) {
-      unfolderedVisibleCount = idx + 1;
-    }
+    unfolderedVisibleCount = visibleCountForSelectedIndex(idx, unfolderedVisibleCount);
     for (const sf of logicalFolders) {
       if (!expandedSubFolders.has(sf.folderKey)) continue;
       ensureSubFolderVisibleForSelection(sf);
@@ -479,18 +483,20 @@
 
   // Skip conversation-related derivations when using children snippet
   const visibleUnfolderedConversations = $derived(
-    children ? [] : folder.conversations.slice(0, unfolderedVisibleCount),
+    children ? [] : sliceVisibleSessions(folder.conversations, unfolderedVisibleCount),
   );
   const hiddenUnfolderedCount = $derived(
-    children ? 0 : folder.conversations.length - unfolderedVisibleCount,
+    children ? 0 : hiddenSessionCount(folder.conversations.length, unfolderedVisibleCount),
   );
-  const hasMoreUnfoldered = $derived(hiddenUnfolderedCount > 0);
+  const hasMoreUnfoldered = $derived(
+    children ? false : hasMoreSessions(folder.conversations.length, unfolderedVisibleCount),
+  );
 
   const workspaceFolderIcon = $derived(expanded ? "folder-open" : "folder");
 
   function showMoreUnfoldered() {
-    unfolderedVisibleCount = Math.min(
-      unfolderedVisibleCount + SESSION_PAGE_INCREMENT,
+    unfolderedVisibleCount = nextVisibleSessionCount(
+      unfolderedVisibleCount,
       folder.conversations.length,
     );
   }
@@ -707,14 +713,14 @@
                         {onSessionDragEnd}
                       />
                     {/each}
-                    {#if hiddenSubFolderCount(sf) > 0}
+                    {#if hasMoreSessions(sf.conversations.length, getSubFolderVisibleCount(sf.folderKey))}
                       <button
                         type="button"
                         class="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
                         onclick={() => showMoreSubFolder(sf)}
                       >
                         {t("sidebar_showMore", {
-                          count: String(Math.min(SESSION_PAGE_INCREMENT, hiddenSubFolderCount(sf))),
+                          count: String(showMoreSessionIncrement(hiddenSubFolderCount(sf))),
                         })}
                       </button>
                     {/if}
@@ -821,7 +827,7 @@
                 onclick={showMoreUnfoldered}
               >
                 {t("sidebar_showMore", {
-                  count: String(Math.min(SESSION_PAGE_INCREMENT, hiddenUnfolderedCount)),
+                  count: String(showMoreSessionIncrement(hiddenUnfolderedCount)),
                 })}
               </button>
             {/if}
@@ -878,7 +884,7 @@
             onclick={showMoreUnfoldered}
           >
             {t("sidebar_showMore", {
-              count: String(Math.min(SESSION_PAGE_INCREMENT, hiddenUnfolderedCount)),
+              count: String(showMoreSessionIncrement(hiddenUnfolderedCount)),
             })}
           </button>
         {/if}
