@@ -116,7 +116,11 @@ pub enum ActorCommand {
         reply: oneshot::Sender<Result<(String, oneshot::Receiver<Value>), String>>,
     },
     Stop {
-        reply: oneshot::Sender<Result<(), String>>,
+        /// P0-6: the actor returns `ActorStopReason::UserRequested` on
+        /// success so callers (IPC layer, recovery registry) can
+        /// distinguish user intent from infrastructure failures without
+        /// re-deriving the cause from flags after the fact.
+        reply: oneshot::Sender<Result<ActorStopReason, String>>,
     },
     /// Inline permission response: write control_response back to CLI stdin.
     /// Used with `--permission-prompt-tool stdio` (Phase 2).
@@ -183,6 +187,28 @@ pub struct SessionActorHandle {
     /// Fires when the actor exits (normal or abnormal). Callers can await this
     /// to know when it's safe to spawn a replacement.
     pub shutdown_rx: oneshot::Receiver<()>,
+}
+
+/// Reason the actor loop exited. Propagated through the `Stop` reply
+/// channel and the recovery snapshot so callers (cleanup, recovery
+/// registry, IPC handlers) can distinguish user intent from infrastructure
+/// failures without re-deriving the cause from flags.
+///
+/// `UserRequested` = explicit stop via IPC (`ActorCommand::Stop`) — the
+/// CLI child process was reaped because the user asked for it.
+///
+/// `Cancelled` = the actor's parent cancellation token fired (app exit /
+/// server shutdown). Treat the same as user-stopped for state-machine
+/// purposes, but the recovery registry skips re-spawn.
+///
+/// `StreamEof` = natural EOF (no user intent). For natural EOF the
+/// protocol layer already emitted a terminal `RunState` (`idle` /
+/// `failed`) — `cleanup` does not need to emit a second one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActorStopReason {
+    UserRequested,
+    Cancelled,
+    StreamEof,
 }
 
 // ── Actor internals ──
@@ -492,9 +518,18 @@ impl SessionActor {
                             self.handle_send_message(text, attachments, client_message_id, reply).await;
                         }
                         Some(ActorCommand::Stop { reply }) => {
-                            let r = self.handle_stop().await;
-                            let _ = reply.send(r);
-                            break;
+                            // P0-6: defer the actual stdin-discard + child-kill
+                            // until we observe stdout EOF so the protocol
+                            // layer's trailing events (and the terminal
+                            // `RunState`) reach the frontend before the loop
+                            // breaks. Reply immediately with the typed
+                            // reason so the IPC caller knows the request was
+                            // accepted.
+                            let reason = self.request_stop();
+                            self.finalize_stop().await;
+                            let _ = reply.send(Ok(reason));
+                            // Do NOT break here — fall through to the stdout
+                            // arm so `handle_eof` emits the terminal state.
                         }
                         Some(ActorCommand::SendControl { request, reply }) => {
                             let r = self.handle_send_control_async(request).await;
@@ -683,8 +718,10 @@ impl SessionActor {
                 // 5. External cancellation (app exit)
                 _ = self.cancel.cancelled() => {
                     log::debug!("[actor] cancelled: run_id={}", self.run_id);
-                    let _ = self.handle_stop().await;
-                    break;
+                    self.request_stop();
+                    self.finalize_stop().await;
+                    // Same as the Stop arm: drain stdout through EOF so the
+                    // frontend gets the terminal `RunState` before we exit.
                 }
             }
         }
@@ -1621,20 +1658,43 @@ impl SessionActor {
         Ok((request_id, rx))
     }
 
-    async fn handle_stop(&mut self) -> Result<(), String> {
-        log::debug!("[actor] handle_stop: run_id={}", self.run_id);
-        self.user_stopped = true;
+    /// Two-phase stop:
+    ///
+    /// Phase 1 (`request_stop`): mark the actor as user-stopped so the main
+    /// loop will discard stdin + kill the child on its next tick, and signal
+    /// the caller that the request was accepted. Returns
+    /// `ActorStopReason::UserRequested`.
+    ///
+    /// Phase 2 (`finalize_stop`): drain stdin, kill + reap the child, and
+    /// let the main loop observe stdout EOF naturally so `handle_eof` emits
+    /// the terminal `RunState("stopped")` event. Returning a typed reason
+    /// lets `cleanup` distinguish user stops from crashes without scanning
+    /// flags after the fact.
+    ///
+    /// Splitting the two phases avoids the previous race where `handle_stop`
+    /// dropped stdin + killed the child inline, which caused the actor's
+    /// `select!` to swallow the trailing stream-json events and leave the
+    /// UI stuck on `RunState("streaming")` with no terminal event.
+    fn request_stop(&mut self) -> ActorStopReason {
+        if !self.user_stopped {
+            log::debug!("[actor] stop requested by user: run_id={}", self.run_id);
+            self.user_stopped = true;
+        }
+        ActorStopReason::UserRequested
+    }
 
-        // Drop stdin to signal EOF to CLI
+    async fn finalize_stop(&mut self) {
+        // Drop stdin to signal EOF to CLI.
         self.stdin.take();
 
-        // Kill process
+        // Kill + reap the child. We swallow kill errors here — the actor
+        // may already be exiting (e.g. cancel.cancelled() path that called
+        // request_stop + finalize_stop before us); `child.wait` is the
+        // authoritative state read.
         if let Some(ref mut child) = self.child {
             let _ = child.kill().await;
             let _ = child.wait().await;
         }
-
-        Ok(())
     }
 
     /// Write control_response for a permission prompt back to CLI stdin.
@@ -2588,7 +2648,13 @@ impl SessionActor {
         self.quarantine_until_result = false;
 
         if !self.protocol.got_result_event {
-            let state_str = if self.cancel.is_cancelled() {
+            // P0-6: when the user clicks Stop mid-stream we want a
+            // terminal `RunState("stopped")` on the wire so the frontend
+            // can flip its state machine back to `idle` and re-enable
+            // submit. Treat user_stopped the same as cancel — the kill
+            // is intentional, so a non-zero exit_code from SIGKILL is not
+            // a failure from the user's perspective.
+            let state_str = if self.cancel.is_cancelled() || self.user_stopped {
                 "stopped"
             } else {
                 match exit_code {
