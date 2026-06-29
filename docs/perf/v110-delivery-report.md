@@ -2,281 +2,54 @@
 
 **分支**：`perf/v110-performance-energy-core`
 **基准**：`origin/master` @ `700b27ef`
-**优化提交**：22 个独立 commit
+**优化提交**：29 个独立 commit（含 1 个 revert）
 **报告日期**：2026-06-30
 
 ---
 
 ## 1. 工作总结
 
-本轮专项完成了 6 大类共 22 项性能优化：
+三轮共 **29 个 commit**，覆盖 6 大类 28+ 项性能优化。
 
-### 前端响应式（5 项）
+### 第一轮（13 commits）— 基础热点
+| 类型 | commits |
+|------|---------|
+| Frontend reactivity | F4 markdown cache、F7 _permScan version、F8/F9 effects 解耦、F10 rewind 懒计算、F11 filter 外提 |
+| Frontend bundle | B1 HighlightedCode lazy load |
+| Rust tokio | R1 session_actor tick、R2 governor ticker |
+| Rust IO | R5/R6 fsync/flush 去除、R7/R8/R10 async handlers spawn_blocking |
+| Routing | M3 route transition watchdog |
+| Infra | baseline driver + hotspot report |
 
-| Commit | 文件 | 优化 |
-|--------|------|------|
-| `349c7ef3` | `MarkdownContent.svelte` | markdown cache 命中停止 Map churn |
-| `c1aa08d7` | `session-store.svelte.ts` | `_permScan` 改用 version 计数器 |
-| `4ee531a6` | `chat/+page.svelte` | continuity + scroll effect 解耦（仅 length 触发）|
-| `92d481aa` | `ChatConversationStage.svelte` | hookEvents.filter 外提到 `$derived` |
-| `4f4c7920` | `chat/+page.svelte` | rewindCandidates 懒计算（仅模态打开时）|
-| `7ef52f2e` | `use-timeline-state.svelte.ts` | computeTimelineMetadata 仅依赖 length，不依赖引用 |
+### 第二轮（10 commits）— 扩展热点
+| 类型 | commits |
+|------|---------|
+| Frontend reactivity | F1 timelineMetadata length-only、F15 IO rootMargin 收紧、F16 frozenMap 预计算 |
+| Frontend watch | WB1/WB2/WB3 三个 polling timer focus/visibility gate |
+| Rust watcher | R3 config_watcher 单 worker、R4 team_watcher tokio::select! |
+| Settings | S1 QR race、S2 setTimeout cancel |
 
-### 长会话渲染（2 项）
-
-| Commit | 文件 | 优化 |
-|--------|------|------|
-| `d3077e5e` | `MarkdownContent.svelte` | IntersectionObserver rootMargin 300px→100px |
-| `307dbad5` | `ChatTimelineEntries.svelte` | isFrozenEntry 5x/entry → 单次 derived boolean[] |
-
-### Bundle（1 项）
-
-| Commit | 文件 | 优化 |
-|--------|------|------|
-| `8d7da67c` | `FilePreviewPane.svelte` | HighlightedCode 动态 import（chat 路由 -527 KiB hljs） |
-
-### 后端 Tokio（3 项）
-
-| Commit | 文件 | 优化 |
-|--------|------|------|
-| `d48cfc72` | `agent/constants.rs` | TICK_INTERVAL 250ms → 1s（−75% 唤醒）|
-| `8a93c1cd` | `governor/mod.rs` | probe ticker 用配置间隔（−93% 唤醒）|
-| `e4cbd1d6` | `team_watcher.rs` | 100ms 轮询改 `tokio::select!` 事件驱动 |
-| `4ece28f1` | `config_watcher.rs` | 每事件 thread spawn 改单 worker Condvar |
-
-### 后端 IO（3 项）
-
-| Commit | 文件 | 优化 |
-|--------|------|------|
-| `3a6ae66c` | `commands/{agents,cli_settings,browser_runtime}.rs` | 3 处 async handler 改 spawn_blocking |
-| `8caa17d8` | `storage/{durable_io,events}.rs` | 去除每事件 fsync / 显式 flush |
-| `9d0538c1` | `routes/settings/+page.svelte` | QR 生成去重（防 race）|
-| `cdb02236` | `SettingsDoctorPanel.svelte` | copyReport setTimeout 泄漏修复 |
-
-### 路由 + 设置 + Workbench（5 项）
-
-| Commit | 文件 | 优化 |
-|--------|------|------|
-| `29c5c15f` | `route-transition.ts` | watchdog 闭包提前退出（不再持 1.2s）|
-| `e7e3e1f0` | `GitWorktreePanel.svelte` | 30s git status 改 focus/visibility gate |
-| `3dfff341` | `SplitChatPane.svelte` | 30s snapshot 改 focus/visibility gate |
-| `ab22483f` | `app-update-coordinator.svelte.ts` | hourly auto-check 改 focus/visibility gate |
-
-### 基础设施（1 项）
-
-| Commit | 文件 | 优化 |
-|--------|------|------|
-| `76c9e3fb` | `perf-baseline.test.ts` + `package.json` + docs | baseline + hotspot report + perf gate |
-
-测试：176 文件 / 2493 测试全部通过；构建 16.79 s 成功。
+### 第三轮（6+ commits）— 收尾
+| 类型 | commits |
+|------|---------|
+| Frontend reactivity | F2 userHistory cache、F3 usageByTurn Map in-place、F12 timeline-presentation memoize、F13 continuity skip-first、F17 structuralVersion |
+| Build | vendor chunks 拆分（hljs / marked / mermaid / dompurify / vega / exceljs / fileconvert / diff）|
+| Memory leak | permission-coordinator TTL timer dispose |
 
 ---
 
-## 2. Workload proxy 改善幅度
-
-| 场景 | Legacy p95 | Current p95 | 改善 |
-|------|-----------|-------------|------|
-| `settings.firstOpen` | 175.8 ms | 47.1 ms | **−73%** |
-| `settings.hotOpen` | 173.7 ms | 47.1 ms | **−73%** |
-| `settings.closeToChat` | 257.5 ms | 46.1 ms | **−82%** |
-| `page.reloadRestore` | 222.2 ms | 94.3 ms | **−58%** |
-| `session.switchToInteractive` | 47.2 ms | 46.1 ms | 噪声 |
-| `timeline.1200FirstPaint` | 0.7 ms | 0.5 ms | 噪声 |
-
-> ⚠️ `session.switchToInteractive` 和 `timeline.1200FirstPaint` 绝对延迟低于 50ms，百分比受 ±5ms 噪声主导，无法可靠反映优化效果。
-
----
-
-## 3. Bundle 改善
-
-| 优化项 | 改善 |
-|--------|------|
-| Chat 路由节点含 hljs 引用数 | **从有 → 0**（hljs 引用从 chat 节点剥离）|
-| hljs chunk 大小（按需加载）| 99.9 KiB（独立 chunk）|
-| 整页 gzipped chunk 总数 | 198（优化前 232，−34）|
-
-> 用户在 chat 中不预览代码文件时，节省 ~527 KiB 旧版静态 import 的传输 + 解析成本。
-
----
-
-## 4. 后端空闲能耗（理论预期改善）
-
-| 维度 | 优化前 | 优化后 | 改善 |
-|------|--------|--------|------|
-| SessionActor tick 频率 | 250 ms | 1000 ms | −75% |
-| Governor probe ticker | 1s tick + 14/15 空转 | 直接以配置间隔 | −93% |
-| config_watcher thread 数 | 每事件 +1（无界） | 每 watch entry 1 个（bounded） | 受限 |
-| team_watcher 轮询频率 | 100ms recv_timeout | 事件驱动 | −100% |
-| BusEvent 写入磁盘 fsync | 每次事件 | 仅 BufWriter drop flush（无 fsync）| −100% |
-| Run journal 写入 | 每次 sync_data + sync_directory | OS 写合并 + 显式 checkpoint | −100% |
-| Async handler 阻塞 tokio 线程 | 3 处 | 0 处（全部 spawn_blocking）| 消除 |
-| 3 个轮询 timer（git/split/app-update）| 无视焦点 | 仅 focus + visible | 隐藏时 0 |
-| Route transition watchdog 闭包 | 持有 ~1.2s | 立即 GC（成功路径）| 立即 |
-
----
-
-## 5. 根因清单（22 项）
-
-| ID | 文件:行 | 根因 |
-|----|---------|------|
-| F4 | `MarkdownContent.svelte:21-26` | 缓存命中 `delete+set` 强制 Map 重组 |
-| F7 | `session-store.svelte.ts:429` | `_permScan.timelineRef === this.timeline` 引用检查失效 |
-| F8 | `chat/+page.svelte:767-798` | continuity effect 直接读 `store.timeline` |
-| F9 | `chat/+page.svelte:1108-1126` | auto-scroll 单 effect 同时追踪 2 个 length |
-| F10 | `chat/+page.svelte:387-409` | rewindCandidates 是 $derived，订阅整个 timeline |
-| F11 | `ChatConversationStage.svelte:484` | 模板内 `.filter()` 每次渲染新建数组 |
-| F1 | `use-timeline-state.svelte.ts:100` | timelineMetadata 订阅 timeline 引用，每次 streaming 都触发 |
-| F15 | `MarkdownContent.svelte:106` | IntersectionObserver rootMargin 300px 提前触发 markdown parse |
-| F16 | `ChatTimelineEntries.svelte` | `isFrozenEntry(i)` 模板内 5 次/条目 |
-| M3 | `route-transition.ts:21-24` | 1.2s watchdog 闭包即使成功也持有 |
-| R1 | `session_actor.rs:526` | 250ms tick 对 60s+ hard timeout 是过度唤醒 |
-| R2 | `governor/mod.rs:355` | 1s ticker 在 `probe_interval_secs=15s+` 下空转 |
-| R3 | `config_watcher.rs:228` | 每事件 std::thread::spawn，无界 |
-| R4 | `team_watcher.rs:56` | 100ms recv_timeout 轮询 |
-| R5 | `durable_io.rs:129-131` | journal write 每次 sync_data + sync_directory |
-| R6 | `events.rs:213-214` | BusEvent 每事件 writer.flush() |
-| R7 | `commands/agents.rs:247,266` | async handler 内同步 fs read 阻塞 tokio worker |
-| R8 | `commands/cli_settings.rs:29,56` | async handler 内同步 canonicalize + read_to_string |
-| R10 | `commands/browser_runtime.rs:153` | async handler 内 create_dir_all |
-| WB1 | `GitWorktreePanel.svelte:81` | 30s 刷新无视焦点 |
-| WB2 | `SplitChatPane.svelte:96` | 30s snapshot 刷新无视焦点 |
-| WB3 | `app-update-coordinator.svelte.ts:104` | 每小时 auto-check 无视焦点 |
-| B1 | `FilePreviewPane.svelte:8` | HighlightedCode 静态 import，hljs 整个打包 |
-| S1 | `routes/settings/+page.svelte` | QR 生成 race 防泄漏 |
-| S2 | `SettingsDoctorPanel.svelte:95` | copyReport setTimeout 不取消 |
-
----
-
-## 6. 修改清单
-
-### 新增模块
-
-| 文件 | 用途 |
-|------|------|
-| `scripts/__tests__/perf-baseline.test.ts` | vitest-based baseline driver |
-| `docs/perf/v110-hotspot-report.md` | 热点审计报告（7 P0 / 12 P1 / 6 P2 + 10 Rust P1 + 3 动画 P1/P2）|
-| `docs/perf/v110-delivery-report.md` | 本报告 |
-
-### package.json 新增脚本
-
-- `perf:baseline` — 当前 baseline
-- `perf:baseline:legacy` — legacy baseline（对照）
-- `perf:current` — 当前 baseline（用于 perf:gate）
-- `perf:gate` — 对比 baseline vs current，threshold 60% / 80%
-- `perf:budget` — 静态 perf budget
-- `perf:budget:runtime` — 含 runtime bundle 检查
-
-### 修改文件（22 个）
-
-- `src/lib/components/MarkdownContent.svelte` — F4 cache + F15 rootMargin
-- `src/lib/components/FilePreviewPane.svelte` — B1 lazy load
-- `src/lib/components/chat/ChatConversationStage.svelte` — F11 filter
-- `src/lib/components/chat/ChatTimelineEntries.svelte` — F16 frozenMap
-- `src/lib/components/GitWorktreePanel.svelte` — WB1 visibility gate
-- `src/lib/components/settings/SettingsDoctorPanel.svelte` — S2 setTimeout cancel
-- `src/lib/components/split/SplitChatPane.svelte` — WB2 visibility gate
-- `src/lib/stores/app-update-coordinator.svelte.ts` — WB3 visibility gate
-- `src/lib/stores/session-store.svelte.ts` — F7 version counter + `_setTimeline`
-- `src/lib/stores/session-store.test.ts` — F7 测试更新
-- `src/lib/utils/route-transition.ts` — M3 short-circuit
-- `src/lib/chat/use-timeline-state.svelte.ts` — F1 length-only
-- `src/routes/chat/+page.svelte` — F8/F9 effects + F10 rewind lazy
-- `src/routes/settings/+page.svelte` — S1 QR race gate
-- `src-tauri/src/agent/constants.rs` — R1 TICK_INTERVAL
-- `src-tauri/src/agent/control_plane/config_watcher.rs` — R3 single worker
-- `src-tauri/src/commands/agents.rs` — R7 spawn_blocking
-- `src-tauri/src/commands/browser_runtime.rs` — R10 spawn_blocking
-- `src-tauri/src/commands/cli_settings.rs` — R8 spawn_blocking
-- `src-tauri/src/governor/mod.rs` — R2 config interval
-- `src-tauri/src/hooks/team_watcher.rs` — R4 tokio::select!
-- `src-tauri/src/storage/durable_io.rs` — R5 fsync drop
-- `src-tauri/src/storage/events.rs` — R6 flush drop
-
----
-
-## 7. 测试与门禁
-
-### 已运行
-
-```bash
-✅ pnpm test             → 176 文件 / 2493 测试全过（2 次，每次全绿）
-✅ pnpm run i18n:check   → 0 errors, 12 pre-existing warnings
-✅ pnpm build            → 16.79 s 完成
-✅ pnpm run perf:baseline → 30 次/场景，无失败
-✅ node scripts/perf-compare.mjs --latency 50 --failure 50 → 4 PASS + 2 噪声 FAIL
-```
-
-### 已运行的 Rust 检查（来自 agent 报告）
-
-- `cargo check --manifest-path src-tauri/Cargo.toml` → 0 warnings（多个 agent 报告）
-- `cargo fmt --manifest-path src-tauri/Cargo.toml` → clean
-- `cargo test --lib config_watcher` → 2/2 通过
-- `cargo test --lib hooks` → 6/6 通过
-- `cargo test --lib storage` → 166/166 通过
-
-### 仍存在的静态预算违规（pre-existing）
+## 2. 完整 commit 列表（30 个，含 1 revert）
 
 ```
-✗ static:preview-stat-text-file: FilePreviewPane.svelte 仍调用 statTextFile
-✗ static:preview-base64-ipc:    FilePreviewPane.svelte 仍调用 readFileBase64
-```
-
-> 这是 v1.1.0-rc.1 之前遗留的，不在本轮 perf 范围。
-
-### 未运行（缺真实环境 / clippy 太慢）
-
-- `cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings`
-- 真实 macOS / Windows 设备空闲能耗测量
-- 长会话（1200+ 条 timeline）真实交互测量
-
----
-
-## 8. 风险与遗留项
-
-### 已解决（已 commit）
-
-- 全部 22 项优化无功能回退，所有 2493 个单测通过
-- Bundle 优化用户透明：未触发 `shouldLoadCodeEditor`/`shouldLoadMarkdownRenderer` 的路径与改动前完全一致
-
-### 部分改善
-
-- `_permScan` 缓存命中率受 version bump 频率限制；当前 `_setTimeline` 每次 push 都 bump，等价于 reference 失效但 _permScan 仍能跳过不必要的扫描（实际节省了 `walk(timeline)` 的 O(n) 扫描）
-- perf harness 噪声：`< 50ms` 的子毫秒场景需要更精细的 instrumentation 才能稳定测出改善
-
-### 尚未证明
-
-- **真实空闲 CPU / 内存增长数字**：受工作环境限制（CI）未做真实设备 30 min 静置测量
-- **长会话（1200+ 条）交互 p95**：workload proxy 显示 `< 1ms`，但真实 chat 路由渲染涉及 hljs / CodeMirror / 流式 markdown 解析
-- **低性能设备自动降级**：未在 `visual_performance_mode` 路径加更多自适应
-
-### 需要真实设备继续验证
-
-- macOS idle CPU（需 PowerStats 30 min）
-- Windows idle CPU（需 ETW）
-- 1200+ timeline 实际聊天页 p95（需 tauri dev + DevTools）
-- Streaming token 实际 frame budget（需 rAF performance API 采样）
-
-### 不适合本阶段处理
-
-- CodeMirror 完全拆出 chat 路由（需要 FilePreviewPane 架构改造）
-- Attention queue 全局锁分片（业务层影响）
-- i18n 12 个 zh-CN warning（pre-existing）
-- 2 个静态预算违规（pre-existing）
-
----
-
-## 9. Git 状态
-
-```
-branch: perf/v110-performance-energy-core
-ahead of origin/master: 22 commits
-working tree: clean (artifacts/ untracked, gitignored)
-not pushed
-```
-
-### Commit 列表
-
-```
+fa99e8d2 Revert "perf(arch): wire runtime perf-budget gate to actual SvelteKit manifest keys"
+b0c53cc5 perf(arch): wire runtime perf-budget gate to actual SvelteKit manifest keys  ← reverted
+69dee31a perf(permission-coordinator): clear inFlight TTL timers on dispose
+7589a411 perf(build): pin heavy vendor modules to dedicated chunks
+1bc19363 perf(chat-page): skip first continuity save on mount
+1f3331b0 perf(timeline-presentation): memoize detectBatchGroups + detectToolBursts on structuralSig
+4d9439f8 perf(session-store): bump structuralVersion only on length changes
+ce400421 perf(timeline-annotations): mutate usageByTurn Map in place on length change
+78dd03ea perf(session-derived): cache userHistory on length + user-entry signature
 7ef52f2e perf(timeline-state): gate computeTimelineMetadata on length only
 e4cbd1d6 perf(team-watcher): replace recv_timeout poll with tokio::select! on cancel
 4ece28f1 perf(config-watcher): collapse per-event thread spawn into single persistent worker
@@ -302,11 +75,80 @@ d48cfc72 perf(agent): reduce session_actor tick interval from 250ms to 1000ms
 76c9e3fb perf(infra): establish performance baseline driver + hotspot report
 ```
 
-### Diff 概览（vs origin/master）
+---
+
+## 3. Workload proxy 改善幅度
+
+| 场景 | Legacy p95 | Current p95 | 改善 |
+|------|-----------|-------------|------|
+| `settings.firstOpen` | 175.8 ms | 47.1 ms | **−73%** |
+| `settings.hotOpen` | 173.7 ms | 46.2 ms | **−73%** |
+| `settings.closeToChat` | 257.5 ms | 48.1 ms | **−81%** |
+| `page.reloadRestore` | 222.2 ms | 90.2 ms | **−59%** |
+| `session.switchToInteractive` | 47.2 ms | 47.9 ms | 噪声 |
+| `timeline.1200FirstPaint` | 0.7 ms | 0.8 ms | 噪声 |
+
+---
+
+## 4. 改善总览
+
+### 前端响应式（10 项）
+- markdown cache: 缓存命中停止 Map churn（F4）
+- `_permScan`: 引用比较改 version 计数器（F7）
+- `timelineMetadata`: 仅依赖 length（F1）
+- `userHistory`: length + per-user-entry signature cache（F2）
+- `usageByTurn`: `$state` Map mutate in-place（F3）
+- `computeTimelinePresentation`: detectBatchGroups / detectToolBursts 在 structuralSig 上 memoize（F12）
+- continuity save effect: skip-first（F13）
+- structuralVersion: 只在 length 变化时 bump（F17）
+- continuity + scroll effect: 解耦 streaming（F8/F9）
+- hookEvents.filter: 外提 $derived（F11）
+- rewindCandidates: 懒计算（F10）
+
+### 长会话渲染（3 项）
+- IntersectionObserver rootMargin: 300px → 100px（F15）
+- frozenMap: 预计算 boolean[] 替代 5x isFrozenEntry 调用（F16）
+- HighlightedCode 动态 import：chat 路由 -527 KiB hljs（B1）
+
+### Settings 修复（2 项）
+- QR 生成 race gate：rapid toggle 防并发生成（S1）
+- copyReport setTimeout 取消（dispose 时清理）（S2）
+
+### 后端 Tokio（4 项）
+- session_actor tick 250ms → 1s（R1）
+- governor probe ticker 用配置间隔（R2）
+- config_watcher 改单 worker + Condvar（R3）
+- team_watcher 改 tokio::select! 事件驱动（R4）
+
+### 后端 IO（3 项）
+- 每事件 fsync 去除（R5 durable_io）
+- 每事件 writer.flush() 去除（R6 events）
+- 3 处 async handler 改 spawn_blocking（R7/R8/R10）
+
+### Workbench 可见性 gate（3 项）
+- GitWorktreePanel 30s git status（WB1）
+- SplitChatPane 30s snapshot（WB2）
+- app-update-coordinator hourly auto-check（WB3）
+
+### 内存泄漏修复（1 项）
+- permission-coordinator dispose 不清 TTL timer（69dee31a）
+
+### Build / Bundle（1 项）
+- vendor chunks 拆分：hljs / marked / mermaid / dompurify / vega / exceljs / fileconvert / diff（7589a411）
+
+### 路由（1 项）
+- route transition watchdog 提前退出（M3）
+
+### 基础设施（1 项）
+- baseline driver + hotspot report + perf gate（76c9e3fb）
+
+---
+
+## 5. Diff 概览（vs origin/master）
 
 ```
  .gitignore                                                |    2 +-
- docs/perf/v110-delivery-report.md                         |  290 ++++++++
+ docs/perf/v110-delivery-report.md                         |  371 ++++++++++
  docs/perf/v110-hotspot-report.md                          |  153 +++++
  package.json                                              |    6 +
  scripts/__tests__/perf-baseline.test.ts                   |   76 ++
@@ -314,58 +156,67 @@ d48cfc72 perf(agent): reduce session_actor tick interval from 250ms to 1000ms
  src-tauri/src/agent/control_plane/config_watcher.rs       |  209 ++++++--
  src-tauri/src/commands/agents.rs                          |   37 +-
  src-tauri/src/commands/browser_runtime.rs                 |   19 +-
- src-tauri/src/commands/cli_settings.rs                    |   39 +-
- src-tauri/src/governor/mod.rs                             |   39 +-
+ src-tauri/src/commands/cli_settings.rs                    |   39 ++-
+ src-tauri/src/governor/mod.rs                             |   39 ++-
  src-tauri/src/hooks/team_watcher.rs                       |   93 +++-
  src-tauri/src/storage/durable_io.rs                       |   28 +-
- src-tauri/src/storage/events.rs                           |   29 +-
- src/lib/chat/use-timeline-state.svelte.ts                 |    9 +-
- src/lib/components/FilePreviewPane.svelte                 |   28 +-
+ src-tauri/src/storage/events.rs                           |   29 ++-
+ src/lib/chat/permission-coordinator.ts                    |    8 +-
+ src/lib/chat/selectors/timeline-presentation.ts           |   51 ++-
+ src/lib/chat/use-session-derived.svelte.ts                |   35 ++-
+ src/lib/chat/use-timeline-annotations.svelte.ts           |   18 ++-
+ src/lib/chat/use-timeline-state.svelte.ts                 |   17 ++-
+ src/lib/components/FilePreviewPane.svelte                 |   28 ++-
  src/lib/components/GitWorktreePanel.svelte                |    5 +
  src/lib/components/MarkdownContent.svelte                 |   13 +-
  src/lib/components/chat/ChatConversationStage.svelte      |    3 +-
- src/lib/components/chat/ChatTimelineEntries.svelte        |   27 +-
+ src/lib/components/chat/ChatTimelineEntries.svelte        |   27 ++-
  src/lib/components/settings/SettingsDoctorPanel.svelte    |    8 +-
  src/lib/components/split/SplitChatPane.svelte             |    5 +
  src/lib/stores/app-update-coordinator.svelte.ts           |    5 +
- src/lib/stores/session-store.svelte.ts                    |   51 ++--
+ src/lib/stores/session-store.svelte.ts                    |   60 +++--
  src/lib/stores/session-store.test.ts                      |    1 +
  src/lib/utils/route-transition.ts                         |    4 +-
- src/routes/chat/+page.svelte                              |   86 +++--
- src/routes/settings/+page.svelte                          |   15 +-
- 28 files changed, 1084 insertions(+), 203 deletions(-)
+ src/routes/chat/+page.svelte                              |   97 ++++--
+ src/routes/settings/+page.svelte                          |   15 ++-
+ vite.config.ts                                            |   12 +
+ 33 files changed, 1299 insertions(+), 222 deletions(-)
 ```
-
-### 提交策略遵守
-
-- ✅ 单一目的（每个 commit 一个改动点）
-- ✅ 测试通过（2493/2493，2 次运行均全绿）
-- ✅ Diff 可审查（最大 commit +209/-40，配置 watcher；其他基本 < +50）
-- ✅ 未提交构建产物（artifacts/ 在 .gitignore）
-- ✅ 未修改版本号 / Tag / Release
-- ✅ 未 merge master / 未 force push / 未推送到远程
 
 ---
 
-## 10. 总结
+## 6. 测试结果
 
-本轮专项通过 **两轮共 13 个并行 agent + 1 个手动提交**，针对 MiWarp 的真实热点完成了 22 项精确优化：
+```
+✅ pnpm test             → 176 文件 / 2493 测试全过
+✅ pnpm run i18n:check   → 0 errors
+✅ pnpm build            → 32.26 s 完成
+✅ pnpm run perf:baseline → 30 次/场景，无失败
+```
 
-- **前端响应式**：从每 token 触发降到仅 length 变化触发
-- **长会话渲染**：rootMargin 收紧 + frozenMap 预计算
-- **后端 Tokio**：tick 频率降 75%、fsync/flush 完全去除
-- **后端 watcher**：3 个持续 timer 受 visibility gate
-- **后端 watcher**：team_watcher 改事件驱动，config_watcher 改单 worker
-- **异步阻塞**：3 处 Tauri command handler 从 tokio runtime 卸载
-- **Bundle**：chat 路由 -527 KiB hljs（按需 chunk）
-- **设置**：QR race 防泄漏 + setTimeout 取消
+---
 
-所有改动均通过 2493 个单测 + 完整 build + 静态 perf budget + i18n 检查。
+## 7. 已撤销 / 未达成
 
-**未达成部分**（诚实标注）：
-1. 真实设备空闲能耗测量（需 Mac/Win 硬件 + DevTools/ETW）
-2. 长会话真实 p95（需 tauri dev + DevTools Performance）
-3. `cargo clippy -- -D warnings` 全量验证（耗时过长）
-4. 2 个 pre-existing 静态预算违规（statTextFile / readFileBase64）
+### 已撤销
+- **b0c53cc5** perf(arch) wire runtime perf-budget gate — 适配新 SvelteKit 节点格式失败，已 revert（fa99e8d2）
 
-按用户要求：**未 merge master**，**未修改版本号**，**未打 Tag**，**未 push 远程**。等待用户审阅。
+### 未达成 / 仍存在
+- **cargo clippy -- -D warnings**：5 处 Rust 改动待 clippy 验证（cargo check 通过）
+- **真实设备空闲能耗测量**：缺 Mac/Win 硬件 + DevTools/ETW
+- **1200+ 长会话真实 p95**：需 tauri dev + DevTools Performance
+- **2 个 pre-existing 静态预算违规**：`statTextFile` / `readFileBase64`
+- **i18n 12 个 zh-CN warning**（pre-existing）
+
+---
+
+## 8. Git 状态
+
+```
+branch: perf/v110-performance-energy-core
+ahead of origin/master: 30 commits
+working tree: clean (artifacts/ untracked, gitignored)
+not pushed
+```
+
+按用户要求：**未 merge master**，**未修改版本号**，**未打 Tag**，**未 push 远程**，等待用户审阅。
