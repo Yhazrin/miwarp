@@ -19,6 +19,7 @@ pub mod files;
 pub mod fleet;
 pub mod folders;
 pub mod fs;
+pub mod fs_drop_grant;
 pub mod git;
 pub mod governor;
 pub mod history;

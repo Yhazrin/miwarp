@@ -255,6 +255,7 @@ pub fn run() {
             commands::fs::list_directory,
             commands::fs::check_is_directory,
             commands::fs::read_file_base64,
+            commands::fs::issue_drop_grant,
             commands::remote_fs::list_remote_directory,
             commands::remote_fs::resolve_remote_home,
             commands::git::get_git_timeline,

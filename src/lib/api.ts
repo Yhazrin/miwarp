@@ -635,11 +635,42 @@ export async function resolveRemoteHome(hostName: string): Promise<string> {
   return invoke<string>(CMD.resolve_remote_home, { hostName });
 }
 
-export async function readFileBase64(path: string, cwd?: string): Promise<[string, string]> {
+export async function readFileBase64(
+  path: string,
+  cwd?: string,
+  grant?: string,
+): Promise<[string, string]> {
   return perfMarkAsync(
     "ipc-readFileBase64",
-    () => invoke<[string, string]>("read_file_base64", { path, cwd: cwd ?? null }),
+    () =>
+      invoke<[string, string]>("read_file_base64", {
+        path,
+        cwd: cwd ?? null,
+        grant: grant ?? null,
+      }),
     { path },
+  );
+}
+
+/**
+ * Issue a one-time drop grant for a batch of absolute paths.
+ *
+ * The OS hands the renderer the absolute paths of the files the user
+ * just dropped into the window. The renderer then asks the backend to
+ * issue a short-lived grant (30 s) bound to exactly those paths, and
+ * threads the returned `grantId` through to `readFileBase64` so the
+ * read can succeed without re-opening the SSRF-like hole the P0-1
+ * hardening closed.
+ *
+ * The grant id is bound to a specific set of canonical paths; a
+ * different file (even in the same drop) needs a separate grant, and
+ * a grant for one file cannot be used to read another.
+ */
+export async function issueDropGrant(paths: string[]): Promise<string> {
+  return perfMarkAsync(
+    "ipc-issueDropGrant",
+    () => invoke<string>("issue_drop_grant", { paths }),
+    { count: paths.length },
   );
 }
 

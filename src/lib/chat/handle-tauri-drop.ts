@@ -72,11 +72,38 @@ export async function handleTauriDrop(
       }
     }
 
+    // Phase 1.5: issue a one-time drop grant for every file the user
+    // just dropped into the window. The grant is bound to the exact
+    // canonical paths of this drop and expires in 30 s, so the
+    // subsequent readFileBase64 calls (Phase 2) can succeed without
+    // re-opening the SSRF-like hole the P0-1 hardening closed.
+    // Browser-mode IPC / WebSocket callers cannot obtain a grant, so
+    // the boundary check still applies for them.
+    let dropGrantId: string | null = null;
+    if (fileEntries.length > 0) {
+      try {
+        dropGrantId = await api.issueDropGrant(fileEntries.map(({ p }) => p));
+        dbg("chat", "tauri-drop: grant issued", {
+          grantIdPrefix: dropGrantId.slice(0, 12),
+          count: fileEntries.length,
+        });
+      } catch (err) {
+        dbgWarn("chat", "tauri-drop: issueDropGrant failed; reads will use fallback", {
+          error: err,
+        });
+        dropGrantId = null;
+      }
+    }
+
     // Phase 2: parallel file read (concurrency=2 to limit memory)
     const fileResults = await mapSettled(
       fileEntries,
       async ({ p, name }) => {
-        const [base64, mime] = await api.readFileBase64(p);
+        const [base64, mime] = await api.readFileBase64(
+          p,
+          undefined,
+          dropGrantId ?? undefined,
+        );
         const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
         return { file: new File([bytes], name, { type: mime }), name, mime, size: bytes.length };
       },

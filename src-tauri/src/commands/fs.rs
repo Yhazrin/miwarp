@@ -74,7 +74,8 @@ pub fn check_is_directory(path: String) -> bool {
 /// Shared by chat drag-drop and Explorer image preview.
 const MAX_BASE64_FILE_SIZE: u64 = 100 * 1024 * 1024;
 
-/// Resolve the trusted fallback root used when `cwd` is `None`.
+/// Resolve the trusted fallback root used when `cwd` is `None` and no
+/// `drop_grant` was issued.
 ///
 /// Preference order:
 /// 1. Global user `working_directory` from settings (if set and exists)
@@ -84,41 +85,102 @@ const MAX_BASE64_FILE_SIZE: u64 = 100 * 1024 * 1024;
 /// Returns `None` only if none of these resolve — in that case
 /// `read_file_base64` will reject the call outright.
 fn resolve_fallback_root() -> Option<std::path::PathBuf> {
-    if let Some(ref wd) = crate::storage::settings::get_user_settings().working_directory {
+    let s = crate::storage::settings::get_user_settings();
+    let home = crate::storage::home_dir()
+        .map(std::path::PathBuf::from)
+        .unwrap_or_default();
+    resolve_fallback_root_with(
+        s.working_directory.as_deref(),
+        &crate::storage::data_dir(),
+        &home,
+    )
+}
+
+/// Pure resolver used by `resolve_fallback_root` and by unit tests.
+/// All inputs are injected so the function does **not** read live
+/// `~/.miwarp/settings.json` — that was the source of the test
+/// pollution in the original P0-1 implementation.
+pub(crate) fn resolve_fallback_root_with(
+    working_directory: Option<&str>,
+    data_dir: &std::path::Path,
+    home_dir: &std::path::Path,
+) -> Option<std::path::PathBuf> {
+    if let Some(wd) = working_directory {
         let p = std::path::PathBuf::from(wd);
         if p.exists() {
-            return std::fs::canonicalize(&p).ok();
+            if let Ok(c) = std::fs::canonicalize(&p) {
+                return Some(c);
+            }
         }
     }
-    let data = crate::storage::data_dir();
-    if data.exists() {
-        if let Ok(c) = std::fs::canonicalize(&data) {
+    if data_dir.exists() {
+        if let Ok(c) = std::fs::canonicalize(data_dir) {
             return Some(c);
         }
     }
-    if let Some(home) = crate::storage::home_dir() {
-        let claude = std::path::PathBuf::from(&home).join(".claude");
-        if claude.exists() {
-            if let Ok(c) = std::fs::canonicalize(&claude) {
-                return Some(c);
-            }
+    let claude = home_dir.join(".claude");
+    if claude.exists() {
+        if let Ok(c) = std::fs::canonicalize(&claude) {
+            return Some(c);
         }
     }
     None
 }
 
+/// Issue a one-time grant for a list of absolute paths the user just
+/// dropped into the window. The returned grant id is then threaded
+/// through to `read_file_base64` so the file read can succeed without
+/// re-opening the SSRF-like hole the P0-1 fix closed.
+#[tauri::command]
+pub fn issue_drop_grant(paths: Vec<String>) -> Result<String, String> {
+    log::debug!("[fs] issue_drop_grant: {} paths", paths.len());
+    super::fs_drop_grant::issue_grant(paths)
+}
+
 /// Read a file as base64 with MIME detection.
 ///
-/// **Path validation (P0-1 fix)**: the command ALWAYS validates the request
-/// against an allow-list. The `cwd` parameter narrows the allowed set to the
-/// caller's project directory; when `cwd` is `None` we fall back to the
-/// trusted config roots (`working_directory` from settings → `~/.miwarp` →
-/// `~/.claude`). This closes the SSRF-like hole where a `cwd=None` browser
-/// request could read arbitrary files on disk.
+/// **Path validation (P0-1 + P0-1 hardening)**: every request is validated
+/// against exactly one of three trusted scopes:
+///
+/// 1. **`cwd`** (project dir the renderer is currently viewing)
+/// 2. **`grant`** (one-time user-gesture grant for a Tauri file drop)
+/// 3. **trusted fallback root** (user `working_directory` / `~/.miwarp` /
+///    `~/.claude`) — only reachable when neither `cwd` nor `grant` was
+///    provided AND the trusted root resolves.
+///
+/// Browser-mode IPC / WebSocket callers cannot obtain a `grant`, so
+/// they remain restricted to `cwd` or the fallback root. Native drag-drop
+/// is restored because the renderer thread an `issue_drop_grant` call
+/// before reaching here.
 #[tauri::command]
-pub fn read_file_base64(path: String, cwd: Option<String>) -> Result<(String, String), String> {
-    log::debug!("[fs] read_file_base64: path={path}, cwd={cwd:?}");
-    let validated = if cwd.is_some() {
+pub fn read_file_base64(
+    path: String,
+    cwd: Option<String>,
+    grant: Option<String>,
+) -> Result<(String, String), String> {
+    log::debug!(
+        "[fs] read_file_base64: path={path}, cwd={cwd:?}, grant_present={}",
+        grant.is_some()
+    );
+    let validated = if let Some(grant_id) = grant.as_deref() {
+        // User-gesture grant flow: any path the user just dropped into
+        // the window is allowed for the lifetime of the grant.
+        let p = std::path::Path::new(&path);
+        match super::fs_drop_grant::check_grant(grant_id, p) {
+            Ok(true) => std::path::PathBuf::from(&path),
+            Ok(false) => {
+                log::warn!(
+                    "[fs] read_file_base64 denied: grant {} does not cover path",
+                    grant_id
+                );
+                return Err(ACCESS_DENIED.to_string());
+            }
+            Err(e) => {
+                log::warn!("[fs] read_file_base64 denied: grant check failed: {e}");
+                return Err(ACCESS_DENIED.to_string());
+            }
+        }
+    } else if cwd.is_some() {
         super::files::validate_file_path(&path, cwd.as_deref()).map_err(|e| {
             // P0-1: scrub full path from any error returned to the client.
             // The detailed path is logged server-side but never echoed back.
@@ -247,7 +309,7 @@ mod tests {
             .write_all(PNG_BYTES)
             .unwrap();
 
-        let result = read_file_base64(img.to_string_lossy().into(), None);
+        let result = read_file_base64(img.to_string_lossy().into(), None, None);
         assert!(
             result.is_err(),
             "cwd=None should reject arbitrary tempdir paths (P0-1 fix)"
@@ -275,6 +337,7 @@ mod tests {
         let result = read_file_base64(
             outside_file.to_string_lossy().into(),
             Some(allowed_dir.path().to_string_lossy().into()),
+            None,
         );
         assert!(
             result.is_err(),
@@ -292,6 +355,7 @@ mod tests {
         let result = read_file_base64(
             file.to_string_lossy().into(),
             Some(dir.path().to_string_lossy().into()),
+            None,
         );
         assert!(
             result.is_ok(),
@@ -308,7 +372,7 @@ mod tests {
     fn read_file_base64_rejects_traversal_segments() {
         let dir = tempfile::tempdir().unwrap();
         let traversal = format!("{}/../escaped.txt", dir.path().display());
-        let result = read_file_base64(traversal, Some(dir.path().to_string_lossy().into()));
+        let result = read_file_base64(traversal, Some(dir.path().to_string_lossy().into()), None);
         assert!(
             result.is_err(),
             "path containing '..' must be rejected as traversal"
@@ -316,42 +380,156 @@ mod tests {
     }
 
     /// `cwd=None` succeeds when the file lives inside the trusted fallback
-    /// root. We simulate this by temporarily registering the tempdir as the
-    /// global `working_directory` for the duration of the test.
+    /// root. Pure-function path: we test `resolve_fallback_root_with`
+    /// directly so this test does **not** touch real `~/.miwarp/settings.json`.
     #[test]
-    fn read_file_base64_no_cwd_allows_path_in_fallback_root() {
-        let dir = tempfile::tempdir().unwrap();
-        let img = dir.path().join("in_root.png");
+    fn resolve_fallback_root_with_prefers_working_directory() {
+        let wd = tempfile::tempdir().unwrap();
+        let data = tempfile::tempdir().unwrap();
+        let home = tempfile::tempdir().unwrap();
+        let result =
+            resolve_fallback_root_with(Some(wd.path().to_str().unwrap()), data.path(), home.path());
+        assert_eq!(
+            result.as_deref(),
+            std::fs::canonicalize(wd.path()).ok().as_deref()
+        );
+    }
+
+    /// `resolve_fallback_root_with` falls back to the data dir when
+    /// `working_directory` is unset.
+    #[test]
+    fn resolve_fallback_root_with_falls_back_to_data_dir() {
+        let wd_dir = tempfile::tempdir().unwrap(); // never linked in
+        let data = tempfile::tempdir().unwrap();
+        let home = tempfile::tempdir().unwrap();
+        // Make sure wd is NOT canonicalized by giving a non-existent path.
+        let bogus = wd_dir.path().join("does-not-exist");
+        let result =
+            resolve_fallback_root_with(Some(bogus.to_str().unwrap()), data.path(), home.path());
+        assert_eq!(
+            result.as_deref(),
+            std::fs::canonicalize(data.path()).ok().as_deref()
+        );
+    }
+
+    /// `cwd=None` reads that land in the trusted fallback root succeed.
+    /// This test bypasses the Tauri command and calls the pure
+    /// resolver + the validator directly, so it does not depend on
+    /// (and does not pollute) live user settings.
+    #[test]
+    fn read_file_base64_via_fallback_root_pure() {
+        let root = tempfile::tempdir().unwrap();
+        let img = root.path().join("in_root.png");
+        std::fs::File::create(&img)
+            .unwrap()
+            .write_all(PNG_BYTES)
+            .unwrap();
+        let resolved = resolve_fallback_root_with(
+            Some(root.path().to_str().unwrap()),
+            root.path(),
+            root.path(),
+        )
+        .expect("resolve");
+        let result = crate::commands::files::validate_file_path(
+            img.to_str().unwrap(),
+            Some(resolved.to_str().unwrap()),
+        );
+        assert!(
+            result.is_ok(),
+            "validate_file_path should accept in-root path, got: {:?}",
+            result
+        );
+    }
+
+    /// P0-1 hardening: with a valid drop grant, `read_file_base64` reads
+    /// a path that lives outside the fallback root. This is the chat
+    /// native drag-drop scenario.
+    #[test]
+    fn read_file_base64_with_drop_grant_allows_outside_fallback() {
+        // Path that is NOT inside any of the trusted roots.
+        let desktop = tempfile::tempdir().unwrap();
+        let img = desktop.path().join("from_desktop.png");
         std::fs::File::create(&img)
             .unwrap()
             .write_all(PNG_BYTES)
             .unwrap();
 
-        // Register tempdir as the trusted working_directory fallback root.
-        // Other tests rely on the global being None so we restore it on drop.
-        struct WdGuard(Option<String>);
-        impl Drop for WdGuard {
-            fn drop(&mut self) {
-                crate::storage::settings::update_user_settings(
-                    serde_json::json!({ "working_directory": self.0 }),
-                )
-                .ok();
-            }
-        }
-        crate::storage::settings::update_user_settings(serde_json::json!({
-            "working_directory": dir.path().to_string_lossy()
-        }))
-        .expect("update working_directory");
-        let _guard = WdGuard(None);
-
-        let result = read_file_base64(img.to_string_lossy().into(), None);
+        let grant_id =
+            issue_drop_grant(vec![img.to_string_lossy().into()]).expect("issue_drop_grant");
+        let result = read_file_base64(img.to_string_lossy().into(), None, Some(grant_id));
         assert!(
             result.is_ok(),
-            "cwd=None should allow files inside the configured working_directory, got: {:?}",
+            "valid drop grant should allow read of outside-fallback path, got: {:?}",
             result
         );
         let (base64, mime) = result.unwrap();
         assert!(!base64.is_empty());
         assert_eq!(mime, "image/png");
+    }
+
+    /// P0-1 hardening: regular IPC / WebSocket with no grant cannot
+    /// piggy-back on a grant issued by another renderer tab. This is
+    /// the SSRF-like hole the original P0-1 fix was designed to close.
+    #[test]
+    fn read_file_base64_without_grant_still_rejects_outside_fallback() {
+        let desktop = tempfile::tempdir().unwrap();
+        let img = desktop.path().join("from_desktop.png");
+        std::fs::File::create(&img)
+            .unwrap()
+            .write_all(PNG_BYTES)
+            .unwrap();
+
+        // No grant issued, no cwd → must still be rejected.
+        let result = read_file_base64(img.to_string_lossy().into(), None, None);
+        assert!(
+            result.is_err(),
+            "no-cwd + no-grant + outside-fallback must still be rejected"
+        );
+        let err = result.unwrap_err();
+        assert!(err.contains("Access denied"), "got: {err}");
+        assert!(
+            !err.contains(desktop.path().to_str().unwrap()),
+            "error leaks full path: {err}"
+        );
+    }
+
+    /// P0-1 hardening: a grant issued for path A cannot be used to read
+    /// path B (a different drop or a different user's drop).
+    #[test]
+    fn read_file_base64_grant_does_not_cross_paths() {
+        let dir_a = tempfile::tempdir().unwrap();
+        let dir_b = tempfile::tempdir().unwrap();
+        let a = dir_a.path().join("a.png");
+        let b = dir_b.path().join("b.png");
+        std::fs::File::create(&a)
+            .unwrap()
+            .write_all(PNG_BYTES)
+            .unwrap();
+        std::fs::File::create(&b)
+            .unwrap()
+            .write_all(PNG_BYTES)
+            .unwrap();
+
+        let grant_id = issue_drop_grant(vec![a.to_string_lossy().into()]).expect("issue");
+        let result = read_file_base64(b.to_string_lossy().into(), None, Some(grant_id));
+        assert!(result.is_err(), "grant for A must not authorize B");
+    }
+
+    /// P0-1 hardening: an unknown / forged grant id is treated as
+    /// "no grant" and falls through to the regular boundary check.
+    #[test]
+    fn read_file_base64_with_unknown_grant_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let img = dir.path().join("x.png");
+        std::fs::File::create(&img)
+            .unwrap()
+            .write_all(PNG_BYTES)
+            .unwrap();
+        let result = read_file_base64(
+            img.to_string_lossy().into(),
+            None,
+            Some("drop-deadbeefdeadbeef".to_string()),
+        );
+        assert!(result.is_err(), "unknown grant must be rejected");
     }
 }

@@ -494,10 +494,27 @@ pub async fn dispatch_command(
             let path = extract_str(&params, "path")?;
             Ok(json!(crate::commands::fs::check_is_directory(path)))
         }
+        "issue_drop_grant" => {
+            let paths = params
+                .get("paths")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect::<Vec<String>>()
+                })
+                .unwrap_or_default();
+            let result = crate::commands::fs::issue_drop_grant(paths)?;
+            Ok(json!(result))
+        }
         "read_file_base64" => {
             let path = extract_str(&params, "path")?;
             let cwd = params.get("cwd").and_then(|v| v.as_str()).map(String::from);
-            let result = crate::commands::fs::read_file_base64(path, cwd)?;
+            let grant = params
+                .get("grant")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let result = crate::commands::fs::read_file_base64(path, cwd, grant)?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
         "list_remote_directory" => {
