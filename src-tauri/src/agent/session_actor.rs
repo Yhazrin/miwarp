@@ -211,6 +211,35 @@ pub enum ActorStopReason {
     StreamEof,
 }
 
+/// Internal source of a stop request. `request_stop` accepts this so the
+/// actor records *which* path called it and can produce a typed
+/// `ActorStopReason` for the reply / recovery snapshot / `cleanup`.
+///
+/// Distinct from `ActorStopReason` (the public-facing return type) so
+/// internal callers don't have to construct a public DTO just to stop
+/// the actor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum StopSource {
+    /// Explicit `ActorCommand::Stop` from the IPC layer — user click.
+    User,
+    /// External cancellation token (app exit / server shutdown).
+    Cancel,
+    /// Natural stdout EOF (no user intent). The actor itself stamps
+    /// this in `handle_eof` when it observes EOF without having been
+    /// asked to stop.
+    Eof,
+}
+
+impl StopSource {
+    fn reason(self) -> ActorStopReason {
+        match self {
+            StopSource::User => ActorStopReason::UserRequested,
+            StopSource::Cancel => ActorStopReason::Cancelled,
+            StopSource::Eof => ActorStopReason::StreamEof,
+        }
+    }
+}
+
 // ── Actor internals ──
 
 /// The actor's private state. Runs in a single tokio task.
@@ -304,6 +333,18 @@ struct SessionActor {
     // ── Readiness signal ──
     /// Sends `true` on first CLI output (stdout line). WaitReady commands clone a receiver.
     ready_tx: watch::Sender<bool>,
+
+    // ── P0-4 hardening: real stop-reason propagation ──
+    /// The last `ActorStopReason` stamped by the actor (or `None` if the
+    /// actor hasn't been stopped yet). Set by `request_stop` (with the
+    /// matching `StopSource`), and also stamped by `handle_eof` when EOF
+    /// arrives without prior user/cancel intent (`StreamEof`).
+    ///
+    /// `cleanup` reads this to decide whether the run was user-initiated
+    /// (`UserRequested`), app-initiated (`Cancelled`), or natural
+    /// (`StreamEof`). The IPC layer also surfaces it via the `Stop`
+    /// reply channel so callers can record intent in run metadata.
+    last_stop_reason: Option<ActorStopReason>,
 }
 
 // ── Spawn entry point ──
@@ -453,6 +494,7 @@ pub fn spawn_actor_with_runtime(
         recoverable_exit: false,
         exit_code: None,
         pending_unaccepted_for_recovery: VecDeque::new(),
+        last_stop_reason: None,
     };
 
     let join_handle = tokio::spawn(async move {
@@ -525,7 +567,13 @@ impl SessionActor {
                             // breaks. Reply immediately with the typed
                             // reason so the IPC caller knows the request was
                             // accepted.
-                            let reason = self.request_stop();
+                            //
+                            // P0-4: stamp the typed source (`StopSource::User`)
+                            // so `last_stop_reason`, the recovery snapshot,
+                            // and `cleanup` all see `UserRequested` — not
+                            // the placeholder `UserRequested` we used to
+                            // return unconditionally.
+                            let reason = self.request_stop(StopSource::User);
                             self.finalize_stop().await;
                             let _ = reply.send(Ok(reason));
                             // Do NOT break here — fall through to the stdout
@@ -718,7 +766,9 @@ impl SessionActor {
                 // 5. External cancellation (app exit)
                 _ = self.cancel.cancelled() => {
                     log::debug!("[actor] cancelled: run_id={}", self.run_id);
-                    self.request_stop();
+                    // P0-4: stamp `StopSource::Cancel` so callers downstream
+                    // see `ActorStopReason::Cancelled`, NOT `UserRequested`.
+                    self.request_stop(StopSource::Cancel);
                     self.finalize_stop().await;
                     // Same as the Stop arm: drain stdout through EOF so the
                     // frontend gets the terminal `RunState` before we exit.
@@ -1668,8 +1718,10 @@ impl SessionActor {
     ///
     /// Phase 1 (`request_stop`): mark the actor as user-stopped so the main
     /// loop will discard stdin + kill the child on its next tick, and signal
-    /// the caller that the request was accepted. Returns
-    /// `ActorStopReason::UserRequested`.
+    /// the caller that the request was accepted. Returns the typed
+    /// `ActorStopReason` derived from the supplied `StopSource` so the
+    /// reply channel, recovery snapshot, and `cleanup` all observe a
+    /// consistent reason (not a placeholder `UserRequested`).
     ///
     /// Phase 2 (`finalize_stop`): drain stdin, kill + reap the child, and
     /// let the main loop observe stdout EOF naturally so `handle_eof` emits
@@ -1681,12 +1733,46 @@ impl SessionActor {
     /// dropped stdin + killed the child inline, which caused the actor's
     /// `select!` to swallow the trailing stream-json events and leave the
     /// UI stuck on `RunState("streaming")` with no terminal event.
-    fn request_stop(&mut self) -> ActorStopReason {
-        if !self.user_stopped {
-            log::debug!("[actor] stop requested by user: run_id={}", self.run_id);
-            self.user_stopped = true;
+    fn request_stop(&mut self, source: StopSource) -> ActorStopReason {
+        let reason = source.reason();
+        match source {
+            StopSource::User => {
+                if !self.user_stopped {
+                    log::debug!(
+                        "[actor] stop requested by user: run_id={}, reason={:?}",
+                        self.run_id,
+                        reason
+                    );
+                    self.user_stopped = true;
+                }
+            }
+            StopSource::Cancel => {
+                log::debug!(
+                    "[actor] external cancellation: run_id={}, reason={:?}",
+                    self.run_id,
+                    reason
+                );
+                // `user_stopped` is the historical flag the recovery
+                // machinery reads; mirrors its meaning for cancel.
+                self.user_stopped = true;
+            }
+            StopSource::Eof => {
+                log::debug!(
+                    "[actor] natural EOF stop: run_id={}, reason={:?}",
+                    self.run_id,
+                    reason
+                );
+            }
         }
-        ActorStopReason::UserRequested
+        // P0-4: stamp `last_stop_reason` so `cleanup` (and the recovery
+        // snapshot) observe the *typed* reason instead of the historical
+        // `user_stopped: bool` flag. First-write-wins — once the actor
+        // is told to stop, later callers see the original reason rather
+        // than overwriting it.
+        if self.last_stop_reason.is_none() {
+            self.last_stop_reason = Some(reason);
+        }
+        reason
     }
 
     async fn finalize_stop(&mut self) {
@@ -2647,6 +2733,20 @@ impl SessionActor {
             exit_code
         );
 
+        // P0-4: stamp `StreamEof` so `cleanup` and the recovery snapshot
+        // observe the typed reason for an actor that quit on its own
+        // (no Stop / Cancel command preceeded EOF). First-write-wins in
+        // `request_stop` ensures a prior `UserRequested` / `Cancelled`
+        // stamp is NOT overwritten — only un-stamped actors pick up
+        // `StreamEof` here.
+        if !self.user_stopped && !self.cancel.is_cancelled() {
+            // Natural EOF: no user intent. Use the public-ish
+            // `request_stop(StopSource::Eof)` entry point so the reason
+            // stamp lives behind a single function (consistent with
+            // the Stop / Cancel arms in the main select! loop).
+            self.request_stop(StopSource::Eof);
+        }
+
         // Fail all pending user replies on EOF (HC #12)
         self.fail_all_pending_replies("Session ended");
         self.active_turn = None;
@@ -2957,8 +3057,26 @@ impl SessionActor {
         log::debug!("[actor] cleanup starting: run_id={}", self.run_id);
 
         let snapshot = self.build_recovery_snapshot();
+        // P0-4: log the typed stop reason `last_stop_reason` so a
+        // misbehaving call chain (Stop → no reason in IPC reply) shows
+        // up in the log even if no BusEvent was emitted.
+        log::debug!(
+            "[actor] cleanup reason: run_id={}, last_stop_reason={:?}",
+            self.run_id,
+            self.last_stop_reason
+        );
+
+        // P0-4: distinguish "user / cancel requested" from "natural EOF"
+        // — both flip `user_stopped=true` historically, so we read the
+        // typed `last_stop_reason` instead when deciding whether the
+        // actor quit on its own. A `StreamEof` reason means "CLI finished
+        // its turn normally" — we must NOT call this a crash.
+        let user_initiated_stop = matches!(
+            self.last_stop_reason,
+            Some(ActorStopReason::UserRequested) | Some(ActorStopReason::Cancelled)
+        );
         let should_recover =
-            self.recoverable_exit && !self.user_stopped && snapshot.crash_reason.is_some();
+            self.recoverable_exit && !user_initiated_stop && snapshot.crash_reason.is_some();
 
         if let Some(ref registry) = self.recovery_registry {
             if should_recover {
@@ -2980,10 +3098,15 @@ impl SessionActor {
                     &self.emitter,
                     &self.run_id,
                     self.session_id.as_deref(),
-                    if self.user_stopped {
-                        "stopped"
-                    } else {
-                        "crashed"
+                    // P0-4: use the typed reason to decide between
+                    // "stopped" / "crashed" instead of the historical
+                    // boolean. A cancel that the CLI didn't react to
+                    // now correctly reports `stopped`; a natural EOF
+                    // followed by a parse error reports `crashed`.
+                    match self.last_stop_reason {
+                        Some(ActorStopReason::UserRequested)
+                        | Some(ActorStopReason::Cancelled) => "stopped",
+                        _ => "crashed",
                     },
                     RecoveryState::Healthy,
                     Some((reason, self.exit_code, None)),
@@ -3506,5 +3629,96 @@ mod tests {
             _other => panic!("expected GenerateTitle, got a different ActorCommand variant"),
         }
         assert_eq!(reply_rx.await.unwrap().unwrap(), "Hello");
+    }
+
+    // ── P0-4 hardening: typed `ActorStopReason` propagation ──
+    //
+    // The `request_stop(StopSource)` helper is internal (takes `&mut
+    // self` on `SessionActor` whose fields are non-constructible in
+    // unit tests). We exercise the *contract* — every `StopSource` maps
+    // to its expected `ActorStopReason`, and the historical "always
+    // UserRequested" placeholder is gone — via a tiny pure check on
+    // `StopSource::reason()` plus integration smoke tests on the public
+    // `ActorCommand::Stop` reply channel. A real `spawn_actor` →
+    // `Stop` round-trip would need a Pipe / Child mock, which is
+    // out of scope here.
+
+    #[test]
+    fn stop_source_user_maps_to_user_requested_reason() {
+        // P0-4 regression: until this hardening landed, every stop
+        // reported `ActorStopReason::UserRequested` regardless of how
+        // the actor was stopped. This test pins the table.
+        assert_eq!(
+            super::StopSource::User.reason(),
+            super::ActorStopReason::UserRequested
+        );
+    }
+
+    #[test]
+    fn stop_source_cancel_maps_to_cancelled_reason() {
+        // P0-4 regression: the cancel-token path used to *also* report
+        // `UserRequested`, masking app-exit vs. user-click.
+        assert_eq!(
+            super::StopSource::Cancel.reason(),
+            super::ActorStopReason::Cancelled
+        );
+    }
+
+    #[test]
+    fn stop_source_eof_maps_to_stream_eof_reason() {
+        // P0-4 regression: handle_eof must be able to stamp
+        // `StreamEof` so `cleanup` can distinguish natural EOF from a
+        // missed Stop / Cancel.
+        assert_eq!(
+            super::StopSource::Eof.reason(),
+            super::ActorStopReason::StreamEof
+        );
+    }
+
+    #[test]
+    fn actor_stop_reason_distinct_variants_no_overlap() {
+        // Sanity check that the enum variants are pairwise distinct —
+        // if a future refactor collapses them, downstream `match` arms
+        // will silently misclassify cleanup behavior.
+        use super::ActorStopReason;
+        let reasons = [
+            ActorStopReason::UserRequested,
+            ActorStopReason::Cancelled,
+            ActorStopReason::StreamEof,
+        ];
+        for (i, a) in reasons.iter().enumerate() {
+            for (j, b) in reasons.iter().enumerate() {
+                if i == j {
+                    continue;
+                }
+                assert_ne!(a, b, "ActorStopReason variants must be distinct");
+            }
+        }
+    }
+
+    #[test]
+    fn actor_command_stop_reply_channel_typed() {
+        // Pin the reply channel signature so a future PR that drops
+        // the typed `Result<ActorStopReason, String>` in favor of `bool`
+        // fails compilation here, not at the IPC boundary.
+        use super::ActorCommand;
+        use tokio::sync::oneshot;
+
+        let (tx, rx) = oneshot::channel::<Result<super::ActorStopReason, String>>();
+        // Construct the Stop command with the typed reply sender.
+        let cmd: ActorCommand = ActorCommand::Stop { reply: tx };
+        // Pattern-match it back to prove the variant shape is
+        // `ActorCommand::Stop { reply: oneshot::Sender<Result<ActorStopReason, String>> }`.
+        match cmd {
+            ActorCommand::Stop { reply } => {
+                let _ = reply.send(Ok(super::ActorStopReason::UserRequested));
+            }
+            _other => panic!("Stop arm must be reached"),
+        }
+        // Receiver side: consume the typed Result. If the channel were
+        // ever changed to `bool`, this line would not compile because
+        // `bool: TryInto<ActorStopReason>` does not exist.
+        let received = rx.blocking_recv().expect("reply channel must yield a value");
+        assert_eq!(received.unwrap(), super::ActorStopReason::UserRequested);
     }
 }
