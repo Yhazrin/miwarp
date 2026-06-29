@@ -416,17 +416,20 @@ export class SessionStore {
     return activeToolNameProjection(this.timeline, this.useStreamSession, this.tools);
   }
 
-  /** Cached permission scan — invalidated when timeline changes. */
+  /** Bumped on structural timeline changes; streaming deltas via ctx share a version. */
+  private _permScanVersion = 0;
+
+  /** Cached permission scan — invalidated when _permScanVersion changes. */
   private _permScan: {
-    timelineRef: TimelineEntry[];
+    version: number;
     hasPending: boolean;
     hasInline: boolean;
     pendingTools: Array<{ tool: BusToolItem; requestId: string }>;
   } | null = null;
 
-  /** Single-walk scan for all permission state. Result is cached per timeline reference. */
+  /** Single-walk scan for all permission state. Result is cached per timeline version. */
   private _getPermissionScan() {
-    if (this._permScan && this._permScan.timelineRef === this.timeline) {
+    if (this._permScan && this._permScan.version === this._permScanVersion) {
       return this._permScan;
     }
     let hasPending = false;
@@ -453,7 +456,7 @@ export class SessionStore {
     walk(this.timeline);
 
     this._permScan = {
-      timelineRef: this.timeline,
+      version: this._permScanVersion,
       hasPending,
       hasInline,
       pendingTools: Array.from(toolMap, ([requestId, tool]) => ({ tool, requestId })),
@@ -622,6 +625,12 @@ export class SessionStore {
 
   // ── Reducer index helpers ──
 
+  /** Structural timeline write; bumps _permScanVersion to invalidate cached scans. */
+  private _setTimeline(next: TimelineEntry[]): void {
+    this.timeline = next;
+    this._permScanVersion++;
+  }
+
   /** Append a timeline entry and update tool index if applicable.
    *  Index uses first-match semantics (matching findIndex behavior) — only set if not already present. */
   private _pushTimeline(ctx: ReduceCtx | null, entry: TimelineEntry): void {
@@ -631,7 +640,7 @@ export class SessionStore {
         ctx.toolTlIndex.set(entry.id, ctx.tl.length - 1);
       }
     } else {
-      this.timeline = [...this.timeline, entry];
+      this._setTimeline([...this.timeline, entry]);
       if (entry.kind === "tool" && !this._toolTlIndex.has(entry.id)) {
         this._toolTlIndex.set(entry.id, this.timeline.length - 1);
       }
@@ -760,7 +769,7 @@ export class SessionStore {
       } else {
         const u = [...this.timeline];
         u[pIdx] = updatedParent;
-        this.timeline = u;
+        this._setTimeline(u);
       }
       dbg("store", "found tool in subTimeline (missing parent_tool_use_id)", {
         tool: toolUseId,
@@ -785,7 +794,7 @@ export class SessionStore {
     } else {
       const u = [...this.timeline];
       u[parentIdx] = updated;
-      this.timeline = u;
+      this._setTimeline(u);
     }
   }
 
@@ -812,7 +821,7 @@ export class SessionStore {
     } else {
       const u = [...this.timeline];
       u[pIdx] = updatedParent;
-      this.timeline = u;
+      this._setTimeline(u);
     }
     return true;
   }
@@ -870,7 +879,7 @@ export class SessionStore {
     } else {
       const u = [...this.timeline];
       u[pIdx] = updatedParent;
-      this.timeline = u;
+      this._setTimeline(u);
     }
   }
 
@@ -908,7 +917,7 @@ export class SessionStore {
     } else {
       const u = [...this.timeline];
       u[pIdx] = updatedParent;
-      this.timeline = u;
+      this._setTimeline(u);
     }
   }
 
@@ -944,7 +953,7 @@ export class SessionStore {
     else {
       const u = [...this.timeline];
       u[idx] = updated;
-      this.timeline = u;
+      this._setTimeline(u);
     }
     dbgWarn("store", "patched empty assistant entry", {
       messageId,
@@ -1184,7 +1193,7 @@ export class SessionStore {
       ctx.tl = finalizeTools(ctx.tl);
     }
 
-    this.timeline = ctx.tl;
+    this._setTimeline(ctx.tl);
     this.tools = ctx.he;
     this.streamingText = ctx.streamText;
     this.thinkingText = ctx.thinkingText;
@@ -1514,7 +1523,7 @@ export class SessionStore {
 
   /** Clear all content/display state fields. Does not touch phase, run, or agent. */
   private _clearContentState(): void {
-    this.timeline = [];
+    this._setTimeline([]);
     this.streamingText = "";
     this.thinkingText = "";
     this.thinkingStartMs = 0;
@@ -2493,7 +2502,7 @@ export class SessionStore {
       const old = this.timeline[tIdx] as Extract<TimelineEntry, { kind: "tool" }>;
       const u = [...this.timeline];
       u[tIdx] = { ...old, tool: { ...old.tool, status: "success", output: { answer } } };
-      this.timeline = u;
+      this._setTimeline(u);
     }
     // Mirror to tools[] only in non-stream mode
     if (!this.useStreamSession) {
@@ -2570,7 +2579,7 @@ export class SessionStore {
         }
       }
     }
-    if (changed) this.timeline = u;
+    if (changed) this._setTimeline(u);
   }
 
   resolvePermissionDeny(requestId: string): void {
@@ -2632,7 +2641,7 @@ export class SessionStore {
       let parentUpdated = e;
       if (predicate(e.tool)) {
         if (!cloned) {
-          this.timeline = [...this.timeline];
+          this._setTimeline([...this.timeline]);
           cloned = true;
         }
         parentUpdated = { ...e, tool: { ...e.tool, status: "error" as const } };
@@ -2659,7 +2668,7 @@ export class SessionStore {
       }
       if (subChanged) {
         if (!cloned) {
-          this.timeline = [...this.timeline];
+          this._setTimeline([...this.timeline]);
           cloned = true;
         }
         const target = ctx ? ctx.tl : this.timeline;
@@ -2734,7 +2743,7 @@ export class SessionStore {
           else {
             const u = [...this.timeline];
             u[tIdx] = updated;
-            this.timeline = u;
+            this._setTimeline(u);
           }
         }
         return true;
@@ -2915,7 +2924,7 @@ export class SessionStore {
           else {
             const u = [...this.timeline];
             u[tIdx] = updated;
-            this.timeline = u;
+            this._setTimeline(u);
           }
         }
         if (!replayOnly && ev.status !== "error" && !ev.parent_tool_use_id) {
@@ -3251,7 +3260,7 @@ export class SessionStore {
           } else {
             const u = [...this.timeline];
             u[tIdx] = updated;
-            this.timeline = u;
+            this._setTimeline(u);
           }
           dbg("store", "permission_prompt: updated existing entry", {
             tIdx,

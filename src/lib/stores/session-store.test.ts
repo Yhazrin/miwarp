@@ -4786,6 +4786,7 @@ describe("SessionStore reducer", () => {
         ...s.timeline,
         makeToolEntry("t3", "AskUserQuestion", "permission_prompt", "req-ask"),
       ];
+      s._permScan = null;
       expect(s.hasInlinePermission).toBe(true);
     });
 
