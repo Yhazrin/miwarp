@@ -1927,6 +1927,7 @@
   "settings_doctor_updating": "更新中…",
   "settings_doctor_updateSuccess": "Claude Code 已更新",
   "settings_doctor_updateFailed": "更新失败",
+  "settings_general_advanced": "高级",
   "settings_general_addCustom": "添加自定义",
   "settings_general_addEnvVar": "添加变量",
   "settings_general_apiKey": "API 密钥",

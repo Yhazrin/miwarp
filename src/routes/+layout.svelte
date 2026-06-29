@@ -303,11 +303,17 @@
    * Apply UserSettings side-effects (zoom, visual-perf, update-coordinator
    * auto-check). Kept inline so the layout doesn't grow into a settings
    * service of its own.
+   *
+   * P1 决策 #2: dev mode 默认关闭自动检查 — Vite (import.meta.env.DEV
+   * === true) 启动时短路关闭。用户仍可在 Settings → Update Center
+   * 显式开启。生产 release 保持默认 ON（用户态）。
    */
   async function applyUserSettingsForShell(s: UserSettings): Promise<void> {
     applyZoom(s.ui_zoom);
     applyVisualPerformance(s.visual_performance_mode);
-    appUpdateCoordinator.startAutoCheck(s.app_auto_update_check_enabled ?? true);
+    const userPref = s.app_auto_update_check_enabled ?? true;
+    const devOverrideOff = import.meta.env.DEV;
+    appUpdateCoordinator.startAutoCheck(userPref && !devOverrideOff);
   }
 </script>
 

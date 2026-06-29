@@ -25,6 +25,7 @@
     SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT,
     type SessionIslandAlignment,
   } from "$lib/utils/session-island-alignment";
+  import { themeStore } from "$lib/stores/theme-store.svelte";
 
   let {
     settings,
@@ -456,5 +457,23 @@
         onchange={(value) => onSaveGeneralPatch({ cli_auto_sync_import_new: value })}
       />
     {/if}
+  </Card>
+
+  <!--
+    P1 决策 #5: 旧 icon-rail 上的 "warm/neutral" 配色按钮作为主 UI 入口
+    在 v1.0.9 调整时被移除，但 themeStore.setColorScheme 仍然在跑 (sidebar
+    tokens 取决于 colorScheme)。这里把它收回 Settings → Appearance → Advanced
+    作为 2nd-class toggle，会话内即时生效。
+  -->
+  <Card class="p-6 space-y-4">
+    <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+      {t("settings_general_advanced")}
+    </h2>
+    <SettingsToggle
+      checked={themeStore.colorScheme === "warm"}
+      label={t("layout_schemeTitle_warm")}
+      description={t("layout_schemeTitle_neutral")}
+      onchange={(value) => themeStore.setColorScheme(value ? "warm" : "neutral")}
+    />
   </Card>
 </div>

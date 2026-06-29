@@ -1871,6 +1871,7 @@
   "settings_doctor_updating": "Updating…",
   "settings_doctor_updateSuccess": "Claude Code updated",
   "settings_doctor_updateFailed": "Update failed",
+  "settings_general_advanced": "Advanced",
   "settings_general_addCustom": "Add Custom",
   "settings_general_addEnvVar": "Add variable",
   "settings_general_apiKey": "API Key",
