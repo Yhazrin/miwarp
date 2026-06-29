@@ -103,7 +103,12 @@
           obs.disconnect();
         }
       },
-      { rootMargin: "300px 0px" },
+      // perf(F15): tighter rootMargin so we don't parse markdown for entries
+      // that are 300px above the viewport — chat messages near the bottom of
+      // a long session used to trigger the parser eagerly. 100px keeps the
+      // scroll-in render imperceptible while cutting wasted parse work for
+      // items the user may scroll past quickly.
+      { rootMargin: "100px 0px" },
     );
     obs.observe(el);
     return () => obs.disconnect();
