@@ -174,14 +174,24 @@ pub async fn execute_task(
             let _ = store::save_run(&task_run);
 
             // Spawn a monitor that polls the run status and updates the task run
-            // when the session completes or fails.
+            // when the session completes or fails. The monitor inherits the
+            // scheduler's CancellationToken so app shutdown (or a scheduler
+            // restart) aborts the up-to-24h poll loop instead of leaving it
+            // running orphaned against a dying runtime.
             let task_run_id = task_run.id.clone();
             let run_id = run_uuid.clone();
             let notify_on_completion = task.notify_on_completion;
             let task_name = task.name.clone();
+            let monitor_cancel = cancel_token.clone();
             tokio::spawn(async move {
-                monitor_run_completion(&task_run_id, &run_id, notify_on_completion, &task_name)
-                    .await;
+                monitor_run_completion(
+                    &task_run_id,
+                    &run_id,
+                    notify_on_completion,
+                    &task_name,
+                    &monitor_cancel,
+                )
+                .await;
             });
 
             task_run
@@ -322,17 +332,30 @@ fn reconcile_stale_runs_for_task(task_id: &str) {
 /// Poll the MiWarp run status and update the ScheduledTaskRun when it finishes.
 /// Uses an adaptive poll interval so long-running tasks don't burn thousands
 /// of IPCs, but still polls fast at the start to catch quick completions.
+///
+/// The monitor respects `cancel`: if the caller's CancellationToken fires
+/// (app shutdown, scheduler restart), the task aborts at the next await
+/// point instead of sleeping through the rest of MONITOR_TIMEOUT_SECS.
 async fn monitor_run_completion(
     task_run_id: &str,
     run_id: &str,
     notify_on_completion: bool,
     task_name: &str,
+    cancel: &CancellationToken,
 ) {
     let started_at = tokio::time::Instant::now();
     let deadline = started_at + Duration::from_secs(MONITOR_TIMEOUT_SECS);
 
-    // Wait a bit before first check — session needs time to start
-    tokio::time::sleep(Duration::from_secs(MONITOR_INITIAL_POLL_SECS)).await;
+    // Wait a bit before first check — session needs time to start.
+    // tokio::select! ensures we don't outlive a shutdown signal.
+    tokio::select! {
+        biased;
+        _ = cancel.cancelled() => {
+            log::info!("[scheduler] monitor cancelled before first poll (run {run_id})");
+            return;
+        }
+        _ = tokio::time::sleep(Duration::from_secs(MONITOR_INITIAL_POLL_SECS)) => {}
+    }
 
     loop {
         let elapsed = started_at.elapsed();
@@ -406,7 +429,14 @@ async fn monitor_run_completion(
             return;
         }
 
-        tokio::time::sleep(Duration::from_secs(poll_secs)).await;
+        tokio::select! {
+            biased;
+            _ = cancel.cancelled() => {
+                log::info!("[scheduler] monitor cancelled (run {run_id})");
+                return;
+            }
+            _ = tokio::time::sleep(Duration::from_secs(poll_secs)) => {}
+        }
     }
 }
 
