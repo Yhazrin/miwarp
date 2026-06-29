@@ -766,7 +766,10 @@
    *  Coalesced via rAF to avoid DOM thrash on every render. */
   $effect(() => {
     // Touch the dependencies that should trigger a re-read.
-    const _timeline = store.timeline;
+    // Use .length (primitive) rather than the array reference so streaming
+    // token deltas that don't add new timeline entries don't re-fire this
+    // effect on every token.
+    const _timelineLen = store.timeline.length;
     const _area = chatAreaRef;
     if (!_area) return;
     let cancelled = false;
@@ -1101,27 +1104,43 @@
     }
   });
 
-  // Auto-scroll chat (only when user is near bottom)
+  // Auto-scroll chat (only when user is near bottom).
+  // Split into two effects so streaming-token deltas (which change
+  // store.streamingText.length on every token) don't re-fire the
+  // structural timeline branch, and vice versa.
   let prevTl = 0;
   let prevSt = 0;
 
   $effect(() => {
     if (store.useStreamSession && chatAreaRef) {
       const tl = store.timeline.length;
-      const st = store.streamingText.length;
       const _rid = store.run?.id;
-      const changed = tl !== prevTl || st !== prevSt;
-      prevTl = tl;
-      prevSt = st;
       if (isChatAutoScroll && !readingHistory) {
         requestAnimationFrame(() => {
           if (chatAreaRef && isChatAutoScroll && !readingHistory) {
             chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
           }
         });
-      } else if (changed) {
+      } else if (tl !== prevTl) {
         showChatScrollHint = true;
       }
+      prevTl = tl;
+    }
+  });
+
+  $effect(() => {
+    if (store.useStreamSession && chatAreaRef) {
+      const st = store.streamingText.length;
+      if (isChatAutoScroll && !readingHistory) {
+        requestAnimationFrame(() => {
+          if (chatAreaRef && isChatAutoScroll && !readingHistory) {
+            chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
+          }
+        });
+      } else if (st !== prevSt) {
+        showChatScrollHint = true;
+      }
+      prevSt = st;
     }
   });
 
