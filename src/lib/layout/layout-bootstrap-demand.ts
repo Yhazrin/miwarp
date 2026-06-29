@@ -104,6 +104,12 @@ export function createBootstrapDemandController(
       stopRunsPoll = null;
       teamSub?.dispose();
       teamSub = null;
+      // attentionQueueStore is a singleton with subscribe() being idempotent,
+      // but we still tear it down on layout dispose so dev-mode HMR can
+      // re-subscribe cleanly (otherwise the liveUnlisten guard blocks the
+      // next call and the listener stays registered against the old transport).
+      if (attentionStarted) attentionQueueStore.unsubscribe();
+      attentionStarted = false;
     },
   };
 }
