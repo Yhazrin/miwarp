@@ -1909,17 +1909,56 @@ export async function createPullRequest(
   return invoke<string>(CMD.create_pull_request, { cwd, branch, baseBranch });
 }
 
+/**
+ * Remove a git worktree.
+ *
+ * **Safety:** by default (`force = false`) the backend runs `git status
+ * --porcelain` first and rejects with a `WorktreeDirtyError` payload if the
+ * worktree has any uncommitted / untracked changes. Pass `force = true`
+ * ONLY after the user has confirmed they want to discard dirty state.
+ *
+ * The Rust error is serialized via serde with `rename_all = "camelCase"`,
+ * so the thrown payload looks like:
+ *   { worktreePath, dirtyFiles: string[], message }
+ */
 export async function removeWorktree(
   worktreePath: string,
   parentCwd: string,
   branchName?: string,
+  force: boolean = false,
 ): Promise<void> {
-  dbg("api", "removeWorktree", { worktreePath, parentCwd, branchName });
-  return invoke<void>(CMD.remove_worktree, {
-    worktreePath,
-    parentCwd,
-    branchName: branchName ?? null,
-  });
+  dbg("api", "removeWorktree", { worktreePath, parentCwd, branchName, force });
+  try {
+    return await invoke<void>(CMD.remove_worktree, {
+      worktreePath,
+      parentCwd,
+      branchName: branchName ?? null,
+      force,
+    });
+  } catch (err) {
+    // Surface dirty-worktree rejections as a typed, recognizable error so
+    // callers can prompt the user instead of failing opaquely.
+    if (isWorktreeDirtyError(err)) {
+      dbg("api", "removeWorktree.dirty", {
+        worktreePath,
+        dirtyFiles: err.dirtyFiles,
+      });
+    }
+    throw err;
+  }
+}
+
+/** Type guard for the `WorktreeDirtyError` payload from the Rust backend. */
+export function isWorktreeDirtyError(
+  err: unknown,
+): err is { worktreePath: string; dirtyFiles: string[]; message: string } {
+  if (typeof err !== "object" || err === null) return false;
+  const e = err as Record<string, unknown>;
+  return (
+    Array.isArray(e.dirtyFiles) &&
+    typeof e.worktreePath === "string" &&
+    typeof e.message === "string"
+  );
 }
 
 export async function listWorktrees(parentCwd: string): Promise<WorktreeEntry[]> {
