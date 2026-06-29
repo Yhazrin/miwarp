@@ -278,7 +278,7 @@
 </svelte:head>
 
 <div class="min-h-full px-6 py-10 sm:px-10 sm:py-14">
-  <div class="mx-auto w-full max-w-3xl space-y-6">
+  <div class="motion-fade-in mx-auto w-full max-w-3xl space-y-6">
     {#if settingsLoad === "pending" || (settingsLoad === "ready" && !settings)}
       <div class="space-y-4">
         <div class="h-40 animate-pulse rounded-xl bg-sidebar/40"></div>
