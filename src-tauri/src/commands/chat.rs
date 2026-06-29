@@ -92,6 +92,51 @@ pub async fn send_chat_message(
         return Err("message is required".to_string());
     }
 
+    // P0-5 dedupe (v1.0.9): if a `client_message_id` was supplied, first check
+    // the durable accepted ledger so that retries resolve idempotently. This
+    // mirrors the actor-side guard in `session_actor::handle_send_message` so
+    // pipe_exec and session_actor share the same dedupe semantics.
+    //
+    // If the journal cannot be read, fail closed with the typed
+    // `JOURNAL_DEDUPE_UNAVAILABLE` prefix used by the actor path — this keeps
+    // error contracts aligned across both execution paths.
+    if let Some(ref cid) = client_message_id {
+        match storage::run_journal::is_message_accepted(&run_id, cid) {
+            Ok(true) => {
+                log::debug!(
+                    "[chat] dedupe: client_message_id={} durably accepted; resolving as accepted",
+                    cid
+                );
+                return Ok(());
+            }
+            Ok(false) => {}
+            Err(error) => {
+                let failure = format!(
+                    "{}: cannot verify client_message_id={}: {}",
+                    crate::run_core::JOURNAL_DEDUPE_UNAVAILABLE_PREFIX,
+                    cid,
+                    error
+                );
+                log::error!("[chat] durable dedupe unavailable: {}", failure);
+                return Err(failure);
+            }
+        }
+    }
+
+    // P0-5: stop any in-flight pipe child for this run_id before spawning a
+    // new one. Without this, rapid Send → Send → Send would queue N parallel
+    // children racing on the same `run_id` and corrupting the event log. The
+    // kill is best-effort with a short timeout so we never block the UI.
+    {
+        let pm = process_map.inner().clone();
+        if crate::agent::stream::stop_process(&pm, &run_id).await {
+            log::debug!(
+                "[chat] stopped prior in-flight pipe child for run_id={} before new send",
+                run_id
+            );
+        }
+    }
+
     // Handle attachments
     let attachments = attachments.unwrap_or_default();
     let mut attachment_paths: Vec<(String, String, String, u64)> = vec![]; // (path, name, type, size)
@@ -230,6 +275,22 @@ pub async fn send_chat_message(
         true, // print mode
         conversation_id.as_deref(),
     )?;
+
+    // P0-5: durably record the acceptance so any subsequent send with the
+    // same `client_message_id` resolves as a no-op rather than spawning a
+    // second pipe child. Mirrors the actor-side
+    // `record_accepted_client_message_id` ledger so retries across
+    // pipe_exec / session_actor / reconnect are all deduplicated.
+    if let Some(ref cid) = client_message_id {
+        if let Err(e) = storage::run_journal::record_accepted_message(&run_id, cid, Some(&message))
+        {
+            log::warn!(
+                "[chat] record_accepted_message failed for client_message_id={}: {}",
+                cid,
+                e
+            );
+        }
+    }
 
     // Spawn agent in background
     let pm = process_map.inner().clone();
