@@ -179,29 +179,38 @@ fn write_permissions(path: &Path, category: &str, rules: &[String]) -> Result<()
 pub async fn get_cli_permissions(cwd: Option<String>) -> Result<Value, String> {
     log::debug!("[cli_settings] get_cli_permissions: cwd={:?}", cwd);
 
-    // User-level always loads (errors here → Err, fatal)
+    // User-level always loads (errors here → Err, fatal).
+    // Offload to blocking pool — read_settings_local does sync std::fs I/O
+    // (canonicalize + read_to_string) and would otherwise pin a tokio worker.
     let user_path = user_settings_path();
-    let user_settings = read_settings_local(&user_path)?;
+    let user_path_for_blocking = user_path.clone();
+    let user_settings =
+        tokio::task::spawn_blocking(move || read_settings_local(&user_path_for_blocking))
+            .await
+            .map_err(|e| format!("[cli_settings] blocking task join failed: {}", e))??;
     let (user_allow, user_deny) = extract_permissions(&user_settings);
 
-    // Project-level degrades gracefully
-    let (project_allow, project_deny, project_error) = match &cwd {
-        Some(c) => match resolve_project_settings_path(c) {
-            Ok(path) => match read_settings_local(&path) {
-                Ok(settings) => {
-                    let (allow, deny) = extract_permissions(&settings);
-                    (allow, deny, None)
-                }
+    // Project-level degrades gracefully.
+    // Offload the entire resolve+read sequence to the blocking pool for the
+    // same reason (sync canonicalize, symlink_metadata, read_to_string).
+    let (project_allow, project_deny, project_error) = match cwd {
+        Some(c) => {
+            let result: Result<(Vec<String>, Vec<String>), String> =
+                tokio::task::spawn_blocking(move || {
+                    let path = resolve_project_settings_path(&c)?;
+                    let settings = read_settings_local(&path)?;
+                    Ok(extract_permissions(&settings))
+                })
+                .await
+                .map_err(|e| format!("[cli_settings] blocking task join failed: {}", e))?;
+            match result {
+                Ok((allow, deny)) => (allow, deny, None),
                 Err(e) => {
                     log::debug!("[cli_settings] project degraded: {}", e);
                     (vec![], vec![], Some(e))
                 }
-            },
-            Err(e) => {
-                log::debug!("[cli_settings] project degraded: {}", e);
-                (vec![], vec![], Some(e))
             }
-        },
+        }
         None => (vec![], vec![], None),
     };
 

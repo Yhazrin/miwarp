@@ -150,8 +150,23 @@ const MAX_URL_BYTES: usize = 2048;
 /// command.
 pub fn build_registry() -> Result<Arc<BrowserRuntimeRegistry>, String> {
     let base_dir = registry_base_dir();
-    std::fs::create_dir_all(&base_dir)
-        .map_err(|e| format!("create browser dir {}: {}", base_dir.display(), e))?;
+    // Offload to blocking pool — std::fs::create_dir_all is sync I/O and we
+    // don't want to pin a tokio worker (this fn runs on the async runtime
+    // during app initialization).
+    let base_dir_for_blocking = base_dir.clone();
+    tauri::async_runtime::block_on(async move {
+        tokio::task::spawn_blocking(move || {
+            std::fs::create_dir_all(&base_dir_for_blocking).map_err(|e| {
+                format!(
+                    "create browser dir {}: {}",
+                    base_dir_for_blocking.display(),
+                    e
+                )
+            })
+        })
+        .await
+        .map_err(|e| format!("[browser] blocking task join failed: {}", e))?
+    })?;
 
     let profile_manager = Arc::new(ProfileManager::new(base_dir)?);
     let registry = Arc::new(BrowserRuntimeRegistry::new(profile_manager));

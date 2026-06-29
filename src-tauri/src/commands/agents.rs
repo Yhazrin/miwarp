@@ -393,7 +393,21 @@ async fn discover_plugin_agents() -> Vec<AgentDefinitionSummary> {
             // Step 4: Scan agents/ subdirectory
             let agents_dir = plugin_dir.join("agents");
             let source_str = format!("plugin:{}:{}", mp.name, plugin.name);
-            let mut plugin_agents = scan_agents_dir(&agents_dir, &source_str, "plugin", true);
+            // Offload to blocking pool — scan_agents_dir does sync std::fs reads
+            // and would otherwise pin a tokio worker thread during I/O.
+            // JoinError can't use ? because this function returns Vec, not Result;
+            // log and skip the plugin on join failure.
+            let mut plugin_agents = match tokio::task::spawn_blocking(move || {
+                scan_agents_dir(&agents_dir, &source_str, "plugin", true)
+            })
+            .await
+            {
+                Ok(v) => v,
+                Err(e) => {
+                    log::error!("[agents] blocking task join failed: {}", e);
+                    continue;
+                }
+            };
             agents.append(&mut plugin_agents);
         }
     }
@@ -413,18 +427,25 @@ pub async fn list_agents(cwd: Option<String>) -> Result<Vec<AgentDefinitionSumma
     let mut all = Vec::new();
 
     // User scope: ~/.claude/agents/
+    // Offload to blocking pool — scan_agents_dir does sync std::fs reads and
+    // would otherwise pin a tokio worker thread during I/O.
     let user_dir = crate::storage::teams::claude_home_dir().join("agents");
-    all.append(&mut scan_agents_dir(&user_dir, "user", "user", false));
+    let mut user_agents =
+        tokio::task::spawn_blocking(move || scan_agents_dir(&user_dir, "user", "user", false))
+            .await
+            .map_err(|e| format!("[agents] blocking task join failed: {}", e))?;
+    all.append(&mut user_agents);
 
     // Project scope: {cwd}/.claude/agents/
     if !cwd_str.is_empty() {
         let project_dir = PathBuf::from(cwd_str).join(".claude").join("agents");
-        all.append(&mut scan_agents_dir(
-            &project_dir,
-            "project",
-            "project",
-            false,
-        ));
+        // Offload to blocking pool — same reason as user scope above.
+        let mut project_agents = tokio::task::spawn_blocking(move || {
+            scan_agents_dir(&project_dir, "project", "project", false)
+        })
+        .await
+        .map_err(|e| format!("[agents] blocking task join failed: {}", e))?;
+        all.append(&mut project_agents);
     }
 
     // Plugin scope: enabled plugins' agents/ directories
