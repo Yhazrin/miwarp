@@ -91,10 +91,19 @@
     return store.recoverFromEventLog();
   }
 
-  /** Historical rows are static — skip live tail effects and eager markdown. */
-  function isFrozenEntry(index: number): boolean {
-    return index < visibleTimeline.length - TAIL_LIVE_ENTRIES;
-  }
+  /** Historical rows are static — skip live tail effects and eager markdown.
+   *  perf(F16): precompute once per render as a parallel boolean[]; previous
+   *  implementation called `isFrozenEntry(i)` 5× per entry inside {#each},
+   *  which for 200 visible entries meant 1000 function calls per render.
+   *  Indexing into a flat $derived array removes the per-iteration overhead. */
+  const frozenMap = $derived.by<boolean[]>(() => {
+    const liveThreshold = visibleTimeline.length - TAIL_LIVE_ENTRIES;
+    const out: boolean[] = new Array(visibleTimeline.length);
+    for (let i = 0; i < visibleTimeline.length; i++) {
+      out[i] = i < liveThreshold;
+    }
+    return out;
+  });
 
   /**
    * Tool-result cache handle shape that satisfies ConversationTimeline.
@@ -109,7 +118,7 @@
     <div
       id="msg-{entry.anchorId}"
       data-entry-id={entry.id}
-      class:timeline-entry-frozen={isFrozenEntry(i)}
+      class:timeline-entry-frozen={frozenMap[i]}
       class:cv-auto={useCvAuto}
       class="group/msg"
       style={useCvAuto ? "contain-intrinsic-block-size: 80px" : undefined}
@@ -176,7 +185,7 @@
               taskNotifications={store.taskNotifications}
               showPermissionInPanel={showPermissionPanel}
               onPreviewFile={openPreviewForPath}
-              frozen={isFrozenEntry(i)}
+              frozen={frozenMap[i]}
               onRewind={entry.cliUuid && store.sessionAlive && !store.isRunning
                 ? () =>
                     handleRewindToMessage({
@@ -201,7 +210,7 @@
               agent={store.agent}
               model={store.run?.model ?? store.model}
               platformId={store.platformId ?? undefined}
-              animated={!isFrozenEntry(i) && i === lastAssistantIdx && store.isRunning}
+              animated={!frozenMap[i] && i === lastAssistantIdx && store.isRunning}
               debugRunId={store.run?.id}
               debugSessionId={store.run?.session_id ?? undefined}
               lastToolId=""
@@ -218,7 +227,7 @@
               taskNotifications={store.taskNotifications}
               showPermissionInPanel={showPermissionPanel}
               onPreviewFile={openPreviewForPath}
-              frozen={isFrozenEntry(i)}
+              frozen={frozenMap[i]}
             />
           </ChatRenderBoundary>
         </div>
@@ -302,7 +311,7 @@
               componentName="MarkdownContent"
               onReload={reloadFromEventLog}
             >
-              <MarkdownContent {text} lazy={isFrozenEntry(i)} />
+              <MarkdownContent {text} lazy={frozenMap[i]} />
             </ChatRenderBoundary>
           {/snippet}
         </ConversationTimeline>
