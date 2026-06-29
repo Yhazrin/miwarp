@@ -31,6 +31,8 @@ export class FleetStore {
   /** WebSocket for live updates; null when not connected. */
   private ws: WebSocket | null = null;
   private wsRetryAttempt = 0;
+  /** Pending reconnect timer; tracked so we never stack duplicate reconnects. */
+  private wsRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private static readonly _WS_RETRY_DELAYS_MS = [1000, 3000, 5000];
 
   /** Per-employee selected id (for the detail drawer). */
@@ -147,12 +149,21 @@ export class FleetStore {
   }
 
   private scheduleWsReconnect(token: string, port: number) {
+    // Clear any pending reconnect so we don't stack duplicate connect attempts
+    // if WS closes again before the previous timer fires.
+    if (this.wsRetryTimer !== null) {
+      clearTimeout(this.wsRetryTimer);
+      this.wsRetryTimer = null;
+    }
     const delay =
       FleetStore._WS_RETRY_DELAYS_MS[
         Math.min(this.wsRetryAttempt, FleetStore._WS_RETRY_DELAYS_MS.length - 1)
       ];
     this.wsRetryAttempt += 1;
-    setTimeout(() => this.connectLiveUpdates(token, port), delay);
+    this.wsRetryTimer = setTimeout(() => {
+      this.wsRetryTimer = null;
+      this.connectLiveUpdates(token, port);
+    }, delay);
   }
 
   private applyWsEvent(data: { type?: string; run_id?: string; payload?: unknown }) {
