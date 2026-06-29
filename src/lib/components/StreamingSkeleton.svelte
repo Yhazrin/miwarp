@@ -33,7 +33,7 @@
 
 <style>
   .streaming-skeleton {
-    animation: skeleton-fade-in 0.2s ease-out;
+    animation: skeleton-fade-in var(--motion-fast, 120ms) var(--ease-standard, ease-out);
   }
 
   .skeleton-line {
@@ -54,6 +54,19 @@
       transparent 100%
     );
     animation: shimmer-slide 2s ease-in-out infinite;
+  }
+
+  /* Self-documenting reduced-motion override on top of the global `*` rule
+     in app.css. Periodic shimmer is removed entirely so the placeholder
+     stays visible without continuous repaint. */
+  @media (prefers-reduced-motion: reduce) {
+    .streaming-skeleton {
+      animation: none;
+    }
+    .skeleton-line::after {
+      animation: none;
+      opacity: 0;
+    }
   }
 
   @keyframes skeleton-fade-in {
