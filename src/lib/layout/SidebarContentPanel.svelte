@@ -219,7 +219,7 @@
       {:else if activeBodyId === "explorer"}
         <C {explorerEmptyAction} />
       {:else if activeBodyId === "teams"}
-        <C {filteredTeams} />
+        <svelte:component this={C} {filteredTeams} />
       {:else if activeBodyId === "workbench"}
         <C {onPickFolder} />
       {:else if activeBodyId === "plugins"}

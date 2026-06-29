@@ -14,7 +14,7 @@
     filteredTeams: TeamSummary[];
   }
 
-  let { filteredTeams }: Props = $props();
+  let { filteredTeams = [] }: Props = $props();
 
   const teamStore = getContext<TeamStore>("teamStore");
 </script>
