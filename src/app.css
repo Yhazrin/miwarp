@@ -580,7 +580,12 @@ html.theme-transitioning .theme-fade {
   animation: slide-up 0.3s ease-out both;
 }
 
-/* Chat ↔ settings: skip expensive shell/sidebar transitions during SvelteKit navigation */
+/* Chat ↔ settings: skip expensive shell/sidebar transitions during SvelteKit
+   navigation so the route entry doesn't stutter on width changes.
+   NOTE: `animation-duration` is intentionally NOT suppressed — the sidebar-
+   inner entry keyframe (`sidebar-inner-enter`) must still play so the panel
+   visibly slides out from the icon rail when arriving at a sidebar-having
+   page (e.g. /workbench → /chat). */
 html.miwarp-skip-route-motion .session-island-shell,
 html.miwarp-skip-route-motion .session-island-shell *,
 html.miwarp-skip-route-motion .sidebar-container,
@@ -589,8 +594,6 @@ html.miwarp-skip-route-motion .tool-activity-aside,
 html.miwarp-skip-route-motion .tool-activity-aside * {
   transition-duration: 0ms !important;
   transition-delay: 0ms !important;
-  animation-duration: 0ms !important;
-  animation-delay: 0ms !important;
 }
 
 .animate-toast-in {

@@ -34,11 +34,27 @@
     opacity calc(var(--motion-sidebar) * 0.55) var(--ease-sidebar-spring),
     transform var(--motion-sidebar) var(--ease-sidebar-spring);
   pointer-events: auto;
+  /* Entry: slide out from the icon rail when the layout content panel
+     first mounts on routes that need a sidebar (e.g. navigating into
+     /chat from /workbench). `both` keeps the start position during the
+     first frame so there's no flash before the keyframe kicks in. */
+  animation: sidebar-inner-enter var(--motion-sidebar) var(--ease-sidebar-spring) both;
 }
 .sidebar-inner.sidebar-inner-collapsed {
   opacity: 0;
   transform: translateX(-12px);
   pointer-events: none;
+}
+
+@keyframes sidebar-inner-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Right tool dock — same physics curve as left nav */
