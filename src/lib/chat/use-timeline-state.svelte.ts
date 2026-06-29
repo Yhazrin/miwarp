@@ -95,9 +95,14 @@ export function useTimelineState(ctx: TimelineStateContext): TimelineStateHandle
     });
   });
 
-  // ── Derived: timeline metadata (full scan — only when timeline changes) ──
+  // ── Derived: timeline metadata (full scan — only on structural changes) ──
+  // Depend on the primitive length signal so streaming deltas (which reassign
+  // store.timeline without changing length) don't re-trigger the O(n) scan.
 
-  const timelineMetadata = $derived(computeTimelineMetadata(store.timeline));
+  const timelineMetadata = $derived.by(() => {
+    const length = store.timeline.length;
+    return untrack(() => computeTimelineMetadata(store.timeline));
+  });
 
   // ── Derived: visible presentation (recomputes on renderLimit / filter only) ──
 
