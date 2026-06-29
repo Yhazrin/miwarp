@@ -74,47 +74,112 @@ pub fn check_is_directory(path: String) -> bool {
 /// Shared by chat drag-drop and Explorer image preview.
 const MAX_BASE64_FILE_SIZE: u64 = 100 * 1024 * 1024;
 
+/// Resolve the trusted fallback root used when `cwd` is `None`.
+///
+/// Preference order:
+/// 1. Global user `working_directory` from settings (if set and exists)
+/// 2. `~/.miwarp` (data dir)
+/// 3. `~/.claude` (Claude config dir)
+///
+/// Returns `None` only if none of these resolve — in that case
+/// `read_file_base64` will reject the call outright.
+fn resolve_fallback_root() -> Option<std::path::PathBuf> {
+    if let Some(ref wd) = crate::storage::settings::get_user_settings().working_directory {
+        let p = std::path::PathBuf::from(wd);
+        if p.exists() {
+            return std::fs::canonicalize(&p).ok();
+        }
+    }
+    let data = crate::storage::data_dir();
+    if data.exists() {
+        if let Ok(c) = std::fs::canonicalize(&data) {
+            return Some(c);
+        }
+    }
+    if let Some(home) = crate::storage::home_dir() {
+        let claude = std::path::PathBuf::from(&home).join(".claude");
+        if claude.exists() {
+            if let Ok(c) = std::fs::canonicalize(&claude) {
+                return Some(c);
+            }
+        }
+    }
+    None
+}
+
 /// Read a file as base64 with MIME detection.
 ///
-/// **Path validation**: only enforced when `cwd` is `Some` (Explorer context).
-/// When `cwd` is `None` (chat drag-drop), any absolute path is accepted because
-/// the user explicitly initiated the drop. New call sites that browse the
-/// filesystem MUST pass `cwd` to get boundary enforcement.
+/// **Path validation (P0-1 fix)**: the command ALWAYS validates the request
+/// against an allow-list. The `cwd` parameter narrows the allowed set to the
+/// caller's project directory; when `cwd` is `None` we fall back to the
+/// trusted config roots (`working_directory` from settings → `~/.miwarp` →
+/// `~/.claude`). This closes the SSRF-like hole where a `cwd=None` browser
+/// request could read arbitrary files on disk.
 #[tauri::command]
 pub fn read_file_base64(path: String, cwd: Option<String>) -> Result<(String, String), String> {
     log::debug!("[fs] read_file_base64: path={path}, cwd={cwd:?}");
     let validated = if cwd.is_some() {
-        super::files::validate_file_path(&path, cwd.as_deref())?
+        super::files::validate_file_path(&path, cwd.as_deref()).map_err(|e| {
+            // P0-1: scrub full path from any error returned to the client.
+            // The detailed path is logged server-side but never echoed back.
+            log::warn!("[fs] read_file_base64 denied (cwd=Some): {e}");
+            if e.contains("Access denied") || e.contains("Path traversal") {
+                ACCESS_DENIED.to_string()
+            } else {
+                e
+            }
+        })?
     } else {
-        log::debug!("[fs] read_file_base64: no cwd, skipping path boundary check");
-        std::path::PathBuf::from(&path)
+        let fallback = resolve_fallback_root().ok_or_else(|| {
+            log::warn!(
+                "[fs] read_file_base64 denied: cwd=None and no trusted fallback root available"
+            );
+            ACCESS_DENIED.to_string()
+        })?;
+        // Use the fallback as the `extra_allowed` so validate_file_path runs
+        // the same canonicalize + prefix check it would for any cwd.
+        super::files::validate_file_path(&path, Some(fallback.to_string_lossy().as_ref())).map_err(
+            |e| {
+                // P0-1: scrub full path from any error returned to the client.
+                log::warn!("[fs] read_file_base64 denied (cwd=None): {e}");
+                if e.contains("Access denied") || e.contains("Path traversal") {
+                    ACCESS_DENIED.to_string()
+                } else {
+                    e
+                }
+            },
+        )?
     };
     let p = validated.as_path();
     let meta = p
         .metadata()
-        .map_err(|e| format!("Cannot stat {}: {}", path, e))?;
+        .map_err(|e| format!("Cannot stat path: {}", e))?;
 
     if meta.len() > MAX_BASE64_FILE_SIZE {
         return Err(format!(
-            "File too large ({} MB, max {} MB): {}",
+            "File too large ({} MB, max {} MB)",
             meta.len() / (1024 * 1024),
-            MAX_BASE64_FILE_SIZE / (1024 * 1024),
-            path
+            MAX_BASE64_FILE_SIZE / (1024 * 1024)
         ));
     }
 
     // Use mime_guess for comprehensive MIME type detection
     let mime = mime_guess_from_path(p);
-    let bytes = std::fs::read(p).map_err(|e| format!("Failed to read {}: {}", path, e))?;
+    let bytes = std::fs::read(p).map_err(|e| format!("Failed to read file: {}", e))?;
 
     // Use standard base64 library instead of manual implementation
     let base64 = base64::prelude::BASE64_STANDARD.encode(&bytes);
     log::debug!(
-        "[fs] read_file_base64: done path={path}, mime={mime}, size={}",
+        "[fs] read_file_base64: done mime={mime}, size={}",
         bytes.len()
     );
     Ok((base64, mime))
 }
+
+/// Stable, non-leaking error message returned to callers when a file request
+/// is rejected for boundary / traversal reasons. The full FS path is logged
+/// server-side but NOT echoed to the client (per P0-1 audit guidance).
+const ACCESS_DENIED: &str = "Access denied: path is outside allowed directories";
 
 /// Detect MIME type from file path with Office format support.
 ///
@@ -158,32 +223,45 @@ mod tests {
     use super::*;
     use std::io::Write;
 
-    /// cwd=None (drag-drop): any absolute path should succeed without boundary check.
+    /// Minimal 1x1 PNG byte sequence (reused by PNG-related tests).
+    const PNG_BYTES: &[u8] = &[
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // signature
+        0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77,
+        0x53, 0xDE, // 1x1 RGB
+        0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54, // IDAT
+        0x08, 0xD7, 0x63, 0xF8, 0xCF, 0xC0, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0xE2, 0x21, 0xBC,
+        0x33, // compressed pixel
+        0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82, // IEND
+    ];
+
+    /// cwd=None must NOT silently allow arbitrary paths (P0-1). The path is
+    /// re-checked against the trusted fallback root, so a tempdir file outside
+    /// any allowed root must be rejected.
     #[test]
-    fn read_file_base64_no_cwd_allows_any_path() {
+    fn read_file_base64_no_cwd_rejects_path_outside_fallback() {
         let dir = tempfile::tempdir().unwrap();
         let img = dir.path().join("test.png");
-        // Minimal 1x1 PNG
-        let png_bytes: &[u8] = &[
-            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // signature
-            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
-            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90,
-            0x77, 0x53, 0xDE, // 1x1 RGB
-            0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54, // IDAT
-            0x08, 0xD7, 0x63, 0xF8, 0xCF, 0xC0, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0xE2, 0x21,
-            0xBC, 0x33, // compressed pixel
-            0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82, // IEND
-        ];
         std::fs::File::create(&img)
             .unwrap()
-            .write_all(png_bytes)
+            .write_all(PNG_BYTES)
             .unwrap();
 
         let result = read_file_base64(img.to_string_lossy().into(), None);
-        assert!(result.is_ok(), "cwd=None should allow any path");
-        let (base64, mime) = result.unwrap();
-        assert!(!base64.is_empty());
-        assert_eq!(mime, "image/png");
+        assert!(
+            result.is_err(),
+            "cwd=None should reject arbitrary tempdir paths (P0-1 fix)"
+        );
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("Access denied") || err.contains("outside allowed"),
+            "expected access denied message, got: {err}"
+        );
+        // Error message must NOT leak the full filesystem path
+        assert!(
+            !err.contains(dir.path().to_str().unwrap()),
+            "error message leaks full path: {err}"
+        );
     }
 
     /// cwd=Some: path outside the allowed directory should be rejected.
@@ -222,5 +300,58 @@ mod tests {
         let (base64, mime) = result.unwrap();
         assert!(!base64.is_empty());
         assert!(mime.contains("text"), "expected text mime, got {}", mime);
+    }
+
+    /// Traversal attempt: `..` segments must be rejected up front by the
+    /// validator even when `cwd` is supplied.
+    #[test]
+    fn read_file_base64_rejects_traversal_segments() {
+        let dir = tempfile::tempdir().unwrap();
+        let traversal = format!("{}/../escaped.txt", dir.path().display());
+        let result = read_file_base64(traversal, Some(dir.path().to_string_lossy().into()));
+        assert!(
+            result.is_err(),
+            "path containing '..' must be rejected as traversal"
+        );
+    }
+
+    /// `cwd=None` succeeds when the file lives inside the trusted fallback
+    /// root. We simulate this by temporarily registering the tempdir as the
+    /// global `working_directory` for the duration of the test.
+    #[test]
+    fn read_file_base64_no_cwd_allows_path_in_fallback_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let img = dir.path().join("in_root.png");
+        std::fs::File::create(&img)
+            .unwrap()
+            .write_all(PNG_BYTES)
+            .unwrap();
+
+        // Register tempdir as the trusted working_directory fallback root.
+        // Other tests rely on the global being None so we restore it on drop.
+        struct WdGuard(Option<String>);
+        impl Drop for WdGuard {
+            fn drop(&mut self) {
+                crate::storage::settings::update_user_settings(
+                    serde_json::json!({ "working_directory": self.0 }),
+                )
+                .ok();
+            }
+        }
+        crate::storage::settings::update_user_settings(serde_json::json!({
+            "working_directory": dir.path().to_string_lossy()
+        }))
+        .expect("update working_directory");
+        let _guard = WdGuard(None);
+
+        let result = read_file_base64(img.to_string_lossy().into(), None);
+        assert!(
+            result.is_ok(),
+            "cwd=None should allow files inside the configured working_directory, got: {:?}",
+            result
+        );
+        let (base64, mime) = result.unwrap();
+        assert!(!base64.is_empty());
+        assert_eq!(mime, "image/png");
     }
 }
