@@ -8,6 +8,59 @@
 
 ---
 
+## Stabilization since baseline (cherry-picks on top of e35bfdc2)
+
+RC1 之外、tag 之前额外落地的稳定性 / 工具链硬化，按主题分组（atomic commit 全部 merged on `master` HEAD 之前）：
+
+### Browser Runtime 基础设施（任务分支 `feat/browser-runtime-chrome-cdp`）
+
+为多 agent 工作流铺路做的浏览器运行时 Phase 1。**不在 1.1.0-rc.1 主路径上**（Web 自动化不是 v1.1 主题），但已 commit 进 master，构成 1.1.0 收尾时的代码库状态。
+
+- `feat(browser): Browser Runtime 基础架构 - Real Chrome Mode` (`20eb2971`)：chrome 进程管理、CDP 客户端、Profile 持久化、Runtime 抽象层。
+- `feat(browser): Browser Runtime Tauri commands + Phase 2/3 actions` (`8bbe1e13`)：13 个 Tauri command 暴露到前端（profile CRUD / launch / list_tabs / observe / navigate / perform / close_session），前端 API + store 同步改造；Phase 3 webview_runtime scaffold。
+- `fix(layout): restore sidebar slide-out animation when entering a layout-having route` (`b26e0bfc`)：`miwarp-skip-route-motion` 不再压制 `animation-duration`；新增 `@keyframes sidebar-inner-enter` 让 sidebar-inner 从图标栏滑入。
+
+### Sidebar / Welcome / Statusbar / Self-check 稳定性
+
+5 agent 并行（ultracode 调度：R1-A/B/D, R2-C/E, R3-F 审计）落地的 regression 修复：
+
+- **`fix(sidebar): align workbench project list rows with chat/team baseline`** (`409ad574`)：workbench 项目列表行从 `rounded-2xl bg-primary/10` 改回 chat/team 公共基线 `rounded-md bg-sidebar-accent`。
+- **`refactor(chat) + fix(chat): runtime-picker-store + close ordering + lazy CLI probe`** (`89d50b1b` + `eb0e4ef9`)：welcome CLI 选择从组件 local `$state` 提取到 singleton store；`RuntimePicker` 关闭顺序倒置避免 flicker；`loadCliVersionInfo` 包 rAF 延后首帧。
+- **`fix(statusbar): align tier-2 collapse/expand endpoints + dedupe CLI probe`** (`f9e83822`)：胶囊展开/折叠双端点 transform 统一，消除"先跳后缩"；`_lastProbedAgent` dedupe 防止重复 IPC probe。
+- **`feat(web_server) + feat(settings): Web Server self-check UI in Devices tab`** (`4894441e` + `eb45ef35`)：`/health` 端点扩字段（service/version/running/bind/port/host/mcp_endpoint/auth_endpoint/auth_required/cors）；DevicesTab 新增"自检"按钮一键诊断。
+- **`fix(release): enforce updater signing key presence + i18n hints`** (`289fbe38`)：`.github/workflows/release.yml` 新增 `TAURI_SIGNING_PRIVATE_KEY` preflight；缺 secret 时直接 fail-fast 加修复指引（解释 v1.0.8 latest.json 缺失的根因）。
+
+### CI gate 修复 + Theme 收尾
+
+- **`fix(cdp_client): silence pre-existing clippy errors + extract PendingMap alias`** (`c8d892d3`)：P0 关 CI gate。`cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings` 修到 0 错（`CdpMessage` / `CdpError` `#[allow(dead_code)]` 带 doc comment；`type PendingMap = ...` 抽别名替代 `clippy::type_complexity`）。
+- **`feat(theme): system-mode dedicated icon + lastManualMode/toggleSystemFollow`** (`6b32556b`)：cycleTheme 按钮 3 态各自专属图标（light=sun / dark=moon / **system = 半月对比**，区别于 light）；删除主 UI 的色板切换按钮（迁到 P1 决策 ⑤）。
+- **`feat(i18n): 13 keys across release-hint + web-server self-check`** (`7bb42395`)：原子 i18n 批提交 — `updateCenter_*Hint` (3) + `settings_general_webSelfCheck*` (10)，en + zh-CN 双语同步。
+- **`feat(settings): codify P1 5 product decisions`** (`4de7a5d2`)：dev mode 自动检查更新短路关闭（`import.meta.env.DEV` gate）；Appearance > Advanced Card 暴露 `themeStore.setColorScheme`（会话级）。
+
+### 集成审计
+
+- **`R3-F 集成审计`**：5 agent 全部按自报范围落地，无悬空 i18n key、无 IPC 缺注册、无类型不一致；唯一真实发版阻断是 `cdp_client.rs` 的 4 个 pre-existing clippy error，已在 `c8d892d3` 修掉。
+
+### P2 全套验证（当前 master HEAD）
+
+```
+pnpm check                         → 0 errors / 0 warnings (2084 files)
+pnpm i18n:check                    → 0 errors (12 pre-existing warnings)
+pnpm lint                          → 0 errors (75 pre-existing warnings)
+cargo check                        → 0 errors / 0 warnings
+cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+                                  → 0 errors / 0 warnings
+cargo test --manifest-path src-tauri/Cargo.toml --lib browser
+                                  → 34 passed / 0 failed / 1 ignored
+npm run version:check              → ✓ All versions aligned at 1.1.0-rc.1
+```
+
+---
+
+
+
+---
+
 ## What's New
 
 MiWarp v1.1.0 是从「AI CLI 桌面外壳」到「可观测 Agent Workbench」的一次产品层级跃迁。这次版本围绕四个核心承诺展开：
