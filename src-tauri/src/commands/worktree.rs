@@ -1,6 +1,6 @@
 use crate::process_ext::HideConsole;
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Info about a created worktree.
@@ -9,6 +9,66 @@ use std::process::Command;
 pub struct WorktreeInfo {
     pub path: String,
     pub branch: String,
+}
+
+/// Returned when `remove_worktree_internal` is called with `force=false` and
+/// the worktree has uncommitted changes or untracked files that would be
+/// silently deleted by `git worktree remove --force`. The caller must decide
+/// whether to discard the changes (re-invoke with `force=true`) or keep them.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorktreeDirtyError {
+    pub worktree_path: String,
+    pub dirty_files: Vec<String>,
+    pub message: String,
+}
+
+impl std::fmt::Display for WorktreeDirtyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} ({} dirty file(s); pass force=true to discard)",
+            self.message,
+            self.dirty_files.len()
+        )
+    }
+}
+
+impl std::error::Error for WorktreeDirtyError {}
+
+/// Parse the output of `git status --porcelain` into a list of dirty file paths.
+///
+/// Each line is at minimum 3 characters: `<xy> <path>` where `<xy>` is the
+/// 2-char status code. We trim and skip empty / malformed lines.
+fn parse_dirty_files(stdout: &[u8]) -> Vec<String> {
+    let text = String::from_utf8_lossy(stdout);
+    text.lines()
+        .filter(|line| line.len() >= 3)
+        .map(|line| line[3..].trim().to_string())
+        .filter(|p| !p.is_empty())
+        .collect()
+}
+
+/// Run `git -C <path> status --porcelain` and return the dirty file list.
+/// Returns an empty Vec if the path is clean or not a git working tree.
+fn dirty_files_in(path: &Path) -> Result<Vec<String>, String> {
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let output = Command::new("git")
+        .args(["-C", &path.to_string_lossy(), "status", "--porcelain"])
+        .hide_console()
+        .output()
+        .map_err(|e| format!("git status failed: {}", e))?;
+    if !output.status.success() {
+        // If path isn't a git worktree (already removed, etc.) treat as clean.
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("not a git repository") {
+            return Ok(Vec::new());
+        }
+        return Err(format!("git status failed: {}", stderr.trim()));
+    }
+    Ok(parse_dirty_files(&output.stdout))
 }
 
 /// Result of an auto-commit attempt.
@@ -277,20 +337,69 @@ pub async fn create_pull_request_internal(
 }
 
 /// Remove a git worktree and optionally delete the branch.
+///
+/// **Safety (P0-7 fix):** When `force` is `false` (the safe default), the
+/// worktree is first inspected with `git status --porcelain`. If there are
+/// uncommitted modifications, staged changes, or untracked files, the call
+/// is rejected and a `WorktreeDirtyError` is returned listing every dirty
+/// path so the caller can surface them to the user for confirmation. When
+/// `force` is `true`, the original `--force` behavior is preserved — used
+/// by best-effort cleanup paths (e.g. run deletion auto-cleanup).
 pub fn remove_worktree_internal(
     worktree_path: &str,
     parent_cwd: &str,
     branch_name: Option<&str>,
-) -> Result<(), String> {
+    force: bool,
+) -> Result<(), WorktreeDirtyError> {
     let root = repo_root(parent_cwd).unwrap_or_else(|_| PathBuf::from(parent_cwd));
 
-    // git worktree remove
+    // Pre-flight: when caller did NOT explicitly opt in to --force, refuse
+    // to delete a worktree that has any dirty files (modified / staged /
+    // untracked). Returning a structured error lets the UI show a precise
+    // "save your work?" prompt rather than silently dropping changes.
+    if !force {
+        let dirty = match dirty_files_in(Path::new(worktree_path)) {
+            Ok(d) => d,
+            Err(e) => {
+                return Err(WorktreeDirtyError {
+                    worktree_path: worktree_path.to_string(),
+                    dirty_files: Vec::new(),
+                    message: format!("failed to inspect worktree: {}", e),
+                });
+            }
+        };
+        if !dirty.is_empty() {
+            log::warn!(
+                "[worktree] refusing to remove dirty worktree (force=false): path={}, dirty={}",
+                worktree_path,
+                dirty.len()
+            );
+            return Err(WorktreeDirtyError {
+                worktree_path: worktree_path.to_string(),
+                dirty_files: dirty,
+                message: format!(
+                    "worktree at {} has uncommitted or untracked changes",
+                    worktree_path
+                ),
+            });
+        }
+    }
+
+    // git worktree remove (only --force when explicitly requested)
+    let mut args: Vec<&str> = vec!["worktree", "remove", worktree_path];
+    if force {
+        args.push("--force");
+    }
     let output = Command::new("git")
         .current_dir(&root)
-        .args(["worktree", "remove", worktree_path, "--force"])
+        .args(&args)
         .hide_console()
         .output()
-        .map_err(|e| format!("git worktree remove failed: {}", e))?;
+        .map_err(|e| WorktreeDirtyError {
+            worktree_path: worktree_path.to_string(),
+            dirty_files: Vec::new(),
+            message: format!("git worktree remove failed: {}", e),
+        })?;
     if !output.status.success() {
         log::warn!(
             "[worktree] remove failed (non-fatal): {}",
@@ -406,17 +515,196 @@ pub fn remove_worktree(
     worktree_path: String,
     parent_cwd: String,
     branch_name: Option<String>,
-) -> Result<(), String> {
+    force: Option<bool>,
+) -> Result<(), WorktreeDirtyError> {
+    // `force` defaults to false (safe). Callers that intentionally want to
+    // discard dirty state (e.g. settings-driven auto-cleanup on run delete)
+    // must pass `force: true` explicitly. Tauri deserializes a missing field
+    // to None, so old JS callers that don't send `force` will still hit the
+    // safe default and get a structured error if the tree is dirty.
+    let force = force.unwrap_or(false);
     log::debug!(
-        "[cmd/worktree] remove_worktree: path={}, parent={}",
+        "[cmd/worktree] remove_worktree: path={}, parent={}, force={}",
         worktree_path,
-        parent_cwd
+        parent_cwd,
+        force
     );
-    remove_worktree_internal(&worktree_path, &parent_cwd, branch_name.as_deref())
+    remove_worktree_internal(&worktree_path, &parent_cwd, branch_name.as_deref(), force)
 }
 
 #[tauri::command]
 pub fn list_worktrees(parent_cwd: String) -> Result<Vec<WorktreeEntry>, String> {
     log::debug!("[cmd/worktree] list_worktrees: parent={}", parent_cwd);
     list_worktrees_internal(&parent_cwd)
+}
+
+// ── Tests ──
+//
+// These tests construct a real temporary git repo + worktree to exercise
+// the P0-7 safety guard. They use the system `git` binary (same as the
+// production code paths) so we need it available; CI provides it.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::process::Command as StdCommand;
+    use tempfile::TempDir;
+
+    /// Helper: run a shell command and panic with stderr if it fails.
+    fn run(cwd: &std::path::Path, args: &[&str]) {
+        let out = StdCommand::new("git")
+            .current_dir(cwd)
+            .args(args)
+            .hide_console()
+            .output()
+            .expect("git command spawn");
+        assert!(
+            out.status.success(),
+            "git {:?} failed in {}: {}",
+            args,
+            cwd.display(),
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    /// Build a minimal repo with one commit and a sibling worktree on a
+    /// separate branch. Returns (repo_dir, worktree_dir).
+    fn build_repo_with_worktree() -> (TempDir, std::path::PathBuf, std::path::PathBuf) {
+        let tmp = TempDir::new().expect("tempdir");
+        let repo = tmp.path().join("repo");
+        fs::create_dir_all(&repo).unwrap();
+
+        run(&repo, &["init", "--initial-branch=main"]);
+        run(&repo, &["config", "user.email", "test@example.com"]);
+        run(&repo, &["config", "user.name", "Test"]);
+
+        fs::write(repo.join("README.md"), "hello\n").unwrap();
+        run(&repo, &["add", "."]);
+        run(&repo, &["commit", "-m", "init"]);
+
+        // Create a branch + worktree sibling to repo
+        run(&repo, &["branch", "feat/test"]);
+        let wt = tmp.path().join("wt");
+        run(
+            &repo,
+            &["worktree", "add", wt.to_str().unwrap(), "feat/test"],
+        );
+
+        (tmp, repo, wt)
+    }
+
+    #[test]
+    fn parse_dirty_files_handles_modification_and_untracked() {
+        let input = b" M src/lib.rs\n\
+                      M  Cargo.toml\n\
+                      ?? notes.txt\n\
+                      A  added.rs\n\
+                      ";
+        let files = parse_dirty_files(input);
+        assert_eq!(
+            files,
+            vec![
+                "src/lib.rs".to_string(),
+                "Cargo.toml".to_string(),
+                "notes.txt".to_string(),
+                "added.rs".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn parse_dirty_files_ignores_short_and_empty_lines() {
+        let input = b"\n\n M ok.rs\nxy\n";
+        let files = parse_dirty_files(input);
+        // "xy" is only 2 chars → ignored
+        assert_eq!(files, vec!["ok.rs".to_string()]);
+    }
+
+    #[test]
+    fn dirty_files_in_clean_repo_returns_empty() {
+        let (_tmp, repo, _wt) = build_repo_with_worktree();
+        let dirty = dirty_files_in(&repo).expect("status ok");
+        assert!(dirty.is_empty(), "expected clean, got {:?}", dirty);
+    }
+
+    #[test]
+    fn dirty_files_in_returns_modified_and_untracked() {
+        let (_tmp, repo, _wt) = build_repo_with_worktree();
+        fs::write(repo.join("README.md"), "changed\n").unwrap();
+        fs::write(repo.join("scratch.txt"), "wip\n").unwrap();
+        let dirty = dirty_files_in(&repo).expect("status ok");
+        assert!(
+            dirty.iter().any(|p| p.ends_with("README.md")),
+            "expected README.md in {:?}",
+            dirty
+        );
+        assert!(
+            dirty.iter().any(|p| p.ends_with("scratch.txt")),
+            "expected scratch.txt in {:?}",
+            dirty
+        );
+    }
+
+    #[test]
+    fn dirty_files_in_missing_path_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        let missing = tmp.path().join("does-not-exist");
+        let dirty = dirty_files_in(&missing).expect("missing path is fine");
+        assert!(dirty.is_empty());
+    }
+
+    #[test]
+    fn remove_worktree_rejects_dirty_when_force_false() {
+        let (_tmp, repo, wt) = build_repo_with_worktree();
+        // Make the worktree dirty
+        fs::write(wt.join("README.md"), "WIP changes\n").unwrap();
+        fs::write(wt.join("untracked.log"), "logs\n").unwrap();
+
+        let wt_str = wt.to_string_lossy().to_string();
+        let repo_str = repo.to_string_lossy().to_string();
+
+        let res = remove_worktree_internal(&wt_str, &repo_str, Some("feat/test"), false);
+        let err = res.expect_err("must refuse to remove dirty worktree");
+        assert!(
+            err.dirty_files
+                .iter()
+                .any(|p| p.ends_with("README.md") || p.ends_with("untracked.log")),
+            "expected dirty files in error, got {:?}",
+            err.dirty_files
+        );
+        assert_eq!(err.worktree_path, wt_str);
+
+        // The worktree directory must still exist on disk.
+        assert!(wt.exists(), "worktree must NOT be deleted when dirty");
+    }
+
+    #[test]
+    fn remove_worktree_removes_clean_when_force_false() {
+        let (_tmp, repo, wt) = build_repo_with_worktree();
+        let wt_str = wt.to_string_lossy().to_string();
+        let repo_str = repo.to_string_lossy().to_string();
+
+        remove_worktree_internal(&wt_str, &repo_str, Some("feat/test"), false)
+            .expect("clean worktree must be removable with default force=false");
+        assert!(!wt.exists(), "worktree directory should be gone");
+    }
+
+    #[test]
+    fn remove_worktree_force_true_overrides_dirty_state() {
+        let (_tmp, repo, wt) = build_repo_with_worktree();
+        // Make it dirty
+        fs::write(wt.join("README.md"), "WIP changes\n").unwrap();
+        fs::write(wt.join("untracked.log"), "logs\n").unwrap();
+
+        let wt_str = wt.to_string_lossy().to_string();
+        let repo_str = repo.to_string_lossy().to_string();
+
+        remove_worktree_internal(&wt_str, &repo_str, Some("feat/test"), true)
+            .expect("force=true must allow dirty worktree removal");
+        assert!(
+            !wt.exists(),
+            "worktree directory should be gone after force=true"
+        );
+    }
 }

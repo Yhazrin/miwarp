@@ -501,6 +501,11 @@ pub fn list_prompt_tags() -> Result<Vec<String>, String> {
 
 /// Best-effort cleanup of worktree directories for the given run IDs.
 /// Runs before soft/hard delete. Failures are logged but do not block deletion.
+///
+/// Passes `force=true` to `remove_worktree_internal` because this path is
+/// explicitly user-confirmed (the user is deleting the run). For interactive
+/// removals via the frontend `remove_worktree` IPC, the safe default of
+/// `force=false` applies.
 pub fn cleanup_worktrees_for_runs(ids: &[String]) {
     let settings = storage::settings::get_user_settings();
     if !settings.auto_cleanup_worktree {
@@ -514,6 +519,7 @@ pub fn cleanup_worktrees_for_runs(ids: &[String]) {
                     wt_path,
                     parent,
                     meta.worktree_branch.as_deref(),
+                    true, // force: user-confirmed run deletion
                 ) {
                     log::warn!(
                         "[runs] worktree cleanup failed for run={} (non-fatal): {}",
