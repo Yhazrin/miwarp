@@ -157,6 +157,7 @@
     routeRunPending || (store.phase === "loading" && store.timeline.length === 0 && !!runId),
   );
   const conversationSurfaceKey = $derived(runId || store.run?.id || "empty");
+  const pendingHookEvents = $derived(store.hookEvents.filter((h) => h.status === "hook_pending"));
 
   const { thinkingElapsed, thinkingVisible, spinnerVerb, processingSlashCmd, approving, sending } =
     $derived(thinkingVm);
@@ -481,7 +482,7 @@
                   </div>
                 {/each}
 
-                {#each store.hookEvents.filter((h) => h.status === "hook_pending") as hookEvent (hookEvent.request_id)}
+                {#each pendingHookEvents as hookEvent (hookEvent.request_id)}
                   <div class="w-full py-1">
                     <div class="chat-content-width pl-7" data-export-exclude>
                       <HookReviewCard {hookEvent} onRespond={handleHookCallbackRespond} />
