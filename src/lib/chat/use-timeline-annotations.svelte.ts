@@ -5,6 +5,7 @@
  * Extracted from use-session-derived to keep timeline-domain logic
  * in its own module.
  */
+import { untrack } from "svelte";
 import type { SessionStore } from "$lib/stores/session-store.svelte";
 import type { TimelineEntry } from "$lib/types";
 import type { TurnUsage } from "$lib/stores/types";
@@ -35,7 +36,22 @@ export function createTimelineAnnotations(
     getCollapsedIndices,
   } = ctx;
 
-  const usageByTurn = $derived(new Map(store.turnUsages.map((tu) => [tu.turnIndex, tu])));
+  const usageByTurn = $state(new Map<number, TurnUsage>());
+
+  // Subscribe to the primitive length signal only — turnUsages entries are
+  // append-only on usage_update events. Mutate the Map in place so downstream
+  // $state subscribers re-fire on size changes without churning a new Map.
+  $effect(() => {
+    const length = store.turnUsages.length;
+    untrack(() => {
+      if (usageByTurn.size === length) return;
+      usageByTurn.clear();
+      const tu = store.turnUsages;
+      for (let i = 0; i < length; i++) {
+        usageByTurn.set(tu[i].turnIndex, tu[i]);
+      }
+    });
+  });
 
   const usageAnnotations = $derived.by(() => {
     const map = new Map<number, TurnUsage>();
