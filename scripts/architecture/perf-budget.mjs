@@ -200,34 +200,90 @@ function findViteManifest() {
   return null;
 }
 
-function pickChunkForRoute(manifest, hint) {
-  // Vite manifest shape: { "src/routes/<route>+page.svelte": { file, imports, ... }, ... }
-  // We pick the entry whose `file` contains `route` and is a leaf (no other entry imports it).
-  const keys = Object.keys(manifest);
-  for (const key of keys) {
-    if (key.includes(hint) && key.endsWith("+page.svelte")) {
-      return manifest[key];
+// SvelteKit's Vite manifest keys client chunks by a numeric node index
+// (`.svelte-kit/generated/client-optimized/nodes/<N>.js`), NOT by source
+// path. To map a route we want to budget back to a manifest entry we read
+// the server-side `nodes/*.js` shims, each of which exposes a
+// `component = async () => import("../entries/pages/<route>/_...")`
+// pointing at the route that node serves. That mapping is stable across
+// rebuilds for as long as SvelteKit's server-build shape stays the same.
+function buildRouteNodeMap() {
+  const nodesDir = join(REPO_ROOT, ".svelte-kit", "output", "server", "nodes");
+  if (!existsSync(nodesDir)) return null;
+  const routeToNode = new Map();
+  const nodeToRoute = new Map();
+  for (const name of readdirSync(nodesDir)) {
+    const m = /^(\d+)\.js$/.exec(name);
+    if (!m) continue;
+    const idx = Number(m[1]);
+    const src = readText(join(nodesDir, name));
+    if (src == null) continue;
+    const cm = /component\s*=\s*async\s*\(\s*\)\s*=>\s*[^\n]*import\(\s*['"]\.\.\/entries\/pages\/([^'"]+)['"]/.exec(
+      src,
+    );
+    if (!cm) continue;
+    const raw = cm[1]; // e.g. "_layout.svelte.js" or "chat/_page.svelte.js"
+    const route = raw
+      .replace(/\.(?:svelte|layout|page)\.js$/, "")
+      .replace(/\.(?:layout|page)$/, "")
+      .replace(/^_$/, "")
+      .replace(/_layout$/, "+layout")
+      .replace(/_page$/, "+page")
+      .replace(/_error$/, "+error")
+      .replace(/\[(\w+)_]/g, "[$1]"); // scheduled-tasks/_taskId_/ -> scheduled-tasks/[taskId]/
+    routeToNode.set(route, idx);
+    nodeToRoute.set(idx, route);
+  }
+  return { routeToNode, nodeToRoute };
+}
+
+// Resolves a route (`+layout`, `chat/+page`, `personal/+page`, ...) to
+// its client-side manifest entry by walking the route→node map. The
+// fallback `hint` substring lets older callers still match by file path
+// if SvelteKit ever switches manifest shape back.
+function pickChunkForRoute(manifest, routeNodeMap, route, hint) {
+  if (routeNodeMap) {
+    const idx = routeNodeMap.routeToNode.get(route);
+    if (idx != null) {
+      const key = `.svelte-kit/generated/client-optimized/nodes/${idx}.js`;
+      if (manifest[key]) return manifest[key];
+    }
+  }
+  // Legacy fallback for non-SvelteKit builds: match by source-path hint.
+  if (hint) {
+    for (const key of Object.keys(manifest)) {
+      if (key.includes(hint) && (key.endsWith("+page.svelte") || key.endsWith("+layout.svelte"))) {
+        return manifest[key];
+      }
     }
   }
   return null;
 }
 
+// In SvelteKit's client manifest, `meta.file` is the path to the chunk
+// (`_app/immutable/nodes/0.HASH.js`) and `meta.imports` are bare chunk
+// names (`_VkLTHpG6.js`) that double as top-level keys of the manifest
+// object. So traversal has to walk by manifest key, not by `file`.
 function totalGzipForEntry(manifest, entry) {
-  // Recursively sum the gzipped file size of `entry` plus its static imports.
   const seen = new Set();
-  const stack = [entry.file];
+  const stack = [entry]; // entry is a manifest entry; we use its key as identity
   let total = 0;
   while (stack.length > 0) {
-    const file = stack.pop();
-    if (seen.has(file)) continue;
-    seen.add(file);
-    const full = join(BUILD_DIR, file);
-    if (!existsSync(full)) continue;
-    const buf = readFileSync(full);
-    total += gzipSize(buf);
-    const meta = Object.values(manifest).find((m) => m.file === file);
-    if (meta && Array.isArray(meta.imports)) {
-      for (const imp of meta.imports) stack.push(imp);
+    const current = stack.pop();
+    const key = current.src || current.file;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (current.file) {
+      const full = join(BUILD_DIR, current.file);
+      if (existsSync(full)) {
+        total += gzipSize(readFileSync(full));
+      }
+    }
+    if (Array.isArray(current.imports)) {
+      for (const imp of current.imports) {
+        const next = manifest[imp];
+        if (next) stack.push(next);
+      }
     }
   }
   return total;
@@ -243,11 +299,19 @@ function checkRuntimeGates() {
     process.exit(2);
   }
   const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+  const routeNodeMap = buildRouteNodeMap();
+  if (!routeNodeMap) {
+    recordWarning(
+      "runtime:route-map",
+      "could not read .svelte-kit/output/server/nodes/*.js; route mapping will fall back to substring matching",
+    );
+  }
 
-  // Gate: root entry gzipped.
-  const rootEntry = pickChunkForRoute(manifest, "src/routes/+layout.svelte")
-    || pickChunkForRoute(manifest, "src/routes/+page.svelte")
-    || null;
+  // Gate: root entry gzipped (layout first, then root page).
+  const rootEntry =
+    pickChunkForRoute(manifest, routeNodeMap, "+layout", "src/routes/+layout.svelte") ||
+    pickChunkForRoute(manifest, routeNodeMap, "+page", "src/routes/+page.svelte") ||
+    null;
   if (!rootEntry) {
     recordWarning("runtime:root-bundle", "could not locate root entry in Vite manifest");
   } else {
@@ -261,7 +325,12 @@ function checkRuntimeGates() {
   }
 
   // Gate: personal route chunk.
-  const personalEntry = pickChunkForRoute(manifest, "src/routes/personal/+page.svelte");
+  const personalEntry = pickChunkForRoute(
+    manifest,
+    routeNodeMap,
+    "personal/+page",
+    "src/routes/personal/+page.svelte",
+  );
   if (personalEntry) {
     const gz = totalGzipForEntry(manifest, personalEntry);
     const kib = (gz / 1024).toFixed(1);
@@ -275,7 +344,12 @@ function checkRuntimeGates() {
   }
 
   // Gate: explorer route chunk.
-  const explorerEntry = pickChunkForRoute(manifest, "src/routes/explorer/+page.svelte");
+  const explorerEntry = pickChunkForRoute(
+    manifest,
+    routeNodeMap,
+    "explorer/+page",
+    "src/routes/explorer/+page.svelte",
+  );
   if (explorerEntry) {
     const gz = totalGzipForEntry(manifest, explorerEntry);
     const kib = (gz / 1024).toFixed(1);
