@@ -19,6 +19,7 @@
   let dataDir = $state("");
   let markdownReport = $state("");
   let copied = $state(false);
+  let copyTimer: ReturnType<typeof setTimeout> | undefined;
   let refreshGeneration = 0;
   // One-click update state. Lives in the doctor panel because the version
   // check and the update button share the same render path.
@@ -91,7 +92,11 @@
     try {
       await navigator.clipboard.writeText(markdownReport);
       copied = true;
-      setTimeout(() => (copied = false), 2000);
+      if (copyTimer) clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => {
+        copied = false;
+        copyTimer = undefined;
+      }, 2000);
     } catch {
       /* ignore */
     }
@@ -144,6 +149,7 @@
     return () => {
       refreshGeneration += 1;
       clearTimeout(updateSuccessTimer);
+      if (copyTimer) clearTimeout(copyTimer);
     };
   });
 
