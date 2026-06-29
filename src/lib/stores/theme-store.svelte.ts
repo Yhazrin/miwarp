@@ -170,6 +170,11 @@ class ThemeStore {
   /** Light / dark / follow-system. Drives which `[data-theme]` variant is applied. */
   mode = $state<"light" | "dark" | "system">("light");
 
+  /** Last manual light/dark selection — restored when user toggles off
+   *  follow-system. Keeps the cycle button deterministic instead of
+   *  jumping back to "light" every time you un-toggle system. */
+  lastManualMode = $state<"light" | "dark">("dark");
+
   /** Color scheme variant (warm/neutral) */
   colorScheme = $state<ColorScheme>("warm");
 
@@ -265,6 +270,9 @@ class ThemeStore {
   /** Set light/dark/system mode. Re-applies the current theme with the new variant. */
   setMode(next: "light" | "dark" | "system") {
     this.mode = next;
+    if (next === "light" || next === "dark") {
+      this.lastManualMode = next;
+    }
     this._syncSystemListener();
     this._applyTheme();
     this._persistSettings();
@@ -279,6 +287,22 @@ class ThemeStore {
     const idx = order.indexOf(this.mode);
     const next = order[(idx + 1) % order.length] ?? "light";
     this.setMode(next);
+  }
+
+  /**
+   * Toggle "follow system" independently from manual cycle.
+   * - When currently manual (light/dark): switch to "system".
+   * - When currently "system": restore the last manual mode.
+   *
+   * Paired with the manual cycle button so the two buttons carry
+   * orthogonal responsibilities (VS Code pattern).
+   */
+  toggleSystemFollow() {
+    if (this.mode === "system") {
+      this.setMode(this.lastManualMode);
+    } else {
+      this.setMode("system");
+    }
   }
 
   /** Override theme for a specific session */
