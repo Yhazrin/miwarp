@@ -151,15 +151,35 @@ export interface TimelinePresentation {
   metadata: TimelineMetadata;
 }
 
+// ── Memoization cache for detectBatchGroups / detectToolBursts ──
+// Both detectors scan `visibleTimeline` and produce results keyed by slice
+// indices. The slice grows/shrinks when renderLimit shifts (load-more) but
+// its *structural content* (the latest N entries from the tail) only changes
+// when the timeline itself is structurally appended/replaced. We key the
+// cache on `structuralSig` (passed in by the caller as `store.structuralVersion`)
+// so repeated renders with the same timeline + different renderLimits reuse
+// the previous detection result. The cache stays valid as long as no entry
+// is added or removed from the timeline tail; toolFilter bypassing the cache
+// forces a fresh compute when the filter changes.
+let _lastBurstSig: number | undefined;
+let _lastBatchSig: number | undefined;
+let _cachedBatchGroups: Map<number, BusToolItem[]> | undefined;
+let _cachedToolBursts: Map<number, ToolBurst> | undefined;
+
 /**
  * Compute visible-slice presentation. Pass precomputed metadata when the
  * timeline has not changed — avoids re-scanning 1000+ entries on load-more.
+ *
+ * `structuralSig` (e.g. `store.structuralVersion`) lets batchGroups and
+ * toolBursts be reused across renderLimit shifts that don't add/remove
+ * entries. When omitted, detection always runs.
  */
 export function computeTimelinePresentation(
   timeline: TimelineEntry[],
   toolFilter: string | null,
   renderLimit: number,
   metadataInput?: TimelineMetadata,
+  structuralSig?: number,
 ): TimelinePresentation {
   const metadata = metadataInput ?? computeTimelineMetadata(timeline);
 
@@ -169,13 +189,30 @@ export function computeTimelinePresentation(
 
   const visibleTimeline = sliceVisibleTimeline(filteredTimeline, renderLimit);
 
-  const batchGroups = toolFilter
-    ? new Map<number, BusToolItem[]>()
-    : detectBatchGroups(visibleTimeline);
+  let batchGroups: Map<number, BusToolItem[]>;
+  let toolBursts: Map<number, ToolBurst>;
 
-  const toolBursts = toolFilter
-    ? (new Map<number, ToolBurst>() as Map<number, ToolBurst>)
-    : detectToolBursts(visibleTimeline);
+  if (toolFilter) {
+    // Filter mode always yields empty maps — skip the cache entirely.
+    batchGroups = new Map<number, BusToolItem[]>();
+    toolBursts = new Map<number, ToolBurst>();
+  } else if (
+    structuralSig !== undefined &&
+    _lastBurstSig === structuralSig &&
+    _lastBatchSig === structuralSig &&
+    _cachedBatchGroups !== undefined &&
+    _cachedToolBursts !== undefined
+  ) {
+    batchGroups = _cachedBatchGroups;
+    toolBursts = _cachedToolBursts;
+  } else {
+    batchGroups = detectBatchGroups(visibleTimeline);
+    toolBursts = detectToolBursts(visibleTimeline);
+    _cachedBatchGroups = batchGroups;
+    _cachedToolBursts = toolBursts;
+    _lastBatchSig = structuralSig;
+    _lastBurstSig = structuralSig;
+  }
 
   const userCountPrefix = new Int32Array(filteredTimeline.length + 1);
   for (let i = 0; i < filteredTimeline.length; i++) {
