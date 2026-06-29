@@ -61,9 +61,59 @@ pub fn build_router(state: AppState) -> Router {
         .with_state(state)
 }
 
-/// Health endpoint — public, minimal info only
-async fn health() -> Json<serde_json::Value> {
-    Json(json!({"status": "ok"}))
+/// Health endpoint — public, minimal info only.
+///
+/// Returns a self-check payload so the desktop settings UI can verify
+/// end-to-end reachability without auth. The fields are intentionally
+/// non-sensitive: no token, no host-internal data.
+async fn health(State(state): State<AppState>) -> Json<serde_json::Value> {
+    let port = state.effective_port.load(Ordering::Relaxed);
+    let bind = state.bind_addr.as_str();
+    let host = effective_browser_host(bind, port);
+    let mcp_endpoint = if port > 0 {
+        Some(format!("{host}/mcp/fleet"))
+    } else {
+        None
+    };
+    let auth_endpoint = if port > 0 {
+        Some(format!("{host}/auth"))
+    } else {
+        None
+    };
+
+    let payload = json!({
+        "status": "ok",
+        "service": "miwarp-web",
+        "version": env!("CARGO_PKG_VERSION"),
+        "running": port > 0,
+        "bind": bind,
+        "port": port,
+        "host": host,
+        "mcp_endpoint": mcp_endpoint,
+        "auth_endpoint": auth_endpoint,
+        "auth_required": true,
+        "cors_localhost_default": true,
+    });
+
+    Json(payload)
+}
+
+/// Build a loopback/LAN browser-friendly origin string from bind+port.
+///
+/// `0.0.0.0` / `::` / `[::]` collapse to `localhost` so the URL is usable
+/// from desktop WebView. Other binds (e.g. `192.168.1.5`) pass through.
+fn effective_browser_host(bind: &str, port: u16) -> String {
+    let bare = bind.trim_start_matches('[').trim_end_matches(']');
+    let host = if bare == "0.0.0.0" || bare == "::" {
+        "localhost".to_string()
+    } else {
+        bare.to_string()
+    };
+    if host.contains(':') {
+        format!("http://[{host}]:{port}")
+    } else {
+        format!("http://{host}:{port}")
+    }
 }
 
 /// SPA fallback — serve index.html for all unmatched routes (client-side routing).
