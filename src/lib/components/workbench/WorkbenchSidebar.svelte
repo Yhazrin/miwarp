@@ -89,10 +89,10 @@
           <li>
             <button
               type="button"
-              class="w-full rounded-2xl border px-3.5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
+              class="w-full rounded-md px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
                 {isSelected
-                ? 'border-primary/30 bg-primary/10 shadow-sm'
-                : 'border-transparent hover:border-border/40 hover:bg-muted/40'}"
+                ? 'bg-sidebar-accent text-sidebar-foreground'
+                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
               onclick={() => workbenchStore.selectProject(project.id)}
               aria-current={isSelected ? "page" : undefined}
               aria-label={t("workbench_projectItemAria", {
