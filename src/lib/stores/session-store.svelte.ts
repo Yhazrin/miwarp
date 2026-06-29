@@ -419,6 +419,11 @@ export class SessionStore {
   /** Bumped on structural timeline changes; streaming deltas via ctx share a version. */
   private _permScanVersion = 0;
 
+  /** v1.1.0: bumped only on pure timeline-length pushes (streaming deltas share a version).
+   *  Downstream $derived caches (timeline metadata, userHistory, usageByTurn) use this as
+   *  a structural-version signal so they don't recompute on every token reassignment. */
+  structuralVersion = $state(0);
+
   /** Cached permission scan — invalidated when _permScanVersion changes. */
   private _permScan: {
     version: number;
@@ -627,8 +632,12 @@ export class SessionStore {
 
   /** Structural timeline write; bumps _permScanVersion to invalidate cached scans. */
   private _setTimeline(next: TimelineEntry[]): void {
+    const lengthChanged = next.length !== this.timeline.length;
     this.timeline = next;
     this._permScanVersion++;
+    // Bump structuralVersion only on pure pushes so downstream caches keyed
+    // on length don't recompute on streaming-delta in-place rewrites.
+    if (lengthChanged) this.structuralVersion++;
   }
 
   /** Append a timeline entry and update tool index if applicable.
