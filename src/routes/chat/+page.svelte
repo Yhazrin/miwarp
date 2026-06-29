@@ -812,7 +812,12 @@
    *  The prompt text itself is captured at flush time via the controller
    *  (it reads the latest `promptRef.getInputSnapshot()`); we don't
    *  subscribe to the input's per-keystroke $state here. The pagehide
-   *  / beforeNavigate / dispose paths guarantee a final flush. */
+   *  / beforeNavigate / dispose paths guarantee a final flush.
+   *  Skip the very first run on mount — the initial render is already
+   *  covered by other code paths (continuity restore + controller init)
+   *  and forcing a synchronous snapshot write here can spike the first
+   *  paint on long timelines. */
+  let continuitySkipFirst = true;
   $effect(() => {
     const id = store.run?.id;
     if (!id) return;
@@ -825,6 +830,10 @@
     void requestedPreviewPath;
     void processVisibility;
     void currentAnchor;
+    if (continuitySkipFirst) {
+      continuitySkipFirst = false;
+      return;
+    }
     continuityController.scheduleSave(id);
   });
 
