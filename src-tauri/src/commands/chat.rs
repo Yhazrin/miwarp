@@ -1,6 +1,7 @@
 use crate::agent::spawn::build_agent_command;
 use crate::agent::stream::{run_agent, ProcessMap};
 use crate::models::{max_attachment_size, Attachment, BusEvent, RunEventType, RunStatus};
+use crate::run_core::{ClientMessageState, TerminalReason};
 use crate::storage;
 use serde_json::Value;
 use std::fs;
@@ -92,24 +93,66 @@ pub async fn send_chat_message(
         return Err("message is required".to_string());
     }
 
-    // P0-5 dedupe (v1.0.9): if a `client_message_id` was supplied, first check
-    // the durable accepted ledger so that retries resolve idempotently. This
-    // mirrors the actor-side guard in `session_actor::handle_send_message` so
-    // pipe_exec and session_actor share the same dedupe semantics.
+    // P0-3 crash-aware dedupe (v1.1.0): the dedupe state is now a
+    // three-state machine — `Prepared` / `Dispatched` / `Terminal`.
     //
-    // If the journal cannot be read, fail closed with the typed
-    // `JOURNAL_DEDUPE_UNAVAILABLE` prefix used by the actor path — this keeps
-    // error contracts aligned across both execution paths.
+    // * `None`           — never seen; proceed to stage 1 (record_prepared).
+    // * `Prepared`       — a previous call crashed or timed out before
+    //                      the spawn was confirmed. The chat command MUST
+    //                      surface this as an ambiguous state to the
+    //                      frontend so the user can decide retry-vs-resend.
+    // * `Dispatched`     — a previous call successfully spawned the
+    //                      child; idempotent re-send — return Ok(()).
+    // * `Terminal(..)`   — the previous call reached a final state
+    //                      (completed / user_stopped / spawn_failed).
+    //                      Refuse to re-spawn; the caller should inspect
+    //                      the reason and either surface the failure or
+    //                      re-send with a new cid.
+    //
+    // If the journal cannot be read we fail closed with the typed
+    // `JOURNAL_DEDUPE_UNAVAILABLE` prefix used by the actor path — this
+    // keeps error contracts aligned across both execution paths.
     if let Some(ref cid) = client_message_id {
-        match storage::run_journal::is_message_accepted(&run_id, cid) {
-            Ok(true) => {
+        match storage::run_journal::get_state(&run_id, cid) {
+            Ok(Some(ClientMessageState::Prepared)) => {
+                log::warn!(
+                    "[chat] P0-3 ambiguous state for client_message_id={} (Prepared): the previous send was recorded but spawn was not confirmed; caller must decide retry or resend with a new cid",
+                    cid
+                );
+                return Err(format!(
+                    "{}: client_message_id={} is in ambiguous Prepared state — choose to retry or resend with a new id",
+                    crate::run_core::JOURNAL_DEDUPE_UNAVAILABLE_PREFIX,
+                    cid
+                ));
+            }
+            Ok(Some(ClientMessageState::Dispatched)) => {
                 log::debug!(
-                    "[chat] dedupe: client_message_id={} durably accepted; resolving as accepted",
+                    "[chat] dedupe: client_message_id={} durably dispatched; resolving as accepted",
                     cid
                 );
                 return Ok(());
             }
-            Ok(false) => {}
+            Ok(Some(ClientMessageState::Terminal { reason })) => {
+                let detail = match &reason {
+                    TerminalReason::Completed => "completed",
+                    TerminalReason::UserStopped => "user-stopped",
+                    TerminalReason::SpawnFailed { message } => message.as_str(),
+                };
+                log::warn!(
+                    "[chat] P0-3 terminal state for client_message_id={} reason={}: refusing to re-spawn; caller must resend with a new cid",
+                    cid,
+                    detail
+                );
+                return Err(format!(
+                    "client_message_id={cid} reached terminal state ({detail}); resend with a new id"
+                ));
+            }
+            Ok(None) => {
+                log::debug!(
+                    "[chat] P0-3 dedupe: client_message_id={} unseen; proceeding to record_prepared",
+                    cid
+                );
+            }
             Err(error) => {
                 let failure = format!(
                     "{}: cannot verify client_message_id={}: {}",
@@ -276,34 +319,82 @@ pub async fn send_chat_message(
         conversation_id.as_deref(),
     )?;
 
-    // P0-5: durably record the acceptance so any subsequent send with the
-    // same `client_message_id` resolves as a no-op rather than spawning a
-    // second pipe child. Mirrors the actor-side
-    // `record_accepted_client_message_id` ledger so retries across
-    // pipe_exec / session_actor / reconnect are all deduplicated.
+    // P0-3 crash-aware dedupe — stage one of three. We durably record
+    // `Prepared` BEFORE attempting the spawn. If this call fails the
+    // caller MUST NOT spawn — the previous P0-5 behaviour of "log a
+    // warning then spawn anyway" left the ledger out of sync with the
+    // spawn and was the root cause of the v1.1.0 retention regression.
     if let Some(ref cid) = client_message_id {
-        if let Err(e) = storage::run_journal::record_accepted_message(&run_id, cid, Some(&message))
+        if let Err(error) =
+            storage::run_journal::record_prepared(&run_id, cid, Some(&message))
         {
-            log::warn!(
-                "[chat] record_accepted_message failed for client_message_id={}: {}",
-                cid,
-                e
+            log::error!(
+                "[chat] P0-3 record_prepared failed for client_message_id={}: refusing to spawn",
+                cid
             );
+            return Err(format!(
+                "{}: failed to record Prepared for client_message_id={}: {}",
+                crate::run_core::JOURNAL_DEDUPE_UNAVAILABLE_PREFIX,
+                cid,
+                error
+            ));
         }
     }
 
-    // Spawn agent in background
+    // Spawn agent in background. Note: in this branch we transition the
+    // journal from `Prepared` → `Dispatched` synchronously *before*
+    // the tokio::spawn closure runs. The closure still owns the
+    // terminal transition (Completed / SpawnFailed) so a panic inside
+    // `run_agent` does not leak a `Prepared` row.
     let pm = process_map.inner().clone();
     let app_clone = app.clone();
-    let run_id_clone = run_id.clone();
     let agent_clone = run.agent.clone();
     let cwd = run.cwd.clone();
+    let cid_for_dispatched = client_message_id.clone();
+    let cid_for_terminal = client_message_id.clone();
+    let run_id_for_dispatched = run_id.clone();
+    let run_id_for_terminal = run_id.clone();
+
+    // P0-3 stage two — promote `Prepared` → `Dispatched`. We do this
+    // synchronously because by the time the tokio::spawn closure is
+    // scheduled the spawn will already have succeeded (the closure
+    // only owns the *terminal* transition once the child exits).
+    //
+    // If we crash between record_prepared and record_dispatched the
+    // cid will stay `Prepared`, which is exactly the "ambiguous" state
+    // we want retries to surface so the frontend never silently
+    // double-spawns.
+    if let Some(ref cid) = cid_for_dispatched {
+        if let Err(error) =
+            storage::run_journal::record_dispatched(&run_id_for_dispatched, cid)
+        {
+            // A failure here means the journal is degraded; surface
+            // it as a typed error instead of silently swallowing.
+            log::error!(
+                "[chat] P0-3 record_dispatched failed for client_message_id={}: {}",
+                cid,
+                error
+            );
+            // Best-effort: also stamp Terminal(SpawnFailed) so the
+            // cid cannot be confused as still-pending. We do not
+            // return Ok here because we couldn't fully confirm the
+            // transition — the caller will retry-or-resend.
+            let _ = storage::run_journal::record_terminal(
+                &run_id_for_dispatched,
+                cid,
+                TerminalReason::SpawnFailed {
+                    message: format!("record_dispatched failed: {error}"),
+                },
+            );
+            return Err(error);
+        }
+    }
 
     tokio::spawn(async move {
-        if let Err(e) = run_agent(
+        match run_agent(
             app_clone.clone(),
             pm,
-            run_id_clone.clone(),
+            run_id_for_terminal.clone(),
             command,
             args,
             cwd,
@@ -311,22 +402,55 @@ pub async fn send_chat_message(
         )
         .await
         {
-            if let Err(e2) = storage::runs::update_status(
-                &run_id_clone,
-                RunStatus::Failed,
-                Some(1),
-                Some(e.clone()),
-            ) {
-                log::warn!("[chat] failed to update status to Failed: {}", e2);
+            Ok(()) => {
+                if let Some(ref cid) = cid_for_terminal {
+                    if let Err(error) = storage::run_journal::record_terminal(
+                        &run_id_for_terminal,
+                        cid,
+                        TerminalReason::Completed,
+                    ) {
+                        log::warn!(
+                            "[chat] P0-3 record_terminal(Completed) failed for client_message_id={}: {}",
+                            cid,
+                            error
+                        );
+                    }
+                }
             }
-            let _ = app_clone.emit(
-                "chat-done",
-                crate::models::ChatDone {
-                    ok: false,
-                    code: 1,
-                    error: None,
-                },
-            );
+            Err(e) => {
+                // Spawn / runtime failure — stamp Terminal(SpawnFailed)
+                // so a retry with the same cid refuses to re-spawn and
+                // the frontend can render the explicit failure.
+                if let Some(ref cid) = cid_for_terminal {
+                    if let Err(term_err) = storage::run_journal::record_terminal(
+                        &run_id_for_terminal,
+                        cid,
+                        TerminalReason::SpawnFailed { message: e.clone() },
+                    ) {
+                        log::warn!(
+                            "[chat] P0-3 record_terminal(SpawnFailed) failed for client_message_id={}: {}",
+                            cid,
+                            term_err
+                        );
+                    }
+                }
+                if let Err(e2) = storage::runs::update_status(
+                    &run_id_for_terminal,
+                    RunStatus::Failed,
+                    Some(1),
+                    Some(e.clone()),
+                ) {
+                    log::warn!("[chat] failed to update status to Failed: {}", e2);
+                }
+                let _ = app_clone.emit(
+                    "chat-done",
+                    crate::models::ChatDone {
+                        ok: false,
+                        code: 1,
+                        error: None,
+                    },
+                );
+            }
         }
     });
 

@@ -20,7 +20,8 @@ mod tests;
 
 pub use apply::{
     apply_event, init_snapshot, is_message_accepted as snapshot_has_accepted_message,
-    legal_stage_transition, make_event, stage_for_run_status, ApplyOutcome,
+    is_terminal_client_message, legal_stage_transition, lookup_client_message_state, make_event,
+    stage_for_run_status, ApplyOutcome,
 };
 pub use events::{RunJournalEvent, RunJournalEventKind};
 pub use idempotency::classify_tool_idempotency;
@@ -119,12 +120,78 @@ pub struct RunActionRecord {
     pub error: Option<String>,
 }
 
+/// Lifecycle state of a `client_message_id` within a run.
+///
+/// This is the three-state machine that replaced the single
+/// `AcceptedUserMessage` row in v1.1.0 P0-3. Transitions:
+///
+/// * `None` — the cid has never been recorded in the journal.
+/// * `Prepared` — we durably recorded the user request *before* the
+///   child was spawned. From here the dispatcher must finish the
+///   transition (`record_dispatched` or `record_terminal`) — leaving a
+///   `Prepared` row dangling is the crash-aware equivalent of "did the
+///   spawn actually happen?".
+/// * `Dispatched` — the CLI child was successfully spawned. Retries
+///   resolve as accepted (idempotent re-send).
+/// * `Terminal` — the request reached a final state — completed
+///   naturally, was stopped by the user, or the spawn itself failed.
+///   Retries MUST NOT re-spawn; the caller must inspect
+///   `TerminalReason` to decide how to recover (e.g. re-send with a
+///   new cid, surface the failure to the user).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ClientMessageState {
+    Prepared,
+    Dispatched,
+    Terminal { reason: TerminalReason },
+}
+
+/// Reason a `client_message_id` reached its terminal state.
+///
+/// The dispatcher used to choose between Completed, UserStopped, and
+/// SpawnFailed based on this enum. The actor path (session_actor) and
+/// the pipe path (commands::chat::send_chat_message) MUST converge on
+/// the same vocabulary so the frontend can render a stable copy.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TerminalReason {
+    Completed,
+    UserStopped,
+    SpawnFailed { message: String },
+}
+
+impl TerminalReason {
+    /// Stable string used in the typed error prefix.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TerminalReason::Completed => "completed",
+            TerminalReason::UserStopped => "user_stopped",
+            TerminalReason::SpawnFailed { .. } => "spawn_failed",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AcceptedUserMessage {
     pub client_message_id: String,
     pub accepted_at: String,
+    /// Lifecycle state of this cid. Pre-P0-3 journals (without a
+    /// `state` field) deserialize as `ClientMessageState::Dispatched`
+    /// because the historical `record_accepted_message` only fired
+    /// *after* the actor confirmed the spawn — which matches the
+    /// `Dispatched` semantics, not `Prepared`.
+    #[serde(default = "legacy_default_dispatched")]
+    pub state: ClientMessageState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_preview: Option<String>,
+}
+
+fn legacy_default_dispatched() -> ClientMessageState {
+    // Old P0-5 journals only ever persisted a cid once stdin / spawn
+    // had been confirmed, which semantically maps to Dispatched. New
+    // writes stamp the explicit state, so this default is only
+    // consulted when reading pre-P0-3 snapshots.
+    ClientMessageState::Dispatched
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]

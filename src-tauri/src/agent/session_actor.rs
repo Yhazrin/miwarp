@@ -1024,11 +1024,17 @@ impl SessionActor {
             } else {
                 Some(ticket.text.clone())
             };
-            if let Err(error) = crate::storage::run_journal::record_accepted_message(
+            // Session actor still uses the legacy compat path; it
+            // will be migrated in a separate change. P0-3 keeps the
+            // wrapper working so cross-pipeline dedupe snapshots
+            // remain comparable between pipe and actor.
+            #[allow(deprecated)]
+            let accepted = crate::storage::run_journal::record_accepted_message(
                 &self.run_id,
                 &cid,
                 preview.as_deref(),
-            ) {
+            );
+            if let Err(error) = accepted {
                 log::error!("[turn] durable acceptance failed: {}", error);
                 let _ = crate::storage::run_journal::mark_degraded(&self.run_id, &error);
                 match crate::storage::run_journal::is_message_accepted(&self.run_id, &cid) {

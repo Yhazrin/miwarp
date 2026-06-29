@@ -1,6 +1,6 @@
 use super::{
-    PendingApproval, RecoveryAssessmentKind, RunActionRecord, RunActionStatus, RunCheckpoint,
-    RunStage,
+    ClientMessageState, PendingApproval, RecoveryAssessmentKind, RunActionRecord,
+    RunActionStatus, RunCheckpoint, RunStage,
 };
 use serde::{Deserialize, Serialize};
 
@@ -20,10 +20,27 @@ pub enum RunJournalEventKind {
         objective: String,
         stage: RunStage,
     },
+    UserMessagePrepared {
+        client_message_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        text_preview: Option<String>,
+    },
     UserMessageAccepted {
         client_message_id: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         text_preview: Option<String>,
+    },
+    /// State transition event for a previously-recorded cid. Used by
+    /// the P0-3 crash-aware state machine: a `Prepared` row is
+    /// promoted to `Dispatched` on successful spawn, or to
+    /// `Terminal{reason}` on spawn failure / completion / user stop.
+    /// This event is independent of the `Prepared` event so future
+    /// events (e.g. retry counters) can stay additive.
+    UserMessageStateChanged {
+        client_message_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        preview: Option<String>,
+        state: ClientMessageState,
     },
     StageChanged {
         from: RunStage,

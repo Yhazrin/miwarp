@@ -12,8 +12,9 @@ use super::durable_io::{
 use crate::models::{now_iso, BusEvent, RunMeta, RunStatus};
 use crate::run_core::projector::{finish_projection, plan_projection, ProjectOutcome};
 use crate::run_core::{
-    apply_event, init_snapshot, make_event, snapshot_has_accepted_message, stage_for_run_status,
-    ApplyOutcome, RunJournalEvent, RunJournalEventKind,
+    apply_event, init_snapshot, is_terminal_client_message, lookup_client_message_state,
+    make_event, snapshot_has_accepted_message, stage_for_run_status, ApplyOutcome,
+    ClientMessageState, RunJournalEvent, RunJournalEventKind, TerminalReason,
 };
 use crate::run_core::{
     RecoveryAssessmentKind, RunCheckpoint, RunJournalReconcileReport, RunJournalSnapshot, RunStage,
@@ -115,6 +116,56 @@ fn event_log_has_accepted_message(run_dir: &Path, client_message_id: &str) -> bo
                 } if accepted_id == client_message_id
             )
         })
+}
+
+/// Walk the journal event log and reduce all events that name the
+/// given `client_message_id` to the most recent terminal state. This
+/// is the *recovery* view used when the snapshot row is missing
+/// (e.g. snapshot was reset) but the WAL still has the events.
+fn event_log_state(run_dir: &Path, client_message_id: &str) -> Option<ClientMessageState> {
+    let mut state: Option<ClientMessageState> = None;
+    for event in list_events_raw(&events_file(run_dir), 0) {
+        let cid_matches = match &event.event {
+            RunJournalEventKind::UserMessagePrepared {
+                client_message_id: candidate,
+                ..
+            }
+            | RunJournalEventKind::UserMessageAccepted {
+                client_message_id: candidate,
+                ..
+            }
+            | RunJournalEventKind::UserMessageStateChanged {
+                client_message_id: candidate,
+                ..
+            } => candidate == client_message_id,
+            _ => false,
+        };
+        if !cid_matches {
+            continue;
+        }
+        match &event.event {
+            RunJournalEventKind::UserMessagePrepared { .. } => {
+                state = Some(ClientMessageState::Prepared);
+            }
+            RunJournalEventKind::UserMessageAccepted { .. } => {
+                state = Some(ClientMessageState::Dispatched);
+            }
+            RunJournalEventKind::UserMessageStateChanged { state: next, .. } => {
+                state = Some(next.clone());
+            }
+            _ => {}
+        }
+    }
+    state
+}
+
+fn lookup_state(
+    run_dir: &Path,
+    snapshot: &RunJournalSnapshot,
+    client_message_id: &str,
+) -> Option<ClientMessageState> {
+    lookup_client_message_state(snapshot, client_message_id)
+        .or_else(|| event_log_state(run_dir, client_message_id))
 }
 
 fn journal_has_accepted_message(
@@ -340,6 +391,224 @@ pub fn is_message_accepted(run_id: &str, client_message_id: &str) -> Result<bool
     })
 }
 
+/// P0-3 crash-aware dedupe primitive.
+///
+/// Look up the lifecycle state of a `client_message_id`. Returns
+/// `Ok(None)` when the cid has never been recorded; an `Err` when
+/// the journal is degraded and a definitive answer cannot be given
+/// (callers must fail-closed on degraded reads).
+///
+/// This is the single primitive the chat command uses to decide
+/// idempotent retry vs. spawn — every other helper reduces to this
+/// one.
+pub fn get_state(
+    run_id: &str,
+    client_message_id: &str,
+) -> Result<Option<ClientMessageState>, String> {
+    validate_client_message_id(client_message_id)?;
+    // The legacy `is_message_accepted` path calls `get_or_init` to
+    // lazily upgrade pending runs. We mirror that contract here so
+    // `commands::chat::send_chat_message` can call get_state before
+    // any record_* mutation without an extra round-trip.
+    let _ = get_or_init(run_id)?;
+    let result = with_lock(run_id, |run_dir| -> Result<Option<ClientMessageState>, String> {
+        let snapshot = get_raw_in(run_dir)
+            .ok_or_else(|| format!("run journal snapshot unavailable for {run_id}"))?;
+        if let Some(state) = lookup_state(run_dir, &snapshot, client_message_id) {
+            return Ok(Some(state));
+        }
+        if snapshot.journal_degraded {
+            return Err(format!(
+                "run journal is degraded and cannot prove whether client_message_id={client_message_id} was accepted: {}",
+                snapshot.recovery_assessment.reason
+            ));
+        }
+        Ok(None)
+    });
+    if let Err(error) = &result {
+        log::debug!("[run-journal] get_state failed for run_id={run_id}: {error}");
+    }
+    result
+}
+
+/// P0-3 crash-aware acceptance — stage one of three.
+///
+/// Record that a user request was durably committed to the journal
+/// *before* the dispatcher attempts to spawn the child process. A
+/// successful return here means the cid is in the `Prepared` state
+/// and the caller MUST follow up with either `record_dispatched` (on
+/// successful spawn) or `record_terminal` (on spawn failure). Leaving
+/// the cid in `Prepared` indefinitely is precisely the "ambiguous"
+/// state we want the frontend to surface.
+///
+/// Caller-visible error mapping:
+/// * `Err(...)` ⇒ the journal persistence failed and the caller
+///   MUST NOT spawn. This is the only safe failure mode — the
+///   pre-P0-3 behaviour of "log a warning then spawn anyway" left
+///   the ledger out of sync with the spawn and was the root cause of
+///   the v1.1.0 retention regression.
+pub fn record_prepared(
+    run_id: &str,
+    client_message_id: &str,
+    text_preview: Option<&str>,
+) -> Result<(), String> {
+    validate_client_message_id(client_message_id)?;
+    let result = with_lock(run_id, |run_dir| -> Result<(), String> {
+        let mut snapshot = get_raw_in(run_dir).ok_or_else(|| {
+            format!("run journal missing for {run_id}; call get_or_init first")
+        })?;
+        if let Some(existing) = lookup_state(run_dir, &snapshot, client_message_id) {
+            // The cid already has a recorded state — refuse to
+            // overwrite. The chat command uses get_state() *first*
+            // and treats `Dispatched` as a no-op and `Terminal` /
+            // `Prepared` as a stop / ambiguous signal. Reaching here
+            // means the caller violated that protocol; surface a
+            // typed error so the bug is loud.
+            return Err(format!(
+                "record_prepared: client_message_id={client_message_id} already recorded as {:?}",
+                existing
+            ));
+        }
+        let kind = RunJournalEventKind::UserMessagePrepared {
+            client_message_id: client_message_id.to_string(),
+            text_preview: text_preview.map(str::to_string),
+        };
+        match commit_mutation(run_dir, &mut snapshot, kind, now_iso()) {
+            Ok(ApplyOutcome::Changed) | Ok(ApplyOutcome::NoOp) => {
+                log::info!(
+                    "[run-journal] record_prepared: run_id={run_id} client_message_id={client_message_id}"
+                );
+                Ok(())
+            }
+            Err(error) => Err(format!(
+                "record_prepared failed for client_message_id={client_message_id}: {error}"
+            )),
+        }
+    });
+    if let Err(error) = &result {
+        log::error!("[run-journal] {error}");
+    }
+    result
+}
+
+/// P0-3 crash-aware acceptance — stage two of three.
+///
+/// Promote a `Prepared` row to `Dispatched` after the CLI child was
+/// successfully spawned. Idempotent: if the row is already in
+/// `Dispatched` (e.g. the WAL was replayed during recovery) this is
+/// a no-op. Refuses to transition *out* of a terminal state — the
+/// caller must inspect get_state before retrying.
+pub fn record_dispatched(run_id: &str, client_message_id: &str) -> Result<(), String> {
+    validate_client_message_id(client_message_id)?;
+    let result = with_lock(run_id, |run_dir| -> Result<(), String> {
+        let mut snapshot = get_raw_in(run_dir).ok_or_else(|| {
+            format!("run journal missing for {run_id}; call get_or_init first")
+        })?;
+        let current = lookup_state(run_dir, &snapshot, client_message_id);
+        match current {
+            Some(ClientMessageState::Prepared) => {}
+            Some(ClientMessageState::Dispatched) => return Ok(()),
+            Some(ClientMessageState::Terminal { reason }) => {
+                return Err(format!(
+                    "record_dispatched: client_message_id={client_message_id} already terminal ({})",
+                    reason.as_str()
+                ));
+            }
+            None => {
+                // Recovery path: journal lost the prepared row but
+                // the spawn succeeded — backfill the row directly
+                // in Dispatched so future retries see the idempotent
+                // state. This prevents the worst failure where we
+                // spawn a second child after a restart.
+                log::warn!(
+                    "[run-journal] record_dispatched: backfilling missing prepared row for client_message_id={client_message_id}"
+                );
+            }
+        }
+        let kind = RunJournalEventKind::UserMessageStateChanged {
+            client_message_id: client_message_id.to_string(),
+            preview: None,
+            state: ClientMessageState::Dispatched,
+        };
+        match commit_mutation(run_dir, &mut snapshot, kind, now_iso()) {
+            Ok(ApplyOutcome::Changed) | Ok(ApplyOutcome::NoOp) => {
+                log::info!(
+                    "[run-journal] record_dispatched: run_id={run_id} client_message_id={client_message_id}"
+                );
+                Ok(())
+            }
+            Err(error) => Err(format!(
+                "record_dispatched failed for client_message_id={client_message_id}: {error}"
+            )),
+        }
+    });
+    if let Err(error) = &result {
+        log::error!("[run-journal] {error}");
+    }
+    result
+}
+
+/// P0-3 crash-aware acceptance — stage three of three.
+///
+/// Move a previously-recorded cid into its `Terminal` state. Used in
+/// three places:
+///
+/// 1. The dispatcher calls this with `SpawnFailed { message }`
+///    immediately after the CLI child fails to launch. From here on,
+///    retries with the same cid return `Err(...)` so the user knows
+///    to resend with a new cid.
+/// 2. The run completion path calls this with `Completed` after the
+///    CLI exits cleanly.
+/// 3. The user-stop path calls this with `UserStopped` so the
+///    frontend can render the "you stopped this earlier" state.
+///
+/// Idempotent for repeated `Completed`/`UserStopped` terminal events.
+pub fn record_terminal(
+    run_id: &str,
+    client_message_id: &str,
+    reason: TerminalReason,
+) -> Result<(), String> {
+    validate_client_message_id(client_message_id)?;
+    let reason_label = reason.as_str();
+    let result = with_lock(run_id, |run_dir| -> Result<(), String> {
+        let mut snapshot = get_raw_in(run_dir).ok_or_else(|| {
+            format!("run journal missing for {run_id}; call get_or_init first")
+        })?;
+        let kind = RunJournalEventKind::UserMessageStateChanged {
+            client_message_id: client_message_id.to_string(),
+            preview: None,
+            state: ClientMessageState::Terminal { reason: reason.clone() },
+        };
+        match commit_mutation(run_dir, &mut snapshot, kind, now_iso()) {
+            Ok(ApplyOutcome::Changed) | Ok(ApplyOutcome::NoOp) => {
+                log::info!(
+                    "[run-journal] record_terminal: run_id={run_id} client_message_id={client_message_id} reason={reason_label}"
+                );
+                Ok(())
+            }
+            Err(error) => Err(format!(
+                "record_terminal failed for client_message_id={client_message_id}: {error}"
+            )),
+        }
+    });
+    if let Err(error) = &result {
+        log::error!("[run-journal] {error}");
+    }
+    result
+}
+
+/// P0-3 deleted path — kept as a thin compat wrapper that delegates
+/// to the new state machine. The actor path (`session_actor`) still
+/// calls this; it has not been migrated to P0-3 yet.
+///
+/// New code MUST use `record_prepared` followed by
+/// `record_dispatched` so retry semantics are crash-aware. Calling
+/// the legacy `record_accepted_message` from a fresh code path will
+/// be flagged in code review.
+#[deprecated(
+    since = "1.1.0",
+    note = "P0-3: use record_prepared + record_dispatched for crash-aware dedupe"
+)]
 pub fn record_accepted_message(
     run_id: &str,
     client_message_id: &str,
@@ -352,6 +621,9 @@ pub fn record_accepted_message(
         if journal_has_accepted_message(run_dir, &snapshot, client_message_id) {
             return Ok(());
         }
+        // Compat: legacy path was always invoked *after* spawn
+        // confirmation, so we go straight to `UserMessageAccepted`
+        // (which maps to Dispatched) and skip the Prepared stage.
         let kind = RunJournalEventKind::UserMessageAccepted {
             client_message_id: client_message_id.to_string(),
             text_preview: text_preview.map(str::to_string),
@@ -363,6 +635,37 @@ pub fn record_accepted_message(
             )),
         }
     })
+}
+
+/// Convenience helper that the chat command uses to decide whether a
+/// cid has reached a terminal state without paying the
+/// `Result<Option<...>>` tax. Returns `true` only when `get_state`
+/// returned `Some(Terminal { .. })`.
+pub fn is_terminal(run_id: &str, client_message_id: &str) -> bool {
+    matches!(
+        get_state(run_id, client_message_id),
+        Ok(Some(ClientMessageState::Terminal { .. }))
+    )
+}
+
+/// Helper that the chat command uses to detect the
+/// dispatch-already-happened idempotency case without enumerating
+/// every enum arm.
+pub fn is_dispatched(run_id: &str, client_message_id: &str) -> bool {
+    matches!(
+        get_state(run_id, client_message_id),
+        Ok(Some(ClientMessageState::Dispatched))
+    )
+}
+
+/// Surface the `is_terminal_client_message` snapshot helper
+/// alongside the journal API so callers don't need a direct
+/// dependency on `run_core::apply`.
+pub fn snapshot_is_terminal(
+    snapshot: &RunJournalSnapshot,
+    client_message_id: &str,
+) -> bool {
+    is_terminal_client_message(snapshot, client_message_id)
 }
 
 pub fn project_bus_event(run_id: &str, bus_seq: u64, event: &BusEvent) -> Result<(), String> {

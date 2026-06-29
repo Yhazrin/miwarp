@@ -1,8 +1,8 @@
 use super::events::{RunJournalEvent, RunJournalEventKind};
 use super::{
-    AcceptedUserMessage, RecoveryAssessment, RecoveryAssessmentKind, RecoveryCursor,
-    RunActionStatus, RunJournalSnapshot, RunStage, MAX_ACCEPTED_MESSAGES, MAX_ACTIONS,
-    MAX_CHECKPOINTS, MAX_PENDING_APPROVALS, RUN_JOURNAL_SCHEMA_VERSION,
+    AcceptedUserMessage, ClientMessageState, RecoveryAssessment, RecoveryAssessmentKind,
+    RecoveryCursor, RunActionStatus, RunJournalSnapshot, RunStage, MAX_ACCEPTED_MESSAGES,
+    MAX_ACTIONS, MAX_CHECKPOINTS, MAX_PENDING_APPROVALS, RUN_JOURNAL_SCHEMA_VERSION,
 };
 use crate::models::RunStatus;
 
@@ -127,18 +127,22 @@ pub fn apply_event(
             touch(snapshot, now);
             Ok(ApplyOutcome::Changed)
         }
-        RunJournalEventKind::UserMessageAccepted {
+        RunJournalEventKind::UserMessagePrepared {
             client_message_id,
             text_preview,
         } => {
             if client_message_id.trim().is_empty() {
                 return Err("client_message_id is required".to_string());
             }
-            if snapshot
+            if let Some(existing) = snapshot
                 .accepted_messages
-                .iter()
-                .any(|m| m.client_message_id == *client_message_id)
+                .iter_mut()
+                .find(|m| m.client_message_id == *client_message_id)
             {
+                // Idempotent: a re-prepare call is a no-op. The
+                // dispatcher will then call record_dispatched to
+                // transition the existing row.
+                let _ = existing;
                 return Ok(ApplyOutcome::NoOp);
             }
             push_bounded(
@@ -147,11 +151,132 @@ pub fn apply_event(
                 AcceptedUserMessage {
                     client_message_id: client_message_id.clone(),
                     accepted_at: now.clone(),
+                    state: ClientMessageState::Prepared,
                     text_preview: text_preview.clone(),
                 },
             );
             touch(snapshot, now);
             Ok(ApplyOutcome::Changed)
+        }
+        RunJournalEventKind::UserMessageAccepted {
+            client_message_id,
+            text_preview,
+        } => {
+            if client_message_id.trim().is_empty() {
+                return Err("client_message_id is required".to_string());
+            }
+            if let Some(existing) = snapshot
+                .accepted_messages
+                .iter_mut()
+                .find(|m| m.client_message_id == *client_message_id)
+            {
+                // If the row already exists in a non-terminal state,
+                // promote it to Dispatched. If it is already
+                // Terminal, reject the transition — terminal is
+                // monotonic. If it is already Dispatched, this is a
+                // no-op (idempotent).
+                match &existing.state {
+                    ClientMessageState::Terminal { .. } => {
+                        return Err(format!(
+                            "cannot transition terminal client_message_id={} to Dispatched",
+                            client_message_id
+                        ));
+                    }
+                    ClientMessageState::Dispatched => return Ok(ApplyOutcome::NoOp),
+                    ClientMessageState::Prepared => {
+                        existing.state = ClientMessageState::Dispatched;
+                        if existing.accepted_at != now {
+                            existing.accepted_at = now.clone();
+                        }
+                        if text_preview.is_some() {
+                            existing.text_preview = text_preview.clone();
+                        }
+                        touch(snapshot, now);
+                        return Ok(ApplyOutcome::Changed);
+                    }
+                }
+            }
+            push_bounded(
+                &mut snapshot.accepted_messages,
+                MAX_ACCEPTED_MESSAGES,
+                AcceptedUserMessage {
+                    client_message_id: client_message_id.clone(),
+                    accepted_at: now.clone(),
+                    state: ClientMessageState::Dispatched,
+                    text_preview: text_preview.clone(),
+                },
+            );
+            touch(snapshot, now);
+            Ok(ApplyOutcome::Changed)
+        }
+        RunJournalEventKind::UserMessageStateChanged {
+            client_message_id,
+            state,
+            ..
+        } => {
+            if client_message_id.trim().is_empty() {
+                return Err("client_message_id is required".to_string());
+            }
+            // Locate or upgrade the row so that record_dispatched /
+            // record_terminal still succeed even if the prior
+            // record_prepared was lost (e.g. journal corrupted at
+            // prepare time but spawn succeeded). In that case the
+            // previous state was effectively `None` and we now have a
+            // concrete transition — record it directly.
+            match snapshot
+                .accepted_messages
+                .iter_mut()
+                .find(|m| m.client_message_id == *client_message_id)
+            {
+                Some(existing) => {
+                    let prior = existing.state.clone();
+                    existing.state = state.clone();
+                    existing.accepted_at = now.clone();
+                    // Terminal is monotonic — refuse to "downgrade"
+                    // back to a non-terminal state.
+                    if matches!(prior, ClientMessageState::Terminal { .. })
+                        && !matches!(state, ClientMessageState::Terminal { .. })
+                    {
+                        existing.state = prior;
+                        return Err(format!(
+                            "cannot transition terminal client_message_id={} back to {}",
+                            client_message_id,
+                            state_kind_str(state)
+                        ));
+                    }
+                    if matches!(state, ClientMessageState::Terminal { .. })
+                        && matches!(prior, ClientMessageState::Terminal { .. })
+                    {
+                        // Repeated terminal events are coalesced to a
+                        // no-op so retries don't churn the journal
+                        // seq.
+                        existing.state = prior;
+                        return Ok(ApplyOutcome::NoOp);
+                    }
+                    if prior == *state {
+                        return Ok(ApplyOutcome::NoOp);
+                    }
+                    touch(snapshot, now);
+                    Ok(ApplyOutcome::Changed)
+                }
+                None => {
+                    // Row not present yet — create it in the requested
+                    // state. This covers the recovery path where the
+                    // spawn succeeded but record_prepared was lost.
+                    push_bounded(
+                        &mut snapshot.accepted_messages,
+                        MAX_ACCEPTED_MESSAGES,
+                        AcceptedUserMessage {
+                            client_message_id: client_message_id.clone(),
+                            accepted_at: now.clone(),
+                            state: state.clone(),
+                            text_preview: None,
+                        },
+                    );
+                    touch(snapshot, now);
+                    Ok(ApplyOutcome::Changed)
+                }
+            }
         }
         RunJournalEventKind::StageChanged { from, to } => {
             if snapshot.stage != *from {
@@ -387,6 +512,35 @@ pub fn is_message_accepted(snapshot: &RunJournalSnapshot, client_message_id: &st
         .any(|m| m.client_message_id == client_message_id)
 }
 
+/// Look up the lifecycle state of a previously recorded
+/// `client_message_id`. Returns `None` if the cid was never persisted
+/// in the snapshot, including the case where the row's state is
+/// terminal (callers should inspect the returned state and treat
+/// `Terminal { .. }` as a hard stop for retries).
+pub fn lookup_client_message_state(
+    snapshot: &RunJournalSnapshot,
+    client_message_id: &str,
+) -> Option<ClientMessageState> {
+    snapshot
+        .accepted_messages
+        .iter()
+        .find(|m| m.client_message_id == client_message_id)
+        .map(|m| m.state.clone())
+}
+
+/// True when the snapshot already has the cid in a `Terminal` state.
+/// Used by the chat command to refuse idempotent re-spawns even when
+/// the legacy `is_message_accepted` would have answered `true`.
+pub fn is_terminal_client_message(
+    snapshot: &RunJournalSnapshot,
+    client_message_id: &str,
+) -> bool {
+    matches!(
+        lookup_client_message_state(snapshot, client_message_id),
+        Some(ClientMessageState::Terminal { .. })
+    )
+}
+
 pub fn advance_journal_seq(snapshot: &mut RunJournalSnapshot) -> u64 {
     snapshot.last_journal_seq = snapshot.last_journal_seq.saturating_add(1);
     snapshot.last_journal_seq
@@ -405,5 +559,13 @@ pub fn make_event(
         seq,
         event,
         timestamp,
+    }
+}
+
+fn state_kind_str(state: &ClientMessageState) -> &'static str {
+    match state {
+        ClientMessageState::Prepared => "Prepared",
+        ClientMessageState::Dispatched => "Dispatched",
+        ClientMessageState::Terminal { .. } => "Terminal",
     }
 }
