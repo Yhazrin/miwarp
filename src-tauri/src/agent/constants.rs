@@ -31,7 +31,13 @@ pub const PROTOCOL_DESYNC_THRESHOLD: u32 = 5;
 pub const PROTOCOL_DESYNC_WINDOW_SECS: u64 = 60;
 
 /// Tick interval for the independent timeout clock.
-pub const TICK_INTERVAL: Duration = Duration::from_millis(250);
+///
+/// v1.1.0 perf: raised from 250ms → 1000ms. The shortest deadline the tick
+/// guards is `INTERNAL_HARD_TIMEOUT` (60s) / `QUARANTINE_DEADLINE` (5s), so
+/// sub-second granularity buys nothing. Idle sessions now wake once per
+/// second instead of four times, cutting the per-actor idle wakeup rate
+/// by ~75% (matters at fleet scale: N actors × 4 Hz ⇒ N × 1 Hz).
+pub const TICK_INTERVAL: Duration = Duration::from_secs(1);
 
 /// v1.0.9 Phase 2: bounded FIFO ledger of recently-accepted client_message_ids.
 /// A retried submit whose id is in the ledger is treated as a duplicate and
