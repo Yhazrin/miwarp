@@ -383,30 +383,37 @@
     }
   });
 
-  // Lazy: only compute when rewind modal is open (avoids 3 array allocations per timeline change)
-  let rewindCandidates = $derived(
-    rewindModalOpen
-      ? store.timeline
-          .map((e, i) => ({ entry: e, idx: i }))
-          .filter(
-            (
-              x,
-            ): x is {
-              entry: Extract<TimelineEntry, { kind: "user" }> & { cliUuid: string };
-              idx: number;
-            } => x.entry.kind === "user" && !!x.entry.cliUuid,
-          )
-          .reverse()
-          .map(
-            ({ entry, idx }): RewindCandidate => ({
-              cliUuid: entry.cliUuid,
-              content: entry.content,
-              ts: entry.ts,
-              timelineIndex: idx,
-            }),
-          )
-      : [],
-  );
+  // Lazy: only build the candidate list when the rewind modal is actually open.
+  // Previously a $derived that subscribed to `store.timeline`, so every streaming
+  // token change re-ran the 4-pass map/filter/reverse/map chain (and forced
+  // re-evaluation of downstream consumers). Now we populate a $state array from
+  // an $effect that fires only on the modal-open transition.
+  let rewindCandidates = $state<RewindCandidate[]>([]);
+  $effect(() => {
+    if (!rewindModalOpen) {
+      rewindCandidates = [];
+      return;
+    }
+    rewindCandidates = store.timeline
+      .map((e, i) => ({ entry: e, idx: i }))
+      .filter(
+        (
+          x,
+        ): x is {
+          entry: Extract<TimelineEntry, { kind: "user" }> & { cliUuid: string };
+          idx: number;
+        } => x.entry.kind === "user" && !!x.entry.cliUuid,
+      )
+      .reverse()
+      .map(
+        ({ entry, idx }): RewindCandidate => ({
+          cliUuid: entry.cliUuid,
+          content: entry.content,
+          ts: entry.ts,
+          timelineIndex: idx,
+        }),
+      );
+  });
 
   // ── BTW side question ──
   let btwState = $state<{
