@@ -14,8 +14,8 @@ android {
         applicationId = "com.miwarp.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1000009
-        versionName = "1.0.9"
+        versionCode = 1001000
+        versionName = "1.1.0-rc.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

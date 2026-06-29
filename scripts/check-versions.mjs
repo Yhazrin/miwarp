@@ -8,10 +8,12 @@ import { readFileSync } from "fs";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
 const expected = pkg.version;
-const versionMatch = expected.match(/^(\d+)\.(\d+)\.(\d+)$/);
+// Allow pre-release suffixes so release candidates (v1.1.0-rc.1) flow
+// through the same alignment gate as 1.1.0.
+const versionMatch = expected.match(/^(\d+)\.(\d+)\.(\d+)(?:-rc\.\d+)?$/);
 
 if (!versionMatch) {
-  console.error(`Invalid package.json version: ${expected}; expected x.y.z`);
+  console.error(`Invalid package.json version: ${expected}; expected x.y.z or x.y.z-rc.N`);
   process.exit(1);
 }
 

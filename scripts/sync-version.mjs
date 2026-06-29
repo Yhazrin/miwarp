@@ -10,10 +10,11 @@ import { readFileSync, writeFileSync } from "fs";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
 const version = pkg.version;
-const match = version.match(/^(\d+)\.(\d+)\.(\d+)$/);
+// Allow pre-release suffixes for release candidates (v1.1.0-rc.1).
+const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-rc\.\d+)?$/);
 
 if (!match) {
-  throw new Error(`Unsupported release version "${version}"; expected x.y.z`);
+  throw new Error(`Unsupported release version "${version}"; expected x.y.z or x.y.z-rc.N`);
 }
 
 const [, majorRaw, minorRaw, patchRaw] = match;

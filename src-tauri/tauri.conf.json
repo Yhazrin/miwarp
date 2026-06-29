@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicegui/nicegui/main/.github/schemas/tauri-v2.json",
   "productName": "MiWarp",
-  "version": "1.0.9",
+  "version": "1.1.0-rc.1",
   "identifier": "com.miwarp.desktop",
   "build": {
     "frontendDist": "../build",
