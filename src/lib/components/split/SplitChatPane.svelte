@@ -34,6 +34,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { onDestroy } from "svelte";
+  import { appVisibility } from "$lib/stores/app-visibility.svelte";
   import type { Snippet } from "svelte";
 
   /** Polling interval (ms) for refreshing inactive pane snapshots. */
@@ -102,6 +103,10 @@
       pane.loadState === "ready";
     if (shouldPoll && pollTimer === null) {
       pollTimer = setInterval(() => {
+        // Idle-energy guard: skip snapshot refresh while the split window
+        // is hidden or unfocused — the user can't see the inactive pane,
+        // and refreshing burns an IPC + run journal replay every tick.
+        if (!appVisibility.isDocumentVisible || !appVisibility.isAppFocused) return;
         void refreshInactivePaneSnapshot(pane.paneId);
       }, REFRESH_INTERVAL_MS);
     } else if (!shouldPoll && pollTimer !== null) {
