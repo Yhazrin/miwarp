@@ -17,6 +17,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { slide } from "svelte/transition";
   import { showToast } from "$lib/stores/toast-store.svelte";
+  import { appVisibility } from "$lib/stores/app-visibility.svelte";
   import Icon from "$lib/components/Icon.svelte";
 
   interface Props {
@@ -134,6 +135,10 @@
   $effect(() => {
     if (!effectiveCwd) return;
     _refreshInterval = setInterval(() => {
+      // Idle-energy guard: skip the refresh tick while the window is
+      // hidden or unfocused so we don't burn an IPC round-trip when the
+      // user can't see the panel.
+      if (!appVisibility.isDocumentVisible || !appVisibility.isAppFocused) return;
       if (effectiveCwd) void loadPanel(effectiveCwd, listAnchor);
     }, 30_000);
     return () => {
