@@ -26,11 +26,15 @@ pub struct RuntimeConfigWatchPayload {
 }
 
 #[tauri::command]
-pub fn runtime_hub_list(
+pub async fn runtime_hub_list(
     state: State<'_, RuntimeControlPlaneState>,
     force: Option<bool>,
 ) -> Result<RuntimeControlPlaneList, String> {
-    Ok(state.0.list(force.unwrap_or(false)))
+    let control_plane = state.0.clone();
+    let force = force.unwrap_or(false);
+    tokio::task::spawn_blocking(move || control_plane.list(force))
+        .await
+        .map_err(|e| format!("runtime list task failed: {e}"))
 }
 
 #[tauri::command]

@@ -5,8 +5,9 @@
  * the background) is unit-testable without spinning up Svelte.
  *
  * Contract:
- *   - `start()` is non-blocking on runtime / activity / skillCount: each one
- *     runs in its own promise and reports back via the injected callbacks.
+ *   - `start()` is non-blocking on activity / skillCount: each one runs in
+ *     its own promise and reports back via the injected callbacks. Runtime
+ *     probing is intentionally excluded from this route.
  *     First paint is gated only on `settings`.
  *   - `retry()` clears the cached settings promise (single-flight refresh)
  *     and resolves again.
@@ -19,7 +20,6 @@
  */
 
 import { dbgWarn } from "$lib/utils/debug";
-import type { RuntimeControlPlaneList } from "$lib/runtime-control-plane/types";
 import type { SkillSummary, UsageOverview, UserSettings } from "$lib/types";
 
 export type PersonalSettingsLoadState = "pending" | "ready" | "failed";
@@ -30,8 +30,6 @@ export interface PersonalColdStartDeps {
   resolveSettings: () => Promise<UserSettings | null>;
   /** Forces a fresh settings IPC. Used by the retry path. */
   refreshSettings: () => Promise<UserSettings | null>;
-  /** Loads the runtime probe. The page schedules this in `requestIdleCallback`. */
-  runtimeHubList: () => Promise<RuntimeControlPlaneList | null>;
   /** Loads the 7-day usage overview. */
   getUsageOverview: () => Promise<UsageOverview>;
   /** Loads the lightweight skill count. Replaces the full `skillStore.loadSkills()`. */
@@ -43,9 +41,6 @@ export interface PersonalColdStartDeps {
 
 export interface PersonalColdStartCallbacks {
   onSettingsLoad: (state: PersonalSettingsLoadState, settings: UserSettings | null) => void;
-  onRuntimesLoaded: (ids: string[]) => void;
-  onRuntimesFailed: () => void;
-  onRuntimesFinished: () => void;
   onActivityLoaded: (snapshot: {
     runs7d: number | null;
     totalCostUsd: number | null;
@@ -55,7 +50,7 @@ export interface PersonalColdStartCallbacks {
 }
 
 export interface PersonalColdStartHandle {
-  /** Fires `settings` (blocking first paint), then schedules runtimes + activity +
+  /** Fires `settings` (blocking first paint), then schedules activity +
    *  skillCount via `scheduleIdle` so no IPC competes with route entry. */
   start: () => void;
   /** Re-runs only the settings load with `refreshSettings`. */
@@ -80,19 +75,6 @@ export function createPersonalColdStart(
     } catch (e) {
       dbgWarn("personal", "settings resolve failed", e);
       cb.onSettingsLoad("failed", null);
-    }
-  }
-
-  async function runRuntimes(): Promise<void> {
-    try {
-      const hub = await deps.runtimeHubList();
-      const ids = hub?.runtimes?.map((r) => r.runtimeId).filter(Boolean) ?? [];
-      cb.onRuntimesLoaded(ids);
-    } catch (e) {
-      dbgWarn("personal", "runtime probe failed", e);
-      cb.onRuntimesFailed();
-    } finally {
-      cb.onRuntimesFinished();
     }
   }
 
@@ -125,10 +107,10 @@ export function createPersonalColdStart(
     start: () => {
       // 1. Settings — blocks first paint via `settingsLoad` state.
       void runSettings();
-      // 2–4. Runtimes, activity, skill count — defer to idle so IPC + re-renders
-      // never compete with route entry / first paint (slow CLI probe included).
+      // 2–3. Activity and skill count — defer to idle so IPC + re-renders
+      // never compete with route entry / first paint. Runtime discovery is
+      // deliberately absent: Personal consumes the static runtime registry.
       deps.scheduleIdle(() => {
-        void runRuntimes();
         void runActivity();
         void runSkillCount();
       });

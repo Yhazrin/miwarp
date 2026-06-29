@@ -56,10 +56,12 @@ pub fn list_standalone_skills(cwd: Option<String>) -> Result<Vec<StandaloneSkill
 /// (e.g. /personal hero "Skills" stat) and should not pay the IO cost of the
 /// full list endpoint.
 #[tauri::command]
-pub fn get_skill_summary(cwd: Option<String>) -> Result<SkillSummary, String> {
+pub async fn get_skill_summary(cwd: Option<String>) -> Result<SkillSummary, String> {
     let cwd = cwd.unwrap_or_default();
     log::debug!("[plugins] get_skill_summary: cwd={}", cwd);
-    crate::storage::plugins::skill_summary(&cwd)
+    tokio::task::spawn_blocking(move || crate::storage::plugins::skill_summary(&cwd))
+        .await
+        .map_err(|e| format!("skill summary task failed: {e}"))?
 }
 
 #[tauri::command]

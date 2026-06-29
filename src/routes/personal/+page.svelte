@@ -16,8 +16,9 @@
    * partial-patch command — no new backend surface area is required.
    *
    * v1.1.0 perf: first paint is gated ONLY on the layout-shared Settings cache.
-   * Runtimes, activity, and skill count each load independently with their
-   * own per-card skeleton, so a slow CLI probe no longer blocks the whole page.
+   * Runtime options come from the static startable-runtime registry. Activity
+   * and skill count hydrate independently, so profile navigation never launches
+   * CLI probes or waits on usage aggregation.
    */
   import { getContext, onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
@@ -25,7 +26,6 @@
   import {
     getUsageOverview,
     getSkillSummary,
-    runtimeHubList,
     resetPersonalProfile,
     updateUserSettings,
   } from "$lib/api";
@@ -38,6 +38,7 @@
   } from "$lib/layout-chrome-context";
   import { createPersonalColdStart } from "./personal-cold-start";
   import type { UserSettings } from "$lib/types";
+  import { STARTABLE_RUNTIME_IDS } from "$lib/runtime";
 
   import PersonalHero from "$lib/components/personal/PersonalHero.svelte";
   import PersonalIdentityCard from "$lib/components/personal/PersonalIdentityCard.svelte";
@@ -67,10 +68,12 @@
   let settingsLoad = $state<LoadState>(initialSettings ? "ready" : "pending");
   let settings = $state<UserSettings | null>(initialSettings);
 
-  // Runtimes hydrate in the background; the AI Defaults card paints with the
-  // current default_agent first, then re-renders once the list arrives.
-  let runtimes = $state<string[]>([]);
-  let runtimesLoaded = $state(false);
+  // The Personal page only needs the stable list of runtimes MiWarp can start.
+  // Runtime installation/health probing belongs to Settings/Runtime Center and
+  // must never run during profile navigation: each cold probe may spawn several
+  // CLIs and previously froze the Tauri command loop for seconds.
+  const runtimes = [...STARTABLE_RUNTIME_IDS];
+  const runtimesLoading = false;
 
   // Activity (7d) — per-card skeleton, does not block first paint.
   let activity = $state<{
@@ -189,7 +192,6 @@
     {
       resolveSettings: () => resolveLayoutCachedSettings(settingsCache),
       refreshSettings: async () => (settingsCache ? settingsCache.refresh() : null),
-      runtimeHubList: () => runtimeHubList(false),
       getUsageOverview: () => getUsageOverview(7),
       getSkillSummary: () => getSkillSummary(),
       scheduleIdle: (task) => scheduleIdleLoad(task),
@@ -198,15 +200,6 @@
       onSettingsLoad: (state, s) => {
         settingsLoad = state;
         settings = s;
-      },
-      onRuntimesLoaded: (ids) => {
-        runtimes = ids;
-      },
-      onRuntimesFailed: () => {
-        runtimes = [];
-      },
-      onRuntimesFinished: () => {
-        runtimesLoaded = true;
       },
       onActivityLoaded: (snapshot) => {
         activity = snapshot;
@@ -278,8 +271,6 @@
     skillCount: skillCount ?? 0,
     providerCount,
   });
-
-  const runtimesLoading = $derived(!runtimesLoaded);
 </script>
 
 <svelte:head>
