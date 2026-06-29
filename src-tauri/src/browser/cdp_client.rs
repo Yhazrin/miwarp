@@ -21,6 +21,11 @@ pub struct CdpEvent {
 }
 
 /// CDP消息
+///
+/// 保留为 tagged enum 以便后期 wire 双向 JSON-RPC 时直接 serde 派生。
+/// 当前实现直接构造请求 `Value`（见 `send_command`），未触发本类型，
+/// 故标记 dead_code 待后续接入。
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 enum CdpMessage {
@@ -40,17 +45,29 @@ enum CdpMessage {
     Event { method: String, params: Value },
 }
 
+/// CDP error payload，对应 CdpMessage::Response.error。
+/// 当前 send_command 把 error.message 直接 String-ified，未保留 code，
+/// 故暂未构造实例。保留用于需要 code/分级错误时接入。
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CdpError {
     code: i32,
     message: String,
 }
 
+/// Pending-response registry — keyed by command `id` so the receive
+/// task can hand each JSON-RPC response back to the caller that
+/// issued the matching command. `PendingMap` is the alias used by both
+/// `CdpClient::pending` and `receive_loop`'s parameter to keep the
+/// 5-tuple signature readable and avoid the `clippy::type_complexity`
+/// lint.
+type PendingMap = Arc<RwLock<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>;
+
 /// CDP客户端
 pub struct CdpClient {
     ws: Arc<Mutex<WebSocketStream<MaybeTlsStream<TcpStream>>>>,
     msg_id: AtomicU64,
-    pending: Arc<RwLock<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>,
+    pending: PendingMap,
     event_tx: broadcast::Sender<CdpEvent>,
 }
 
@@ -87,7 +104,7 @@ impl CdpClient {
     /// 消息接收循环
     async fn receive_loop(
         ws: Arc<Mutex<WebSocketStream<MaybeTlsStream<TcpStream>>>>,
-        pending: Arc<RwLock<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>,
+        pending: PendingMap,
         event_tx: broadcast::Sender<CdpEvent>,
     ) {
         loop {
