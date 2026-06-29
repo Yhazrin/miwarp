@@ -16,7 +16,7 @@ use crate::web_server::broadcaster::BroadcastEmitter;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::RwLock;
 
 pub const DEFAULT_MAX_CONCURRENT_RUNS: u32 = 4;
@@ -350,11 +350,18 @@ pub async fn probe_active_runs(governor: &ResourceGovernor) -> usize {
 
 /// Spawn the periodic memory probe loop. Returns immediately; the loop runs
 /// until the cancellation token fires.
+///
+/// The ticker is rebuilt from the current `probe_interval_secs` config so
+/// wake-ups match the configured cadence (default 15s) rather than firing
+/// every 1s and discarding 14/15 ticks. When `probe_interval_secs == 0`
+/// the probe is disabled and the loop sleeps for a long fallback interval.
 pub fn spawn_probe_loop(governor: ResourceGovernor, cancel: tokio_util::sync::CancellationToken) {
     tauri::async_runtime::spawn(async move {
-        let mut ticker = tokio::time::interval(Duration::from_secs(1));
+        let initial_cfg = governor.config().await;
+        let initial_secs = effective_probe_secs(&initial_cfg);
+        let mut ticker = tokio::time::interval(initial_secs);
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-        let mut last_tick = Instant::now();
+        let mut last_cfg = initial_cfg;
         loop {
             tokio::select! {
                 _ = cancel.cancelled() => {
@@ -363,14 +370,19 @@ pub fn spawn_probe_loop(governor: ResourceGovernor, cancel: tokio_util::sync::Ca
                 }
                 _ = ticker.tick() => {
                     let cfg = governor.config().await;
+                    // Rebuild the interval if the configured cadence changed
+                    // (or if it was previously disabled and is now enabled).
+                    if cfg.probe_interval_secs != last_cfg.probe_interval_secs {
+                        let new_secs = effective_probe_secs(&cfg);
+                        ticker = tokio::time::interval(new_secs);
+                        ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+                        last_cfg = cfg;
+                        // Skip this tick — the next fire will be on the new cadence.
+                        continue;
+                    }
                     if cfg.probe_interval_secs == 0 {
                         continue;
                     }
-                    let interval = Duration::from_secs(cfg.probe_interval_secs.max(1));
-                    if last_tick.elapsed() < interval {
-                        continue;
-                    }
-                    last_tick = Instant::now();
                     let tripped = probe_active_runs(&governor).await;
                     if tripped > 0 {
                         log::warn!("[governor] memory probe tripped budget on {tripped} run(s)");
@@ -379,6 +391,19 @@ pub fn spawn_probe_loop(governor: ResourceGovernor, cancel: tokio_util::sync::Ca
             }
         }
     });
+}
+
+/// Resolve the probe interval honoring the `probe_interval_secs == 0`
+/// "disabled" sentinel. Always returns at least 1 second so the tokio
+/// interval cannot be zero.
+fn effective_probe_secs(cfg: &GovernorConfig) -> Duration {
+    if cfg.probe_interval_secs == 0 {
+        // Disabled: use a long fallback so the loop still wakes on config
+        // changes (via the rebuild path) without busy-waiting.
+        Duration::from_secs(u64::MAX / 2)
+    } else {
+        Duration::from_secs(cfg.probe_interval_secs.max(1))
+    }
 }
 
 #[cfg(test)]
