@@ -47,6 +47,11 @@
     type SupportedRuntimeId,
   } from "$lib/runtime";
   import { runtimeHubStore } from "$lib/stores/runtime-hub-store.svelte";
+  // [R1-B] Runtime picker selection lives in a dedicated store so it
+  // survives ChatConversationStage remount and effect re-runs. Local
+  // $state previously raced with `loadRuntimeAvailability` and produced
+  // a visible reset on every welcome→run→welcome cycle.
+  import { runtimePickerStore } from "$lib/stores/runtime-picker-store.svelte";
   import { browser } from "$app/environment";
 
   const t = tFn;
@@ -192,13 +197,10 @@
   }
 
   // ── Runtime picker (v1.0.9 registry) ──
-  let selectedRuntime = $state<SupportedRuntimeId>("claude");
+  // [R1-B] selectedRuntime/userPickedRuntime moved to runtimePickerStore
+  // so the user's pick survives effect re-runs and component remounts.
   let runtimes = $state<ResolvedRuntime[]>(mergeRuntimeAvailability({}));
   let runtimesLoading = $state(false);
-  // Tracks whether the user has explicitly chosen a runtime during this
-  // session. While true, loadRuntimeAvailability() will not overwrite the
-  // manual selection with the configured default (typically Claude).
-  let userPickedRuntime = $state(false);
 
   async function loadRuntimeAvailability() {
     runtimesLoading = true;
@@ -206,10 +208,10 @@
       runtimeHubStore.init();
       await runtimeHubStore.refresh();
       runtimes = runtimeHubStore.runtimes;
-      if (userPickedRuntime) {
+      if (runtimePickerStore.userPicked) {
         // Preserve the user's manual pick; still reconcile `store.agent` so
-        // any pre-mount state stays consistent with `selectedRuntime`.
-        store.agent = runtimeIdToAgent(selectedRuntime);
+        // any pre-mount state stays consistent with the selection.
+        store.agent = runtimeIdToAgent(runtimePickerStore.selected);
         return;
       }
       const configured = agentToRuntimeId(settings?.default_agent ?? "");
@@ -218,7 +220,7 @@
       const next =
         runtimes.find((runtime) => runtime.id === preferred && runtime.selectable)?.id ??
         runtimeHubStore.defaultRuntime;
-      selectedRuntime = next;
+      runtimePickerStore.applyDefault(next);
       store.agent = runtimeIdToAgent(next);
     } catch {
       runtimes = mergeRuntimeAvailability({});
@@ -240,14 +242,12 @@
   });
 
   function handleRuntimeChange(runtimeId: SupportedRuntimeId) {
-    userPickedRuntime = true;
-    selectedRuntime = runtimeId;
+    runtimePickerStore.select(runtimeId);
     store.agent = runtimeIdToAgent(runtimeId);
   }
 
   function applyRuntimeBeforeSend(runtimeId: SupportedRuntimeId) {
-    userPickedRuntime = true;
-    selectedRuntime = runtimeId;
+    runtimePickerStore.select(runtimeId);
     store.agent = runtimeIdToAgent(runtimeId);
   }
 
@@ -366,7 +366,7 @@
               onAddWorkspace={handlers.onAddWorkspace}
               {runtimes}
               {runtimesLoading}
-              {selectedRuntime}
+              selectedRuntime={runtimePickerStore.selected}
               onRuntimeChange={handleRuntimeChange}
               onManageRuntimes={() => goto("/settings?tab=runtimes")}
             >

@@ -429,7 +429,15 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
         store.model = cliModel;
       }
     });
-    loadCliVersionInfo();
+    // [R1-B] Defer the 3-IPC CLI version probe one frame so the welcome
+    // screen can paint first. The probe runs checkAgentCli + getCliDistTags
+    // + getCliConfig in parallel; on cold-start this is the longest
+    // blocking call on the new-session path. `cliVersionInfo` is read
+    // lazily via `$derived(getCliVersionInfo_cached())`, so deferring the
+    // fetch doesn't change the read-side API.
+    requestAnimationFrame(() => {
+      loadCliVersionInfo();
+    });
     checkProjectInit();
     // Preload project data from filesystem (no session needed)
     if (!runId) {

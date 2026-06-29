@@ -42,13 +42,13 @@
     if (!value || value === selected) return;
     const runtime = runtimes.find((r) => r.id === value);
     if (!runtime?.selectable) return;
+    // Close first, then notify — bits-ui Select.Root will also dispatch
+    // onOpenChange(false) after selection, but doing it ourselves means the
+    // menu collapses on the same frame as the click and we never enter the
+    // "open=true → bindable flush → open=false → onOpenChange(true)" race
+    // that produced the visible flicker.
+    open = false;
     onchange?.(value as SupportedRuntimeId);
-    // Defer the close past Svelte 5's bindable prop sync flush so the
-    // parent's reactive update doesn't race against `open = false` and
-    // re-apply the stale `true` value for one tick (close → open → close).
-    queueMicrotask(() => {
-      open = false;
-    });
   }
 </script>
 
