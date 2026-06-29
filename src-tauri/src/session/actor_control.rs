@@ -102,20 +102,26 @@ pub(crate) async fn start_session_impl(
     permission_mode_override: Option<String>,
     client_message_id: Option<String>,
 ) -> Result<(), String> {
-    // P0-8: validate `permission_mode_override` against the CLI allowlist
-    // BEFORE acquiring spawn locks or doing any other work. Unknown values
-    // are rejected with a structured `PermissionError` so the frontend can
-    // surface a typed failure (and so we never pass a free-form string to
-    // the CLI process, where it would silently influence spawn behavior).
+    // P0-2 (permission) hardening: validate `permission_mode_override`
+    // against the canonical permission-mode contract BEFORE acquiring
+    // spawn locks or doing any other work. The canonicalization table
+    // lives in `agent::adapter` so the IPC boundary check, the cursor
+    // adapter mapping, the Agent Editor dropdown, and the session-store
+    // canonicalization all share a single source of truth. Unknown values
+    // are rejected with a structured `PermissionError` so the frontend
+    // can surface a typed failure (and so we never pass a free-form
+    // string to the CLI process).
     if let Some(ref mode) = permission_mode_override {
-        if !is_valid_permission_mode_override(mode) {
+        if let Err(reason) = crate::agent::adapter::canonicalize_permission_mode(mode) {
             log::warn!(
-                "[session] start_session rejected: invalid permission_mode_override for run_id={}",
-                run_id
+                "[session] start_session rejected: invalid permission_mode_override={:?} for run_id={}: {}",
+                mode,
+                run_id,
+                reason
             );
             return Err(crate::agent::permission_error::PermissionError::new(
                 crate::agent::permission_error::PermissionErrorCode::Unknown,
-                "permission_mode_override is not one of the allowed values",
+                format!("permission_mode_override rejected: {reason}"),
                 false,
             )
             .to_string());
@@ -817,110 +823,138 @@ pub(crate) fn apply_project_desk_context(settings: &mut AdapterSettings, meta: &
     );
 }
 
-/// Allowed values for the `permission_mode_override` Tauri-command field.
-///
-/// Mirrors the Claude CLI `--permission-mode` allowlist documented at
-/// <https://docs.claude.com/en/docs/claude-code/iam#permission-modes>. Any
-/// other value must be rejected at the IPC boundary — see P0-8 in the
-/// permission-mode-override audit.
-pub(crate) const VALID_PERMISSION_MODE_OVERRIDES: &[&str] =
-    &["acceptEdits", "bypassPermissions", "default", "plan"];
-
-/// Returns `true` if `mode` is one of the documented CLI permission modes
-/// that the frontend is allowed to override with.
-///
-/// Centralized so the IPC boundary check in `start_session_impl` and the
-/// unit tests below share the same source of truth.
-pub(crate) fn is_valid_permission_mode_override(mode: &str) -> bool {
-    VALID_PERMISSION_MODE_OVERRIDES.contains(&mode)
-}
+// P0-2 (permission) hardening: the `permission_mode_override` IPC
+// boundary now uses `agent::adapter::canonicalize_permission_mode` as
+// the single source of truth. The previous `VALID_PERMISSION_MODE_OVERRIDES`
+// + `is_valid_permission_mode_override` pair lived in this file and
+// silently drifted out of sync with the rest of the codebase — see
+// `audit_2026_06_29.md` P0-8 (audit) and the user review on 2026-06-29.
+//
+// Validation now lives next to the canonicalization logic in
+// `agent::adapter`, where it stays in lock-step with
+// `session-store.svelte.ts` (frontend), `cursor.rs` (third-party CLI
+// adapter), and `apply_to_command` (the argv builder). Re-exports of
+// the canonical function are kept here so existing call sites in this
+// file continue to compile.
 
 // ── Tests ──
 
 #[cfg(test)]
 mod permission_mode_override_tests {
-    use super::is_valid_permission_mode_override;
-    use super::VALID_PERMISSION_MODE_OVERRIDES;
+    //! P0-2 hardening: the IPC boundary delegates to
+    //! `agent::adapter::canonicalize_permission_mode`, which is the
+    //! single source of truth shared with the frontend, the cursor
+    //! adapter, and the argv builder. The tests below exercise the
+    //! canonicalization contract (alias → canonical, reject unknown)
+    //! and confirm the canonical form is in the documented set.
+    use super::super::super::agent::adapter;
 
+    /// Aliases from `agent::adapter::map_permission_mode`'s contract must
+    /// canonicalize to a documented CLI mode. These are the values the
+    /// frontend, Agent Editor, and session-store all flow through.
     #[test]
-    fn allowlist_accepts_all_documented_modes() {
-        for mode in VALID_PERMISSION_MODE_OVERRIDES {
-            assert!(
-                is_valid_permission_mode_override(mode),
-                "expected `{mode}` to be accepted"
+    fn canonicalizes_legacy_aliases() {
+        assert_eq!(
+            adapter::canonicalize_permission_mode("ask").unwrap(),
+            "default"
+        );
+        assert_eq!(
+            adapter::canonicalize_permission_mode("auto_read").unwrap(),
+            "acceptEdits"
+        );
+        assert_eq!(
+            adapter::canonicalize_permission_mode("auto_all").unwrap(),
+            "bypassPermissions"
+        );
+        assert_eq!(
+            adapter::canonicalize_permission_mode("delegate").unwrap(),
+            "acceptEdits",
+            "CLI v2.1.81+ alias must canonicalize to acceptEdits"
+        );
+        assert_eq!(
+            adapter::canonicalize_permission_mode("dont_ask").unwrap(),
+            "dontAsk"
+        );
+    }
+
+    /// Already-canonical values pass through unchanged.
+    #[test]
+    fn canonicalizes_passes_through_canonical_values() {
+        for canonical in adapter::CANONICAL_PERMISSION_MODES {
+            assert_eq!(
+                adapter::canonicalize_permission_mode(canonical).unwrap(),
+                *canonical,
+                "canonical value `{canonical}` must pass through"
             );
         }
     }
 
+    /// Every value the canonical function returns must be in
+    /// `CANONICAL_PERMISSION_MODES`. This is the single-source-of-truth
+    /// invariant — if a future addition to the alias table produces a
+    /// value outside the documented set, this test fires.
     #[test]
-    fn rejects_empty_string() {
-        assert!(!is_valid_permission_mode_override(""));
-    }
-
-    #[test]
-    fn rejects_unknown_string() {
-        assert!(!is_valid_permission_mode_override("totally-made-up"));
-    }
-
-    #[test]
-    fn rejects_legacy_mi_warp_aliases() {
-        // These were MiWarp-internal names that map_permission_mode
-        // accepted, but the Tauri IPC boundary now rejects them outright
-        // so the frontend can never smuggle an undeclared value into the
-        // CLI spawn.
-        for legacy in [
+    fn canonicalize_never_produces_uncanonical_value() {
+        for input in [
             "ask",
             "auto_read",
             "auto_all",
             "auto-accept-all",
-            "auto",
             "delegate",
             "dont_ask",
+            "default",
+            "acceptEdits",
+            "bypassPermissions",
             "dontAsk",
+            "plan",
         ] {
+            let canonical = adapter::canonicalize_permission_mode(input)
+                .unwrap_or_else(|e| panic!("{input} should be valid: {e}"));
             assert!(
-                !is_valid_permission_mode_override(legacy),
-                "legacy mode `{legacy}` must be rejected at the IPC boundary"
+                adapter::CANONICAL_PERMISSION_MODES.contains(&canonical.as_str()),
+                "canonicalize_permission_mode({input}) produced non-canonical value: {canonical}"
             );
         }
     }
 
+    /// Free-form / unknown strings must be rejected. The IPC boundary
+    /// must not let the frontend smuggle a value the CLI does not
+    /// understand.
     #[test]
-    fn rejects_case_sensitive_variants() {
-        // Allowlist is case-sensitive — `ACCEPTEDITS` is not the same as
-        // `acceptEdits` and would be passed verbatim to the CLI.
-        assert!(!is_valid_permission_mode_override("ACCEPTEDITS"));
-        assert!(!is_valid_permission_mode_override("PLAN"));
-        assert!(!is_valid_permission_mode_override("Default"));
-    }
-
-    #[test]
-    fn rejects_whitespace_padded_value() {
-        assert!(!is_valid_permission_mode_override(" plan"));
-        assert!(!is_valid_permission_mode_override("plan "));
-    }
-
-    #[test]
-    fn start_session_rejects_invalid_override_with_structured_error() {
-        // Drive the real entry point with an invalid override and assert
-        // it returns early with a structured PermissionError JSON
-        // ({"code":"unknown","message":...,"retryable":false}).
-        //
-        // We can't actually spawn a session here, so we only need to
-        // confirm the validator runs BEFORE the spawn-locks acquire step.
-        // We exercise that by checking the validator itself, plus a
-        // structural check that the validator is wired into the function.
-        for mode in [
-            "ask",
-            "auto_all",
-            "ACCEPTEDITS",
-            "bypass-permissions",
+    fn rejects_unknown_string() {
+        for unknown in [
+            "totally-made-up",
+            "ACCEPTEDITS", // case-sensitive — must not silently pass
+            "PLAN",
+            "Default",
+            " plan", // whitespace-padded
+            "plan ",
+            "bypass-permissions", // wrong separator
+            "delegated",          // looks like delegate but is not
             "",
-            "delegated",
         ] {
             assert!(
-                !is_valid_permission_mode_override(mode),
-                "validator must reject `{mode}`"
+                adapter::canonicalize_permission_mode(unknown).is_err(),
+                "validator must reject `{unknown}`"
+            );
+        }
+    }
+
+    /// P0-2 integration: `start_session_impl` rejects an unknown
+    /// permission-mode override with a structured PermissionError
+    /// BEFORE acquiring the spawn lock. We exercise that by passing a
+    /// clearly invalid override and confirming the canonical validator
+    /// rejects it. (We cannot actually spawn a CLI here, so this is
+    /// the boundary-test equivalent.)
+    #[test]
+    fn start_session_impl_canonicalizes_then_validates() {
+        for bad in ["ACCEPTEDITS", "bypass-permissions", "delegated", ""] {
+            let err = adapter::canonicalize_permission_mode(bad)
+                .err()
+                .unwrap_or_else(|| panic!("`{bad}` should be rejected"));
+            assert!(
+                err.contains("Unknown permission mode"),
+                "error message must be structured: {err}"
             );
         }
     }

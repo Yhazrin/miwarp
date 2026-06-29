@@ -36,23 +36,81 @@ pub struct AdapterSettings {
     pub agents_json: Option<String>,
 }
 
-/// Map MiWarp permission mode names to Claude CLI `--permission-mode` values.
-pub fn map_permission_mode(mode: &str) -> String {
-    match mode {
-        "ask" => "default".to_string(),
-        "auto_read" => "acceptEdits".to_string(),
-        "auto_all" | "auto-accept-all" => "bypassPermissions".to_string(),
-        "auto" => "auto".to_string(),
-        "delegate" => "acceptEdits".to_string(), // CLI v2.1.81+ alias for acceptEdits
-        "dont_ask" | "dontAsk" => "dontAsk".to_string(),
-        // Already-mapped CLI values — pass through unchanged
-        "bypassPermissions" | "acceptEdits" | "default" => mode.to_string(),
+/// Canonical Claude CLI permission mode values. Any value that survives
+/// `map_permission_mode` / `canonicalize_permission_mode` is in this set.
+///
+/// Single source of truth for the permission-mode contract — the Tauri
+/// command boundary check, the cursor adapter mapping, the Agent Editor
+/// dropdown, and the session-store.svelte.ts canonicalization all
+/// reference one of these strings.
+pub const CANONICAL_PERMISSION_MODES: &[&str] = &[
+    "default",
+    "acceptEdits",
+    "bypassPermissions",
+    "dontAsk",
+    "plan",
+];
+
+/// Strict alias → canonical mapping. Returns an error string (NOT a
+/// `PermissionError` — this module doesn't depend on `permission_error`
+/// to keep the dep graph small) for any value not in the alias table.
+pub fn canonicalize_permission_mode(mode: &str) -> Result<String, String> {
+    let canonical: &'static str = match mode {
+        "ask" => "default",
+        "auto_read" | "auto-read" => "acceptEdits",
+        "auto_all" | "auto-accept-all" => "bypassPermissions",
+        "delegate" => "acceptEdits", // CLI v2.1.81+ alias for acceptEdits
+        "dont_ask" => "dontAsk",
+        // Already-canonical values — pass through (validated below)
+        "default" | "acceptEdits" | "bypassPermissions" | "dontAsk" | "plan" => {
+            return Ok(mode.to_string());
+        }
         other => {
+            return Err(format!(
+                "Unknown permission mode `{other}`. Expected one of: ask, auto_read, auto_all, \
+                 delegate, dont_ask, default, acceptEdits, bypassPermissions, dontAsk, plan"
+            ));
+        }
+    };
+    Ok(canonical.to_string())
+}
+
+/// Normalize `mode` to its canonical form, or return a structured
+/// error message suitable for the Tauri IPC boundary. Used by
+/// `start_session_impl` to reject unknown overrides before acquiring
+/// spawn locks.
+pub fn normalize_permission_mode_or_error(mode: &str) -> Result<String, String> {
+    let canonical = canonicalize_permission_mode(mode)?;
+    debug_assert!(
+        CANONICAL_PERMISSION_MODES.contains(&canonical.as_str()),
+        "canonicalize_permission_mode produced a value outside CANONICAL_PERMISSION_MODES: {canonical}"
+    );
+    Ok(canonical)
+}
+
+/// Map MiWarp permission mode names to Claude CLI `--permission-mode` values.
+///
+/// **Deprecated** for IPC boundary validation: callers that need to
+/// reject unknown values should use `canonicalize_permission_mode` /
+/// `normalize_permission_mode_or_error` instead. This function is kept
+/// because `apply_to_command` calls it when *building* the CLI argv
+/// after the boundary has already validated the override — at that
+/// point the value is guaranteed to be canonical, so the pass-through
+/// behavior on unknown values is harmless.
+///
+/// The function now also runs `canonicalize_permission_mode` first
+/// and falls back to the legacy pass-through only if normalization
+/// itself fails — that preserves the existing "free-form string flows
+/// to CLI" semantics for non-IPC callers.
+pub fn map_permission_mode(mode: &str) -> String {
+    match canonicalize_permission_mode(mode) {
+        Ok(canonical) => canonical.to_string(),
+        Err(_) => {
             log::warn!(
                 "[adapter] unknown permission_mode '{}', passing through to CLI",
-                other
+                mode
             );
-            other.to_string()
+            mode.to_string()
         }
     }
 }
