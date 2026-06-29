@@ -345,17 +345,25 @@
         class="mb-3 grid grid-cols-3 gap-2 text-[10px]"
         data-testid="workbench-project-projection"
       >
-        <div class="rounded-xl border border-border/40 bg-muted/30 px-2 py-1.5">
+        <div
+          class="rounded-xl border border-border/40 bg-muted/30 px-2 py-1.5 transition-colors duration-150 ease-out"
+        >
           <p class="text-[9px] uppercase tracking-wider text-muted-foreground">
             {t("workbench_projectionRuns")}
           </p>
-          <p class="mt-0.5 text-sm font-semibold text-foreground">{project.sessionCount}</p>
+          <p class="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
+            {project.sessionCount}
+          </p>
         </div>
-        <div class="rounded-xl border border-border/40 bg-muted/30 px-2 py-1.5">
+        <div
+          class="rounded-xl border border-border/40 bg-muted/30 px-2 py-1.5 transition-colors duration-150 ease-out"
+        >
           <p class="text-[9px] uppercase tracking-wider text-muted-foreground">
             {t("workbench_projectionLive")}
           </p>
-          <p class="mt-0.5 text-sm font-semibold text-foreground">{liveProjectRunCount}</p>
+          <p class="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
+            {liveProjectRunCount}
+          </p>
         </div>
         <div
           class="rounded-xl border px-2 py-1.5 {projectAttentionCount > 0
@@ -377,7 +385,7 @@
           {#each takeoverSteps as step (step.label)}
             <button
               type="button"
-              class="w-full rounded-2xl border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 {step.tone ===
+              class="w-full rounded-2xl border px-3 py-2.5 text-left transition-[background-color,border-color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 {step.tone ===
               'attention'
                 ? 'border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.08)] hover:bg-[hsl(var(--miwarp-status-warning)/0.12)]'
                 : step.tone === 'complete'
@@ -416,7 +424,7 @@
             {#each recentFiles as file (file.path)}
               <button
                 type="button"
-                class="w-full rounded-2xl border border-border/35 bg-background/35 px-3 py-2 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                class="w-full rounded-2xl border border-border/35 bg-background/35 px-3 py-2 text-left transition-[background-color,border-color] duration-150 ease-out hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 onclick={openActiveRun}
                 title={file.path}
                 aria-label={t("workbench_openSessionAria", { title: file.name })}
@@ -472,7 +480,7 @@
             {#each failedTools as item (item.id)}
               <button
                 type="button"
-                class="w-full rounded-2xl border border-[hsl(var(--miwarp-status-error)/0.28)] bg-[hsl(var(--miwarp-status-error)/0.08)] px-3 py-2 text-left transition-colors hover:bg-[hsl(var(--miwarp-status-error)/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--miwarp-status-error)/0.4)]"
+                class="w-full rounded-2xl border border-[hsl(var(--miwarp-status-error)/0.28)] bg-[hsl(var(--miwarp-status-error)/0.08)] px-3 py-2 text-left transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:bg-[hsl(var(--miwarp-status-error)/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--miwarp-status-error)/0.4)]"
                 onclick={openActiveRun}
                 aria-label={t("workbench_riskItemAria", {
                   tool: item.tool.tool_name,
@@ -505,7 +513,7 @@
         {#if activeRun}
           <button
             type="button"
-            class="w-full rounded-2xl border border-border/40 bg-background/45 px-3 py-2.5 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            class="w-full rounded-2xl border border-border/40 bg-background/45 px-3 py-2.5 text-left transition-[background-color,border-color] duration-150 ease-out hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             onclick={openActiveRun}
             aria-label={t("workbench_openSessionAria", {
               title: activeRun.name || activeRun.prompt || activeRun.id,
@@ -597,7 +605,7 @@
                 </div>
               {:else}
                 <div
-                  class="rounded-2xl border border-[hsl(var(--miwarp-status-warning)/0.28)] bg-[hsl(var(--miwarp-status-warning)/0.08)] px-3 py-2 transition-shadow {highlightedKey ===
+                  class="rounded-2xl border border-[hsl(var(--miwarp-status-warning)/0.28)] bg-[hsl(var(--miwarp-status-warning)/0.08)] px-3 py-2 transition-shadow duration-200 ease-out {highlightedKey ===
                   entry.entry.tool.tool_use_id
                     ? 'ring-2 ring-[hsl(var(--miwarp-status-warning)/0.6)] shadow-lg'
                     : ''}"
@@ -644,7 +652,7 @@
             {#each recentSessions as session (session.id)}
               <button
                 type="button"
-                class="w-full rounded-2xl border px-3 py-2 text-left transition-colors hover:border-border/45 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 {session.id ===
+                class="w-full rounded-2xl border px-3 py-2 text-left transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-border/45 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 {session.id ===
                 activeRunId
                   ? 'border-primary/30 bg-primary/10'
                   : session.status === 'running' || session.status === 'pending'

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { onMount, tick, getContext } from "svelte";
+  import { fade } from "svelte/transition";
   import * as api from "$lib/api";
   import { workbenchStore } from "$lib/workbench/workbench-store.svelte";
   import {
@@ -502,6 +503,7 @@
   <div bind:this={streamRef} class="min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-40">
     {#if !ownsCurrentRun && timeline.length === 0}
       <div
+        in:fade={{ duration: 140 }}
         class="mx-auto flex h-full max-w-3xl flex-col justify-center gap-4 px-2 text-center sm:text-left"
       >
         <div class="space-y-1.5">
@@ -518,10 +520,11 @@
             <span class="text-[10px] text-muted-foreground">{t("workbench_deskModesHint")}</span>
           </div>
           <div class="grid gap-2 sm:grid-cols-2">
-            {#each deskModes as mode (mode.label)}
+            {#each deskModes as mode, modeIndex (mode.label)}
               <button
                 type="button"
-                class="group flex min-h-[70px] items-start gap-3 rounded-2xl border border-border/45 bg-background/45 px-3 py-2.5 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                class="group flex min-h-[70px] items-start gap-3 rounded-2xl border border-border/45 bg-background/45 px-3 py-2.5 text-left transition-[background-color,border-color] duration-150 ease-out motion-fade-in hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                style="animation-delay: {Math.min(modeIndex, 6) * 35}ms"
                 onclick={() => fillPrompt(mode.prompt)}
                 aria-label={t("workbench_stagePromptAria", {
                   label: mode.label,
@@ -546,10 +549,11 @@
           </div>
         </div>
         <div class="flex flex-wrap gap-1.5">
-          {#each quickActions as action}
+          {#each quickActions as action, actionIndex (action.label)}
             <button
               type="button"
-              class="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/45 bg-background/50 px-2.5 text-[11px] font-medium text-foreground transition-colors hover:border-primary/35 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              class="motion-fade-in inline-flex h-8 items-center gap-1.5 rounded-full border border-border/45 bg-background/50 px-2.5 text-[11px] font-medium text-foreground transition-[background-color,border-color] duration-150 ease-out hover:border-primary/35 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              style="animation-delay: {Math.min(actionIndex, 6) * 35 + 140}ms"
               onclick={() => fillPrompt(action.prompt)}
               aria-label={t("workbench_stagePromptAria", { label: action.label, value: "" })}
             >
@@ -560,10 +564,11 @@
         </div>
         {#if workbenchStore.selectedSessions.length > 0}
           <div class="grid gap-2 sm:grid-cols-2">
-            {#each workbenchStore.selectedSessions.slice(0, 4) as session (session.id)}
+            {#each workbenchStore.selectedSessions.slice(0, 4) as session, sessionIndex (session.id)}
               <button
                 type="button"
-                class="rounded-2xl border border-border/45 bg-background/45 px-3 py-2 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                class="motion-fade-in rounded-2xl border border-border/45 bg-background/45 px-3 py-2 text-left transition-[background-color,border-color] duration-150 ease-out hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                style="animation-delay: {Math.min(sessionIndex, 6) * 40 + 200}ms"
                 onclick={() => {
                   workbenchStore.setActiveRun(projectId, session.id);
                 }}
@@ -615,7 +620,7 @@
         {/if}
       </div>
     {:else}
-      <div class="mx-auto w-full max-w-4xl">
+      <div in:fade={{ duration: 160 }} class="mx-auto w-full max-w-4xl">
         <ConversationTimeline
           {timeline}
           agent={store.agent}
@@ -641,6 +646,7 @@
         />
         {#if store.isActivelyRunning && timeline.length === 0}
           <div
+            in:fade={{ duration: 160 }}
             class="mx-auto mt-10 inline-flex items-center gap-2 rounded-full border border-border/50 bg-background/60 px-3 py-2 text-xs text-muted-foreground"
           >
             <Icon name="loader-2" size="sm" class="animate-spin" />

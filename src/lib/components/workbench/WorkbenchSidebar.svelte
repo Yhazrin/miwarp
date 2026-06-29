@@ -34,21 +34,39 @@
     <h2 class="text-sm font-semibold text-sidebar-foreground">{t("workbench_projects")}</h2>
     <p class="mt-0.5 text-xs text-muted-foreground">{t("workbench_projectsSubtitle")}</p>
     <div class="mt-3 grid grid-cols-3 gap-1.5">
-      <div class="rounded-xl border border-sidebar-border/60 bg-sidebar-accent/30 px-2 py-1.5">
+      <div
+        class="rounded-xl border border-sidebar-border/60 bg-sidebar-accent/40 px-2 py-1.5 transition-colors duration-150 ease-out"
+      >
         <p class="text-[10px] text-muted-foreground">{t("workbench_metricProjects")}</p>
-        <p class="mt-0.5 text-sm font-semibold text-sidebar-foreground">
+        <p
+          class="mt-0.5 text-sm font-semibold text-sidebar-foreground tabular-nums"
+          aria-live="polite"
+        >
           {workbenchStore.projects.length}
         </p>
       </div>
-      <div class="rounded-xl border border-sidebar-border/60 bg-sidebar-accent/30 px-2 py-1.5">
+      <div
+        class="rounded-xl border border-sidebar-border/60 bg-sidebar-accent/40 px-2 py-1.5 transition-colors duration-150 ease-out"
+      >
         <p class="text-[10px] text-muted-foreground">{t("workbench_metricActive")}</p>
-        <p class="mt-0.5 text-sm font-semibold text-sidebar-foreground">
+        <p
+          class="mt-0.5 text-sm font-semibold text-sidebar-foreground tabular-nums"
+          aria-live="polite"
+        >
           {workbenchStore.activeProjectCount}
         </p>
       </div>
-      <div class="rounded-xl border border-sidebar-border/60 bg-sidebar-accent/30 px-2 py-1.5">
+      <div
+        class="rounded-xl border border-sidebar-border/60 bg-sidebar-accent/40 px-2 py-1.5 transition-colors duration-150 ease-out {workbenchStore.attentionRunCount >
+        0
+          ? 'border-[hsl(var(--miwarp-status-warning)/0.4)] bg-[hsl(var(--miwarp-status-warning)/0.08)]'
+          : ''}"
+      >
         <p class="text-[10px] text-muted-foreground">{t("workbench_metricAttention")}</p>
-        <p class="mt-0.5 text-sm font-semibold text-sidebar-foreground">
+        <p
+          class="mt-0.5 text-sm font-semibold text-sidebar-foreground tabular-nums"
+          aria-live="polite"
+        >
           {workbenchStore.attentionRunCount}
         </p>
       </div>
@@ -84,14 +102,14 @@
       </div>
     {:else}
       <ul class="space-y-1" role="list">
-        {#each workbenchStore.projects as project (project.id)}
+        {#each workbenchStore.projects as project, projectIndex (project.id)}
           {@const isSelected = project.id === workbenchStore.selectedProjectId}
-          <li>
+          <li class="motion-fade-in" style="animation-delay: {Math.min(projectIndex, 8) * 28}ms">
             <button
               type="button"
-              class="w-full rounded-md px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
+              class="w-full rounded-md px-2.5 py-2 text-left transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
                 {isSelected
-                ? 'bg-sidebar-accent text-sidebar-foreground'
+                ? 'bg-sidebar-accent text-sidebar-foreground shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)]'
                 : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
               onclick={() => workbenchStore.selectProject(project.id)}
               aria-current={isSelected ? "page" : undefined}

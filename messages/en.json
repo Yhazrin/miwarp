@@ -3759,6 +3759,7 @@
   "workbench_messageYou": "You",
   "workbench_messageAssistant": "Assistant",
   "workbench_dispatching": "Dispatching…",
+  "workbench_loading": "Loading project desk…",
   "workbench_sendMessage": "Send message",
   "workbench_onboardingTitle": "Pull your workspace into the project desk",
   "workbench_onboardingDescription": "Add a project folder to start managing its sessions, risks, and pending handoffs from one console.",

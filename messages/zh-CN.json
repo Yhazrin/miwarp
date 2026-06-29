@@ -3656,6 +3656,7 @@
   "workbench_messageYou": "你",
   "workbench_messageAssistant": "助手",
   "workbench_dispatching": "派发中…",
+  "workbench_loading": "正在加载项目台…",
   "workbench_sendMessage": "发送消息",
   "workbench_onboardingTitle": "把工作区拉进项目台",
   "workbench_onboardingDescription": "添加一个项目文件夹，就能在同一个控制台管理它的会话、风险和待处理事项。",

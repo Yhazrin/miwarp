@@ -2625,6 +2625,39 @@ html.perf-performance:not(.native-glass-enabled) .sidebar-main-corner-bridge {
     0 0 0 4px hsl(var(--miwarp-status-error) / 0.4);
 }
 
+/*
+ * Workbench first-load skeleton.
+ * Subtle shimmer so the project desk doesn't feel blank while the store
+ * hydrates. Honours prefers-reduced-motion — falls back to a flat surface.
+ */
+@keyframes wb-skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.wb-skeleton {
+  border-radius: 1rem;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted) / 0.35) 0%,
+    hsl(var(--muted) / 0.55) 50%,
+    hsl(var(--muted) / 0.35) 100%
+  );
+  background-size: 200% 100%;
+  animation: wb-skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-skeleton {
+    animation: none;
+    background: hsl(var(--muted) / 0.45);
+  }
+}
+
 /* Workbench pill: for chip-shaped buttons (mode / quickAction / CTA). */
 .wb-pill {
   display: inline-flex;
