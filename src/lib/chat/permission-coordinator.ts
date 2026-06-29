@@ -443,10 +443,16 @@ export class PermissionCoordinator {
     if (this.disposed) return;
     this.disposed = true;
     for (const record of Array.from(this.inFlight.values())) {
+      // Clear any pending TTL timer BEFORE terminating the record;
+      // transitionToTerminated relies on the timer firing to flip state,
+      // but at dispose time we don't want a fire-on-dead-record leak.
+      if (record.ttlTimer != null) {
+        this.timers.clearTimeout(record.ttlTimer);
+        record.ttlTimer = undefined;
+      }
       if (record.settled) continue;
       transitionToTerminated(this.context, record, "cancelled", "Coordinator disposed");
     }
-    this.inFlight.clear();
     this.inFlight.clear();
     this.retryable.clear();
     this.listeners.clear();
