@@ -278,30 +278,19 @@
       aria-label={t("settings_toggleTheme")}
     >
       {#if themeMode === "system"}
-        <!-- 昼夜拼接：上半月（昼）+ 下半月（夜），外圈 + 水平分隔线区分。
-             跟 macOS System Settings / VS Code / GitHub 的 "Auto appearance" 同一 pattern。 -->
+        <!-- 阴阳半圆：外圈 + 竖直分隔线 + 半填充 — 经典 "auto / contrast" icon。 -->
         <svg
           class="h-[18px] w-[18px]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="1.6"
+          stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
         >
-          <circle cx="12" cy="12" r="9" />
-          <line x1="3" y1="12" x2="21" y2="12" />
-          <!-- sun: small disc + 4 short rays, upper half -->
-          <circle cx="9.5" cy="6.5" r="1.6" fill="currentColor" stroke="none" />
-          <line x1="9.5" y1="3" x2="9.5" y2="4.4" />
-          <line x1="6.4" y1="6.5" x2="7.8" y2="6.5" />
-          <line x1="7.2" y1="4.2" x2="8.2" y2="5.2" />
-          <!-- moon: crescent, lower half -->
-          <path
-            d="M16 16.2 a4 4 0 1 0 0 4.6 a3 3 0 0 1 0 -4.6 z"
-            fill="currentColor"
-            stroke="none"
-          />
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 2v20" />
+          <path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none" />
         </svg>
       {:else if themeIsDark}
         <svg
