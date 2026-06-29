@@ -5,7 +5,6 @@
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import Icon from "$lib/components/Icon.svelte";
-  import HighlightedCode from "$lib/components/HighlightedCode.svelte";
   import { classifyPath, getExtension, isImage, isPreviewable } from "$lib/utils/preview-ext";
   import { validateInspectorPath } from "$lib/utils/inspector-path";
   import {
@@ -14,6 +13,7 @@
     shouldShowHighlightedCode,
   } from "./preview-pane-loader";
   import type CodeEditor from "./CodeEditor.svelte";
+  import type HighlightedCode from "./HighlightedCode.svelte";
   import type MiMarkdownRenderer from "./MiMarkdownRenderer.svelte";
 
   // ── Props ──
@@ -356,9 +356,11 @@
   // initial bundle — only the dynamic import() below does, and only on demand.
   let CodeEditorComponent = $state<typeof CodeEditor | null>(null);
   let MiMarkdownRendererComponent = $state<typeof MiMarkdownRenderer | null>(null);
+  let HighlightedCodeComponent = $state<typeof HighlightedCode | null>(null);
   /** Track in-flight imports so concurrent triggers don't double-fetch. */
   let codeEditorLoading: Promise<void> | null = null;
   let markdownRendererLoading: Promise<void> | null = null;
+  let highlightedCodeLoading: Promise<void> | null = null;
 
   const codeEditorTrigger = $derived(shouldLoadCodeEditor(editorLoadInput));
 
@@ -406,6 +408,22 @@
         dbg("preview-pane", "markdown renderer dynamic import failed", String(e));
       } finally {
         markdownRendererLoading = null;
+      }
+    })();
+  });
+
+  $effect(() => {
+    if (!showHighlightedCode) return;
+    if (HighlightedCodeComponent !== null) return;
+    if (highlightedCodeLoading) return;
+    highlightedCodeLoading = (async () => {
+      try {
+        const mod = await import("./HighlightedCode.svelte");
+        HighlightedCodeComponent = mod.default;
+      } catch (e) {
+        dbg("preview-pane", "highlighted code dynamic import failed", String(e));
+      } finally {
+        highlightedCodeLoading = null;
       }
     })();
   });
@@ -538,8 +556,14 @@
       <div class="flex h-full items-center justify-center bg-background">
         <Spinner size="md" />
       </div>
+    {:else if showHighlightedCode && HighlightedCodeComponent}
+      <HighlightedCodeComponent content={fileContent} filePath={path || ""} class="h-full" />
     {:else if showHighlightedCode}
-      <HighlightedCode content={fileContent} filePath={path || ""} class="h-full" />
+      <!-- HighlightedCode chunk still loading — show a brief spinner so the
+           preview surface doesn't flash empty before hljs + github-dark CSS arrive. -->
+      <div class="flex h-full items-center justify-center bg-background">
+        <Spinner size="md" />
+      </div>
     {/if}
 
     <!-- Overlays: only one rendered at a time -->
