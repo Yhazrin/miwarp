@@ -65,6 +65,18 @@ pub fn get_skill_summary(cwd: Option<String>) -> Result<SkillSummary, String> {
 #[tauri::command]
 pub fn get_skill_content(path: String, cwd: Option<String>) -> Result<String, String> {
     let cwd = cwd.unwrap_or_default();
+    // P0-2: cheap boundary rejection before touching storage. We refuse any
+    // path that smells like a traversal attempt so we never even hand it to
+    // the resolver. Final authority lives in
+    // `storage::plugins::read_skill_content`, which re-checks after
+    // canonicalization.
+    if path.contains("..") || path.contains('\\') || path.contains('\0') {
+        log::warn!(
+            "[plugins] get_skill_content rejected suspicious path: cwd={}",
+            cwd
+        );
+        return Err("Invalid skill path".to_string());
+    }
     log::debug!("[plugins] get_skill_content: path={}, cwd={}", path, cwd);
     crate::storage::plugins::read_skill_content(&path, &cwd)
 }
@@ -334,5 +346,35 @@ mod tests {
         let result = validate_plugin_cwd("project", Some(dir));
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), Some(dir));
+    }
+
+    // P0-2: get_skill_content must refuse obvious traversal payloads at the
+    // command boundary without ever touching the storage layer.
+    #[test]
+    fn get_skill_content_rejects_traversal_path() {
+        let result = get_skill_content("../../etc/passwd".to_string(), None);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Invalid skill path");
+    }
+
+    #[test]
+    fn get_skill_content_rejects_backslash_path() {
+        let result = get_skill_content("..\\etc\\passwd".to_string(), None);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Invalid skill path");
+    }
+
+    #[test]
+    fn get_skill_content_rejects_embedded_double_dot() {
+        let result = get_skill_content("skills/foo/../../../etc/hosts".to_string(), None);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Invalid skill path");
+    }
+
+    #[test]
+    fn get_skill_content_rejects_nul_byte() {
+        let result = get_skill_content("skills\0foo".to_string(), None);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Invalid skill path");
     }
 }
