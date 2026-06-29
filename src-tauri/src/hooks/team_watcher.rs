@@ -1,10 +1,11 @@
 use crate::storage::teams;
-use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{EventKind, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 use tauri::{AppHandle, Emitter};
+use tokio::sync::mpsc as tmpsc;
 use tokio_util::sync::CancellationToken;
 
 /// Tracks last-seen modification timestamps for dedup.
@@ -15,46 +16,64 @@ type TimestampMap = Arc<Mutex<HashMap<PathBuf, SystemTime>>>;
 /// Respects the CancellationToken for graceful shutdown.
 pub fn start_team_watcher(app: AppHandle, cancel: CancellationToken) {
     let timestamps: TimestampMap = Arc::new(Mutex::new(HashMap::new()));
+    let (tx, mut rx) = tmpsc::channel::<notify::Result<notify::Event>>(64);
 
-    std::thread::spawn(move || {
-        let teams_dir = teams::teams_dir();
-        let tasks_dir = teams::tasks_dir();
-
-        // Ensure directories exist (no-op if already present)
-        let _ = std::fs::create_dir_all(&teams_dir);
-        let _ = std::fs::create_dir_all(&tasks_dir);
-
-        let (tx, rx) = std::sync::mpsc::channel();
-
-        let mut watcher = match RecommendedWatcher::new(tx, Config::default()) {
-            Ok(w) => w,
-            Err(e) => {
-                log::error!("[team_watcher] init failed: {}", e);
-                return;
-            }
-        };
-
-        if let Err(e) = watcher.watch(&teams_dir, RecursiveMode::Recursive) {
-            log::warn!("[team_watcher] failed to watch teams dir: {}", e);
+    // Spawn the notify watcher. The closure runs on notify's background thread
+    // and forwards events to a tokio mpsc sender using `blocking_send`, which
+    // is safe to call from a non-async context.
+    let mut watcher = match notify::recommended_watcher(move |res| {
+        let _ = tx.blocking_send(res);
+    }) {
+        Ok(w) => w,
+        Err(e) => {
+            log::error!("[team_watcher] init failed: {}", e);
+            return;
         }
-        if let Err(e) = watcher.watch(&tasks_dir, RecursiveMode::Recursive) {
-            log::warn!("[team_watcher] failed to watch tasks dir: {}", e);
-        }
+    };
 
-        log::info!(
-            "[team_watcher] started — watching {} and {}",
-            teams_dir.display(),
-            tasks_dir.display()
-        );
+    let teams_dir = teams::teams_dir();
+    let tasks_dir = teams::tasks_dir();
+
+    // Ensure directories exist (no-op if already present)
+    let _ = std::fs::create_dir_all(&teams_dir);
+    let _ = std::fs::create_dir_all(&tasks_dir);
+
+    if let Err(e) = watcher.watch(&teams_dir, RecursiveMode::Recursive) {
+        log::warn!("[team_watcher] failed to watch teams dir: {}", e);
+    }
+    if let Err(e) = watcher.watch(&tasks_dir, RecursiveMode::Recursive) {
+        log::warn!("[team_watcher] failed to watch tasks dir: {}", e);
+    }
+
+    log::info!(
+        "[team_watcher] started — watching {} and {}",
+        teams_dir.display(),
+        tasks_dir.display()
+    );
+
+    // Keep the watcher alive on the async task by moving it in.
+    tauri::async_runtime::spawn(async move {
+        let _watcher = watcher;
 
         loop {
-            if cancel.is_cancelled() {
-                log::info!("[team_watcher] shutting down");
-                break;
-            }
-
-            match rx.recv_timeout(std::time::Duration::from_millis(100)) {
-                Ok(Ok(event)) => {
+            tokio::select! {
+                biased;
+                _ = cancel.cancelled() => {
+                    log::info!("[team_watcher] shutting down");
+                    break;
+                }
+                evt = rx.recv() => {
+                    let Some(evt) = evt else {
+                        log::info!("[team_watcher] channel disconnected, stopping");
+                        break;
+                    };
+                    let event = match evt {
+                        Ok(e) => e,
+                        Err(e) => {
+                            log::warn!("[team_watcher] watch error: {}", e);
+                            continue;
+                        }
+                    };
                     match event.kind {
                         EventKind::Modify(_) | EventKind::Create(_) | EventKind::Remove(_) => {}
                         _ => continue,
@@ -62,12 +81,6 @@ pub fn start_team_watcher(app: AppHandle, cancel: CancellationToken) {
                     for path in &event.paths {
                         process_team_file_change(&app, path, &teams_dir, &tasks_dir, &timestamps);
                     }
-                }
-                Ok(Err(e)) => log::warn!("[team_watcher] watch error: {}", e),
-                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
-                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
-                    log::info!("[team_watcher] channel disconnected, stopping");
-                    break;
                 }
             }
         }
