@@ -122,7 +122,16 @@ pub(crate) async fn respawn_session_actor(
         }
     }
 
-    tokio::time::sleep(backoff).await;
+    // Respect shutdown while waiting out the backoff; otherwise a 30s backoff
+    // survives an app restart attempt and only returns on the next schedule tick.
+    tokio::select! {
+        biased;
+        _ = cancel_token.cancelled() => {
+            log::info!("[recovery] respawn aborted during backoff for run_id={}", run_id);
+            return Err("Cancelled during recovery backoff".into());
+        }
+        _ = tokio::time::sleep(backoff) => {}
+    }
 
     let meta = storage::runs::get_run(run_id).ok_or_else(|| format!("Run {run_id} not found"))?;
     let agent_settings = storage::settings::get_agent_settings(&meta.agent);

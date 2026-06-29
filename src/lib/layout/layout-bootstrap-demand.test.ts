@@ -11,6 +11,7 @@ vi.mock("$lib/stores/attention-queue-store.svelte", () => ({
     reconcile: vi.fn().mockResolvedValue({}),
     loadSnapshot: vi.fn().mockResolvedValue({}),
     subscribe: vi.fn().mockResolvedValue(undefined),
+    unsubscribe: vi.fn(),
   },
 }));
 
@@ -90,5 +91,14 @@ describe("createBootstrapDemandController", () => {
     expect(attentionQueueStore.loadSnapshot).toHaveBeenCalledTimes(1);
     expect(attentionQueueStore.subscribe).toHaveBeenCalledTimes(1);
     ctl.dispose();
+    // dispose() unwinds the attention subscription so dev HMR / layout teardown
+    // don't leak the listener pinned to a possibly-replaced transport.
+    expect(attentionQueueStore.unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not unsubscribe attention queue if it was never started", () => {
+    const ctl = createBootstrapDemandController({ teamStore, runsStore, sessionFolderStore });
+    ctl.dispose();
+    expect(attentionQueueStore.unsubscribe).not.toHaveBeenCalled();
   });
 });
