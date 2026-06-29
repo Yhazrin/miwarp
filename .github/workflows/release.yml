@@ -70,6 +70,24 @@ jobs:
 
       # Set repository secret TAURI_SIGNING_PRIVATE_KEY to the contents of src-tauri/miwarp.key
       # (generate locally: npm run tauri signer generate -- -w src-tauri/miwarp.key -p "")
+      # Without this secret the action still uploads binaries, but `latest.json` and
+      # the per-asset `.sig` are skipped — which silently breaks the in-app updater.
+      # We fail the job early so the release maintainer notices and can re-run after
+      # configuring the secret. The `Update` fallback in
+      # `src/lib/utils/app-updater.ts` (external GitHub download URL) keeps the
+      # app usable even when this fails, so users are never bricked.
+      - name: Verify updater signing key is configured
+        if: env.TAURI_SIGNING_PRIVATE_KEY == ''
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::error::Missing secret TAURI_SIGNING_PRIVATE_KEY. The in-app updater needs latest.json + .sig files; without them the Tauri updater plugin will fail at runtime and only the GitHub download fallback works."
+            echo "::error::Fix: Settings → Secrets and variables → Actions → New repository secret. Name: TAURI_SIGNING_PRIVATE_KEY. Value: contents of src-tauri/miwarp.key (also add TAURI_SIGNING_PRIVATE_KEY_PASSWORD if you set one when generating)."
+            echo "::error::Regenerate locally with: npm run tauri signer generate -- -w src-tauri/miwarp.key -p \"\""
+            exit 1
+          fi
+
       - name: Build Tauri app and upload release assets
         uses: tauri-apps/tauri-action@v0
         env:
