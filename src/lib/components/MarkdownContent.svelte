@@ -20,9 +20,9 @@
 
     const hit = markdownHtmlCache.get(text);
     if (hit !== undefined) {
-      // Refresh insertion order so frequently viewed messages stay cached.
-      markdownHtmlCache.delete(text);
-      markdownHtmlCache.set(text, hit);
+      // Skip LRU refresh on every hit: insertion order is naturally
+      // insertion-ordered, so evicting the oldest still drops the right entry
+      // when the cache is full, avoiding per-hit Map churn.
       return hit;
     }
 
