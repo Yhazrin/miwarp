@@ -18,10 +18,12 @@ export function beginRouteTransition(): void {
   if (html.classList.contains(SKIP_CLASS)) return;
   html.classList.add(SKIP_CLASS);
   if (watchdogId !== null) clearTimeout(watchdogId);
-  watchdogId = setTimeout(() => {
+  const id = setTimeout(() => {
+    if (id !== watchdogId) return;
     watchdogId = null;
     endRouteTransition();
   }, SKIP_TIMEOUT_MS);
+  watchdogId = id;
 }
 
 export function endRouteTransition(): void {
