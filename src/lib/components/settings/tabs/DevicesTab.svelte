@@ -14,6 +14,7 @@
     settings,
     webStatus = null as {
       enabled: boolean;
+      running: boolean;
       bind: string;
       port: number;
       tunnel_url: string | null;
@@ -29,13 +30,23 @@
     webRestartError = null as string | null,
     mobileQrDataUrl = null as string | null,
     mobilePairingLinkCopied = false,
+    webSelfCheckRunning = false,
+    webSelfCheckResult = null as string | null,
+    webSelfCheckError = null as string | null,
     onToggleWebServer = async (_enable: boolean) => {},
     onApplyWebServerSettings = async () => {},
     onCopyAccessLink = async () => {},
     onCopyPairingLink = async () => {},
+    onRunWebSelfCheck = async () => {},
   }: {
     settings: UserSettings | null;
-    webStatus?: { enabled: boolean; bind: string; port: number; tunnel_url: string | null } | null;
+    webStatus?: {
+      enabled: boolean;
+      running: boolean;
+      bind: string;
+      port: number;
+      tunnel_url: string | null;
+    } | null;
     webToken?: string | null;
     webTunnelUrl?: string;
     webLinkCopied?: boolean;
@@ -47,10 +58,14 @@
     webRestartError?: string | null;
     mobileQrDataUrl?: string | null;
     mobilePairingLinkCopied?: boolean;
+    webSelfCheckRunning?: boolean;
+    webSelfCheckResult?: string | null;
+    webSelfCheckError?: string | null;
     onToggleWebServer?: (enable: boolean) => Promise<void>;
     onApplyWebServerSettings?: () => Promise<void>;
     onCopyAccessLink?: () => Promise<void>;
     onCopyPairingLink?: () => Promise<void>;
+    onRunWebSelfCheck?: () => Promise<void>;
   } = $props();
   function lk(key: string): string {
     return t(key as MessageKey);
@@ -104,6 +119,30 @@
         {lk("settings_general_webLinkCopied")}
       </p>
     {/if}
+    <div class="rounded-md border border-dashed border-border p-3 space-y-2">
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-xs font-medium">{lk("settings_general_webSelfCheck")}</p>
+        <button
+          type="button"
+          class="rounded-md border px-3 py-1 text-xs hover:bg-accent transition-colors disabled:opacity-50"
+          disabled={!webStatus?.running || webSelfCheckRunning}
+          onclick={onRunWebSelfCheck}
+        >
+          {webSelfCheckRunning
+            ? lk("settings_general_webSelfCheckRunning")
+            : lk("settings_general_webSelfCheckRun")}
+        </button>
+      </div>
+      {#if webSelfCheckError}
+        <p class="text-xs text-miwarp-status-error">{webSelfCheckError}</p>
+      {:else if webSelfCheckResult}
+        <p class="text-xs text-miwarp-status-success">{webSelfCheckResult}</p>
+      {:else if !webStatus?.running}
+        <p class="text-xs text-muted-foreground">
+          {lk("settings_general_webSelfCheckDisabled")}
+        </p>
+      {/if}
+    </div>
   </Card>
 
   {#if webStatus?.enabled}

@@ -48,10 +48,14 @@
     webRestartError: string | null;
     mobileQrDataUrl: string | null;
     mobilePairingLinkCopied: boolean;
+    webSelfCheckRunning: boolean;
+    webSelfCheckResult: string | null;
+    webSelfCheckError: string | null;
     toggleWebServer: (enable: boolean) => Promise<void>;
     applyWebServerSettings: () => Promise<void>;
     copyAccessLink: () => Promise<void>;
     copyPairingLink: () => Promise<void>;
+    runWebSelfCheck: () => Promise<void>;
     cliConfig: Record<string, unknown>;
     projectCliConfig: Record<string, unknown>;
     cliConfigLoaded: boolean;
@@ -185,10 +189,14 @@
       webRestartError={panelState.webRestartError}
       mobileQrDataUrl={panelState.mobileQrDataUrl}
       mobilePairingLinkCopied={panelState.mobilePairingLinkCopied}
+      webSelfCheckRunning={panelState.webSelfCheckRunning}
+      webSelfCheckResult={panelState.webSelfCheckResult}
+      webSelfCheckError={panelState.webSelfCheckError}
       onToggleWebServer={panelState.toggleWebServer}
       onApplyWebServerSettings={panelState.applyWebServerSettings}
       onCopyAccessLink={panelState.copyAccessLink}
       onCopyPairingLink={panelState.copyPairingLink}
+      onRunWebSelfCheck={panelState.runWebSelfCheck}
     />
   {:else if tab === "shortcuts"}
     <C />

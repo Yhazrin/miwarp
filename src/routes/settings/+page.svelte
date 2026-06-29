@@ -83,6 +83,9 @@
   let webTunnelUrl = $state("");
   let mobileQrDataUrl = $state<string | null>(null);
   let mobilePairingLinkCopied = $state(false);
+  let webSelfCheckRunning = $state(false);
+  let webSelfCheckResult = $state<string | null>(null);
+  let webSelfCheckError = $state<string | null>(null);
 
   let cliConfig = $state<Record<string, unknown>>({});
   let projectCliConfig = $state<Record<string, unknown>>({});
@@ -441,6 +444,81 @@
     setTimeout(() => (mobilePairingLinkCopied = false), 1500);
   }
 
+  function buildLocalUrl(path: string): string | null {
+    if (!webStatus?.running) return null;
+    const bind = webStatus.bind;
+    const isAll = bind === "0.0.0.0" || bind === "::" || bind === "[::]";
+    const rawHost = isAll ? "localhost" : bind;
+    const host = rawHost.includes(":") ? `[${rawHost}]` : rawHost;
+    return `http://${host}:${webStatus.port}${path}`;
+  }
+
+  async function runWebSelfCheck() {
+    if (!webStatus?.running) {
+      webSelfCheckError = t("settings_general_webSelfCheckDisabled");
+      return;
+    }
+    webSelfCheckRunning = true;
+    webSelfCheckError = null;
+    webSelfCheckResult = null;
+    try {
+      const base = buildLocalUrl("");
+      if (!base) throw new Error("no base url");
+      const healthUrl = `${base}/health`;
+      const healthRes = await fetch(healthUrl, { method: "GET" });
+      if (!healthRes.ok) {
+        throw new Error(`HTTP ${healthRes.status}`);
+      }
+      const healthJson = (await healthRes.json()) as {
+        status?: string;
+        port?: number;
+        bind?: string;
+        mcp_endpoint?: string | null;
+      };
+      const okPrefix = t("settings_general_webSelfCheckOk");
+      const okDesc = t("settings_general_webSelfCheckOkDesc", {
+        port: String(healthJson.port ?? webStatus.port),
+        bind: String(healthJson.bind ?? webStatus.bind),
+      });
+
+      let authOk = false;
+      let authMsg = "";
+      if (webToken) {
+        try {
+          const authRes = await fetch(`${base}/auth`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: webToken }),
+          });
+          authOk = authRes.ok;
+          if (!authOk) {
+            const data = (await authRes.json().catch(() => ({}))) as { error?: string };
+            authMsg = t("settings_general_webSelfCheckAuthFail", {
+              error: data.error ?? `HTTP ${authRes.status}`,
+            });
+          } else {
+            authMsg = t("settings_general_webSelfCheckAuthOk");
+          }
+        } catch (authErr) {
+          authMsg = t("settings_general_webSelfCheckAuthFail", {
+            error: authErr instanceof Error ? authErr.message : String(authErr),
+          });
+        }
+      }
+
+      const mcpNote = healthJson.mcp_endpoint ? ` MCP=${healthJson.mcp_endpoint}` : "";
+      webSelfCheckResult = `${okPrefix}: ${okDesc} | ${authMsg}${mcpNote}`;
+      if (healthJson.status !== "ok") {
+        webSelfCheckError = t("settings_general_webSelfCheckNetErr");
+        webSelfCheckResult = null;
+      }
+    } catch (e) {
+      webSelfCheckError = `${t("settings_general_webSelfCheckNetErr")} (${e instanceof Error ? e.message : String(e)})`;
+    } finally {
+      webSelfCheckRunning = false;
+    }
+  }
+
   async function generateMobileQr(gen: number) {
     const link = buildPairingLink();
     if (!link) {
@@ -653,10 +731,20 @@
     get mobilePairingLinkCopied() {
       return mobilePairingLinkCopied;
     },
+    get webSelfCheckRunning() {
+      return webSelfCheckRunning;
+    },
+    get webSelfCheckResult() {
+      return webSelfCheckResult;
+    },
+    get webSelfCheckError() {
+      return webSelfCheckError;
+    },
     toggleWebServer,
     applyWebServerSettings,
     copyAccessLink,
     copyPairingLink,
+    runWebSelfCheck,
     get cliConfig() {
       return cliConfig;
     },
