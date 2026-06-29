@@ -2133,7 +2133,13 @@ textarea,
   pointer-events: auto;
 }
 
-/* Unfold from top center of island (below ctx pill): down + slight outward scale */
+/* Unfold from top center of island (below ctx pill): down + slight outward scale.
+   Collapse and expand share the SAME translate/scale endpoints (and the same
+   timing) so the row can interpolate smoothly in either direction. Previously
+   the collapse target was `translateY(-8px) scale(0.92)` while the expand start
+   was `translateY(-10px) scale(0.9)` — when the class flipped mid-transition
+   the browser would jump between two different "collapsed" frames and the
+   second row appeared to lag one frame behind the capsule shrink. */
 .session-island-tier2 {
   display: flex;
   align-items: center;
@@ -2151,7 +2157,7 @@ textarea,
   white-space: nowrap;
   transform-origin: top center;
   opacity: 0;
-  transform: translate3d(0, -10px, 0) scale(0.9);
+  transform: translate3d(0, -8px, 0) scale(0.94);
   transition:
     opacity var(--session-island-duration) var(--session-island-ease),
     transform var(--session-island-duration) var(--session-island-ease);
@@ -2168,7 +2174,7 @@ textarea,
 /* Collapse tier-2 visuals in parallel with row height + tier-1 width. */
 .session-island-shell.session-island-has-tier2:not(.session-island-active) .session-island-tier2 {
   opacity: 0;
-  transform: translate3d(0, -8px, 0) scale(0.92);
+  transform: translate3d(0, -8px, 0) scale(0.94);
   transition-delay: 0ms;
   transition:
     opacity var(--session-island-duration) var(--session-island-ease),

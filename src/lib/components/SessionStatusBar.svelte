@@ -569,10 +569,22 @@
     if (next) pvMenuOpen = false;
   }
 
+  // [R2-C] Probe CLI info only once per agent. The status bar mounts for
+  // every chat session, so without this dedupe each new-session mount would
+  // re-enter the $effect, re-trigger loadCliInfo, and race the welcome
+  // screen's first paint. loadCliInfo already dedupes by agent key
+  // internally, but calling it from here on every prop change still costs
+  // a tick of reactivity work — and worse, an agent switch (e.g. runtime
+  // picker change in the welcome screen) would schedule another probe that
+  // the welcome screen had already kicked off. Track the last probed agent
+  // locally so we only fire when we actually have a new agent to ask about.
+  let _lastProbedAgent: string | null = null;
   $effect(() => {
-    if (platformModels.length === 0) {
-      void loadCliInfo(false, agent);
-    }
+    const a = agent || "claude";
+    if (platformModels.length > 0) return;
+    if (_lastProbedAgent === a) return;
+    _lastProbedAgent = a;
+    void loadCliInfo(false, a);
   });
 
   function handlePvMenuOpenChange(next: boolean) {
@@ -1002,9 +1014,18 @@
   </div>
 
   {#if tier2HasContent}
-    <!-- Tier 2: title, model, process visibility, context pill (right) (omitted from layout when collapsed) -->
+    <!--
+      Tier 2: title, model, process visibility, context pill.
+      Height/width collapse is driven by the grid row (`auto 0fr` ↔ `auto 1fr`)
+      plus the --session-island-tier2-max-width custom property transition on
+      .tier-2-content. We deliberately do NOT set `min-h-0`/`min-w-0` here:
+      those would force the row to snap to 0 and let the inner shell lag one
+      frame behind the row collapse, producing the "second row disappears
+      first, width catches up later" visual. Letting the content keep its
+      intrinsic height lets the grid `0fr` track smoothly from 1fr → 0fr.
+    -->
     <div
-      class="tier-2-content flex min-h-0 min-w-0 shrink-0 items-center justify-between overflow-hidden {islandActive
+      class="tier-2-content flex shrink-0 items-center justify-between overflow-hidden {islandActive
         ? 'session-island-tier2-open border-t border-border/20'
         : 'border-0'} {statusOverlayActive ? 'opacity-0 pointer-events-none' : ''}"
     >
