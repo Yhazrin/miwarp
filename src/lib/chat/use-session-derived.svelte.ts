@@ -6,6 +6,7 @@
  * Uses Svelte 5 runes (`$state`, `$derived`) for reactivity.
  */
 
+import { untrack } from "svelte";
 import type { SessionStore } from "$lib/stores/session-store.svelte";
 import type {
   AuthOverview,
@@ -95,17 +96,35 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
   });
 
   // ── Derived: input history (most recent first) ──
+  // Cached keyed on (length + user-entry signature) so streaming deltas
+  // (which reassign store.timeline without adding/changing user entries)
+  // don't re-scan the full timeline.
 
+  let _userHistoryCache: { sig: string; result: string[] } | null = null;
   const userHistory = $derived.by(() => {
-    const tl = store.timeline;
-    const result: string[] = [];
-    for (let i = tl.length - 1; i >= 0 && result.length < 50; i--) {
-      if (tl[i].kind === "user") {
-        const content = (tl[i] as Extract<TimelineEntry, { kind: "user" }>).content;
-        result.push(sanitizePromptText(content));
+    const length = store.timeline.length;
+    return untrack(() => {
+      const tl = store.timeline;
+      let sig = `${length}`;
+      for (let i = 0; i < length; i++) {
+        const e = tl[i];
+        if (e.kind === "user") {
+          sig += `|${e.id}:${(e as Extract<TimelineEntry, { kind: "user" }>).content.length}`;
+        }
       }
-    }
-    return result;
+      if (_userHistoryCache && _userHistoryCache.sig === sig) {
+        return _userHistoryCache.result;
+      }
+      const result: string[] = [];
+      for (let i = tl.length - 1; i >= 0 && result.length < 50; i--) {
+        if (tl[i].kind === "user") {
+          const content = (tl[i] as Extract<TimelineEntry, { kind: "user" }>).content;
+          result.push(sanitizePromptText(content));
+        }
+      }
+      _userHistoryCache = { sig, result };
+      return result;
+    });
   });
 
   // ── Derived: context history for current run ──
