@@ -20,6 +20,7 @@ import {
   type AppUpdateOffer,
   type AppUpdateProgress,
 } from "$lib/utils/app-updater";
+import { appVisibility } from "$lib/stores/app-visibility.svelte";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
 export type AppUpdatePhase =
@@ -167,6 +168,10 @@ class AppUpdateCoordinator {
     const ms = readAutoCheckInterval();
     this._intervalTimer = setInterval(() => {
       if (this._destroyed) return;
+      // Idle-energy guard: background tabs / unfocused windows can't see
+      // the update banner anyway. Skip until the user comes back so
+      // hourly pings don't consume network on idle desktops.
+      if (!appVisibility.isDocumentVisible || !appVisibility.isAppFocused) return;
       if (
         this._state.phase === "idle" ||
         this._state.phase === "up_to_date" ||
