@@ -1,5 +1,6 @@
 pub mod agent;
 pub mod attention_core;
+pub mod browser;
 pub mod cli_auto_sync;
 pub mod commands;
 pub mod diagnostics;

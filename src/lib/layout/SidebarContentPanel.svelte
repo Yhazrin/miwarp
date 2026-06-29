@@ -9,6 +9,18 @@
   import type { ConversationGroup, EnrichedProjectFolder } from "$lib/utils/sidebar-groups";
   import type { PromptSearchResult, TeamSummary } from "$lib/types";
 
+  // The sidebar body components have heterogeneous prop shapes (some take
+  // snippets, some take a string, some take an object map). The bodies
+  // are lazy-loaded via `import()`, so the type system cannot statically
+  // know which component will be mounted when a branch is taken. Use
+  // `Component<any>` here, but every call site must use the EXPLICIT
+  // `<C prop={value} />` form (not the `<C {prop} />` shorthand) — Svelte
+  // 5 drops shorthand props when the target is `Component<any>`, and that
+  // silent drop surfaces as a `$$props.filteredTeams.length` TypeError
+  // on the receiver. See memory/svelte5-dynamic-component-shorthand.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type SidebarBodyComponent = Component<any>;
+
   interface Props {
     sidebarOpen: boolean;
     isChatPage: boolean;
@@ -102,9 +114,6 @@
     | "scheduled-tasks"
     | "workbench"
     | "plugins";
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  type SidebarBodyComponent = Component<any>;
 
   const BODY_LOADERS: Record<SidebarBodyId, () => Promise<{ default: SidebarBodyComponent }>> = {
     chat: () => import("$lib/layout/sidebar-bodies/ChatSidebarBody.svelte"),
@@ -219,7 +228,7 @@
       {:else if activeBodyId === "explorer"}
         <C {explorerEmptyAction} />
       {:else if activeBodyId === "teams"}
-        <svelte:component this={C} {filteredTeams} />
+        <C {filteredTeams} />
       {:else if activeBodyId === "workbench"}
         <C {onPickFolder} />
       {:else if activeBodyId === "plugins"}
