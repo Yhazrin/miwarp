@@ -39,6 +39,9 @@
 
   let mounted = $state(false);
   let pageGeneration = 0;
+  // Local generation for QR generation effect — increments every time the
+  // effect re-runs so rapid web server changes don't pile up stale QR work.
+  let qrGeneration = 0;
   const tabLoadController = new SettingsTabLoadController();
 
   let settings = $state<UserSettings | null>(null);
@@ -242,7 +245,8 @@
     if (!mounted || resolvedTab !== "devices") return;
     const _key = `${webStatus?.running}-${webStatus?.bind}-${webToken}-${webLanIp}`;
     if (webStatus?.running && webToken) {
-      void generateMobileQr(pageGeneration);
+      const gen = ++qrGeneration;
+      void generateMobileQr(pageGeneration, gen);
     } else {
       mobileQrDataUrl = null;
     }
@@ -286,6 +290,7 @@
     return () => {
       mounted = false;
       pageGeneration += 1;
+      qrGeneration += 1;
       tabLoadController.bumpGeneration();
     };
   });
@@ -519,10 +524,10 @@
     }
   }
 
-  async function generateMobileQr(gen: number) {
+  async function generateMobileQr(gen: number, qrGen: number) {
     const link = buildPairingLink();
     if (!link) {
-      if (isAlive(gen)) mobileQrDataUrl = null;
+      if (isAlive(gen) && qrGen === qrGeneration) mobileQrDataUrl = null;
       return;
     }
     try {
@@ -533,10 +538,10 @@
         color: { dark: "#e6e6e6", light: "#00000000" },
         errorCorrectionLevel: "M",
       });
-      if (isAlive(gen)) mobileQrDataUrl = dataUrl;
+      if (isAlive(gen) && qrGen === qrGeneration) mobileQrDataUrl = dataUrl;
     } catch (e) {
       dbgWarn("settings", "QR generation failed", e);
-      if (isAlive(gen)) mobileQrDataUrl = null;
+      if (isAlive(gen) && qrGen === qrGeneration) mobileQrDataUrl = null;
     }
   }
 
