@@ -1,9 +1,10 @@
 use crate::agent::spawn::build_agent_command;
 use crate::agent::stream::{run_agent, ProcessMap};
-use crate::models::{max_attachment_size, Attachment, RunEventType, RunStatus};
+use crate::models::{max_attachment_size, Attachment, BusEvent, RunEventType, RunStatus};
 use crate::storage;
 use std::fs;
-use tauri::Emitter;
+use std::sync::Arc;
+use tauri::{Emitter, Manager};
 
 fn safe_filename(name: &str) -> String {
     let cleaned: String = name
@@ -187,6 +188,25 @@ pub async fn send_chat_message(
     if let Err(e) = storage::runs::update_status(&run_id, RunStatus::Running, None, None) {
         log::warn!("[chat] failed to update status to Running: {}", e);
     }
+
+    // P0-4: mirror the session_actor contract — emit a starting RunState on
+    // the bus before we spawn the child process, so browser-mode /
+    // EventMiddleware / SessionStore observers see the same lifecycle
+    // transitions as the stream-mode path. Without this, pipe-mode UI
+    // would only learn the run started when the first delta arrives.
+    let bus_emitter = app
+        .state::<Arc<crate::web_server::broadcaster::BroadcastEmitter>>()
+        .inner()
+        .clone();
+    bus_emitter.persist_and_emit(
+        &run_id,
+        &BusEvent::RunState {
+            run_id: run_id.clone(),
+            state: "starting".to_string(),
+            exit_code: None,
+            error: None,
+        },
+    );
 
     // Build unified adapter settings
     let agent_settings = storage::settings::get_agent_settings(&run.agent);
