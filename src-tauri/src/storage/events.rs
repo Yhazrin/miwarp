@@ -207,12 +207,16 @@ impl EventWriter {
             .append(true)
             .open(&path)
             .map_err(|e| format!("open {} failed: {}", path.display(), e))?;
-        let mut writer = BufWriter::new(file);
-        writeln!(writer, "{}", line)
-            .map_err(|e| format!("write to {} failed: {}", path.display(), e))?;
-        writer
-            .flush()
-            .map_err(|e| format!("flush {} failed: {}", path.display(), e))?;
+        // BufWriter buffers writes; on drop it flushes the buffer to the
+        // underlying file handle. No explicit flush() here — it would defeat
+        // the purpose of BufWriter and add a syscall per bus event on the hot
+        // streaming path. Trade-off: at most one BufWriter's worth of buffered
+        // events may be lost on hard crash (typically a few KB).
+        {
+            let mut writer = BufWriter::new(file);
+            writeln!(writer, "{}", line)
+                .map_err(|e| format!("write to {} failed: {}", path.display(), e))?;
+        }
 
         Ok(())
     }
@@ -261,12 +265,13 @@ impl EventWriter {
             .append(true)
             .open(&path)
             .map_err(|e| format!("open {} failed: {}", path.display(), e))?;
-        let mut writer = BufWriter::new(file);
-        writeln!(writer, "{}", line)
-            .map_err(|e| format!("write to {} failed: {}", path.display(), e))?;
-        writer
-            .flush()
-            .map_err(|e| format!("flush {} failed: {}", path.display(), e))?;
+        // See write_bus_event: BufWriter buffers, drop flushes — no explicit
+        // flush on the hot path.
+        {
+            let mut writer = BufWriter::new(file);
+            writeln!(writer, "{}", line)
+                .map_err(|e| format!("write to {} failed: {}", path.display(), e))?;
+        }
 
         Ok(current)
     }

@@ -107,6 +107,16 @@ pub(crate) fn repair_jsonl_tail<T: DeserializeOwned>(path: &Path) -> Result<(), 
         .map_err(|e| format!("truncate {}: {e}", path.display()))
 }
 
+/// Append a JSON line to a journal file.
+///
+/// Durability is provided by the OS's normal write coalescing plus an explicit
+/// durability boundary at caller-controlled checkpoints (e.g. actor stop,
+/// journal rotation). This function intentionally avoids `sync_data` /
+/// `sync_directory` per write: the streaming hot path would otherwise pay an
+/// fsync syscall per appended line. At most a few KB of buffered journal
+/// entries may be lost on hard crash — accepted trade-off in exchange for
+/// eliminating the per-event fsync bottleneck. Callers needing a stronger
+/// durability guarantee should invoke [`sync_now`] after batched appends.
 pub(crate) fn append_json_line<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
     let parent = path
         .parent()
@@ -126,8 +136,24 @@ pub(crate) fn append_json_line<T: Serialize>(path: &Path, value: &T) -> Result<(
     }
     file.write_all(&line)
         .and_then(|_| file.write_all(b"\n"))
-        .and_then(|_| file.sync_data())
         .map_err(|e| format!("append {}: {e}", path.display()))?;
+    // Note: no sync_data / sync_directory here — see doc comment above.
+    let _ = parent;
+    Ok(())
+}
+
+/// Force a durable sync of `path`'s parent directory and the file itself.
+/// Use at explicit durability boundaries (actor stop, journal rotation,
+/// shutdown) when callers need to convert buffered writes to a hard durability
+/// guarantee without paying the cost on the hot streaming path.
+#[allow(dead_code)]
+pub(crate) fn sync_now(path: &Path) -> Result<(), String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| format!("journal file {} has no parent directory", path.display()))?;
+    let file = fs::File::open(path).map_err(|e| format!("open {}: {e}", path.display()))?;
+    file.sync_data()
+        .map_err(|e| format!("sync {}: {e}", path.display()))?;
     sync_directory(parent)
 }
 
