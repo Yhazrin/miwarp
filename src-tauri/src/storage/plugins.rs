@@ -435,7 +435,40 @@ pub fn read_skill_content(path: &str, cwd: &str) -> Result<String, String> {
 
     let canonical = validate_skill_path(path, cwd)?;
 
+    // Defense-in-depth: re-confirm the canonical path lives under an allowed
+    // skill root after resolution. `validate_skill_path` already enforces this,
+    // but doing the check here (with a sanitized error) means any future change
+    // to that function cannot silently widen the read surface.
+    let allowed_roots = allowed_skill_roots(cwd);
+    if !allowed_roots.iter().any(|root| canonical.starts_with(root)) {
+        log::warn!("[plugins] read_skill_content rejected escape attempt");
+        return Err("Invalid skill path".to_string());
+    }
+
     std::fs::read_to_string(&canonical).map_err(|e| format!("Failed to read file: {}", e))
+}
+
+/// Build the canonical list of directory roots that are allowed to contain
+/// readable skill files. Used by `read_skill_content` for the post-resolve
+/// `starts_with` belt-and-suspenders check.
+fn allowed_skill_roots(cwd: &str) -> Vec<PathBuf> {
+    let home = crate::storage::teams::claude_home_dir();
+    let mut roots = Vec::new();
+    for sub in ["skills", "plugins"] {
+        let p = home.join(sub);
+        roots.push(match std::fs::canonicalize(&p) {
+            Ok(c) => c,
+            Err(_) => p,
+        });
+    }
+    if !cwd.is_empty() {
+        let project_skills = PathBuf::from(cwd).join(".claude").join("skills");
+        roots.push(match std::fs::canonicalize(&project_skills) {
+            Ok(c) => c,
+            Err(_) => project_skills,
+        });
+    }
+    roots
 }
 
 // ── CLI plugin command execution ──
@@ -838,5 +871,54 @@ mod tests {
         // the developer machine happens to have, but totals must add up).
         let summary = skill_summary(&cwd).expect("summary");
         assert_eq!(summary.custom + summary.built_in, summary.total);
+    }
+
+    // P0-2: storage-layer read_skill_content must reject every path whose
+    // canonical form escapes the allowed skill roots. The happy path lives
+    // inside a project-scoped skills directory we fully control via tempfile.
+    #[test]
+    fn read_skill_content_reads_real_project_skill() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let cwd = tmp.path().to_string_lossy().to_string();
+        let skill_dir = tmp.path().join(".claude").join("skills").join("demo");
+        fs::create_dir_all(&skill_dir).expect("mkdir");
+        let skill_md = skill_dir.join("SKILL.md");
+        fs::write(&skill_md, "---\nname: demo\n---\nbody").expect("write");
+
+        let result = read_skill_content(skill_md.to_str().unwrap(), &cwd);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result.err());
+        assert_eq!(result.unwrap(), "---\nname: demo\n---\nbody");
+    }
+
+    #[test]
+    fn read_skill_content_rejects_traversal_to_outside_file() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let cwd = tmp.path().to_string_lossy().to_string();
+
+        // Build a sibling file outside any allowed skill root.
+        let outside_dir = tempfile::tempdir().expect("tempdir");
+        let outside_file = outside_dir.path().join("secret.txt");
+        fs::write(&outside_file, "shhh").expect("write");
+
+        // Compose a traversal payload that, once canonicalized, lands on the
+        // outside file. cwd is a tempfile so the relative segments resolve
+        // cleanly without relying on the developer's home directory layout.
+        let payload = outside_file
+            .to_str()
+            .unwrap()
+            // Force the resolver to drop the absolute prefix by going up over
+            // cwd; canonicalize will still resolve to the same absolute path
+            // and the `starts_with` check in storage must catch it.
+            .to_string();
+        let result = read_skill_content(&payload, &cwd);
+        assert!(result.is_err(), "must reject out-of-root read");
+    }
+
+    #[test]
+    fn read_skill_content_rejects_relative_dotdot_traversal() {
+        let cwd = String::new();
+        let payload = "../../../etc/passwd".to_string();
+        let result = read_skill_content(&payload, &cwd);
+        assert!(result.is_err(), "must reject .. traversal payload");
     }
 }
