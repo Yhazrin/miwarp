@@ -242,6 +242,7 @@ pub fn run() {
             commands::runs::list_prompt_favorites,
             commands::runs::list_prompt_tags,
             commands::chat::send_chat_message,
+            commands::chat::get_tool_result,
             commands::events::get_run_events,
             commands::artifacts::get_run_artifacts,
             commands::settings::get_user_settings,

@@ -47,7 +47,7 @@ pub fn is_replayable(event: &BusEvent) -> bool {
     REPLAY_TYPES.contains(&tag)
 }
 
-fn events_path(run_id: &str) -> std::path::PathBuf {
+pub fn events_path(run_id: &str) -> std::path::PathBuf {
     super::run_dir(run_id).join("events.jsonl")
 }
 
