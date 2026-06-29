@@ -411,20 +411,23 @@ pub fn get_state(
     // `commands::chat::send_chat_message` can call get_state before
     // any record_* mutation without an extra round-trip.
     let _ = get_or_init(run_id)?;
-    let result = with_lock(run_id, |run_dir| -> Result<Option<ClientMessageState>, String> {
-        let snapshot = get_raw_in(run_dir)
-            .ok_or_else(|| format!("run journal snapshot unavailable for {run_id}"))?;
-        if let Some(state) = lookup_state(run_dir, &snapshot, client_message_id) {
-            return Ok(Some(state));
-        }
-        if snapshot.journal_degraded {
-            return Err(format!(
+    let result = with_lock(
+        run_id,
+        |run_dir| -> Result<Option<ClientMessageState>, String> {
+            let snapshot = get_raw_in(run_dir)
+                .ok_or_else(|| format!("run journal snapshot unavailable for {run_id}"))?;
+            if let Some(state) = lookup_state(run_dir, &snapshot, client_message_id) {
+                return Ok(Some(state));
+            }
+            if snapshot.journal_degraded {
+                return Err(format!(
                 "run journal is degraded and cannot prove whether client_message_id={client_message_id} was accepted: {}",
                 snapshot.recovery_assessment.reason
             ));
-        }
-        Ok(None)
-    });
+            }
+            Ok(None)
+        },
+    );
     if let Err(error) = &result {
         log::debug!("[run-journal] get_state failed for run_id={run_id}: {error}");
     }
@@ -454,9 +457,8 @@ pub fn record_prepared(
 ) -> Result<(), String> {
     validate_client_message_id(client_message_id)?;
     let result = with_lock(run_id, |run_dir| -> Result<(), String> {
-        let mut snapshot = get_raw_in(run_dir).ok_or_else(|| {
-            format!("run journal missing for {run_id}; call get_or_init first")
-        })?;
+        let mut snapshot = get_raw_in(run_dir)
+            .ok_or_else(|| format!("run journal missing for {run_id}; call get_or_init first"))?;
         if let Some(existing) = lookup_state(run_dir, &snapshot, client_message_id) {
             // The cid already has a recorded state — refuse to
             // overwrite. The chat command uses get_state() *first*
@@ -501,9 +503,8 @@ pub fn record_prepared(
 pub fn record_dispatched(run_id: &str, client_message_id: &str) -> Result<(), String> {
     validate_client_message_id(client_message_id)?;
     let result = with_lock(run_id, |run_dir| -> Result<(), String> {
-        let mut snapshot = get_raw_in(run_dir).ok_or_else(|| {
-            format!("run journal missing for {run_id}; call get_or_init first")
-        })?;
+        let mut snapshot = get_raw_in(run_dir)
+            .ok_or_else(|| format!("run journal missing for {run_id}; call get_or_init first"))?;
         let current = lookup_state(run_dir, &snapshot, client_message_id);
         match current {
             Some(ClientMessageState::Prepared) => {}
@@ -571,13 +572,14 @@ pub fn record_terminal(
     validate_client_message_id(client_message_id)?;
     let reason_label = reason.as_str();
     let result = with_lock(run_id, |run_dir| -> Result<(), String> {
-        let mut snapshot = get_raw_in(run_dir).ok_or_else(|| {
-            format!("run journal missing for {run_id}; call get_or_init first")
-        })?;
+        let mut snapshot = get_raw_in(run_dir)
+            .ok_or_else(|| format!("run journal missing for {run_id}; call get_or_init first"))?;
         let kind = RunJournalEventKind::UserMessageStateChanged {
             client_message_id: client_message_id.to_string(),
             preview: None,
-            state: ClientMessageState::Terminal { reason: reason.clone() },
+            state: ClientMessageState::Terminal {
+                reason: reason.clone(),
+            },
         };
         match commit_mutation(run_dir, &mut snapshot, kind, now_iso()) {
             Ok(ApplyOutcome::Changed) | Ok(ApplyOutcome::NoOp) => {
@@ -661,10 +663,7 @@ pub fn is_dispatched(run_id: &str, client_message_id: &str) -> bool {
 /// Surface the `is_terminal_client_message` snapshot helper
 /// alongside the journal API so callers don't need a direct
 /// dependency on `run_core::apply`.
-pub fn snapshot_is_terminal(
-    snapshot: &RunJournalSnapshot,
-    client_message_id: &str,
-) -> bool {
+pub fn snapshot_is_terminal(snapshot: &RunJournalSnapshot, client_message_id: &str) -> bool {
     is_terminal_client_message(snapshot, client_message_id)
 }
 

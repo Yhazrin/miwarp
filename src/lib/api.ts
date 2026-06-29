@@ -667,11 +667,9 @@ export async function readFileBase64(
  * a grant for one file cannot be used to read another.
  */
 export async function issueDropGrant(paths: string[]): Promise<string> {
-  return perfMarkAsync(
-    "ipc-issueDropGrant",
-    () => invoke<string>("issue_drop_grant", { paths }),
-    { count: paths.length },
-  );
+  return perfMarkAsync("ipc-issueDropGrant", () => invoke<string>("issue_drop_grant", { paths }), {
+    count: paths.length,
+  });
 }
 
 export interface MediaArtifactMetadata {

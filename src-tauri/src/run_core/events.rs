@@ -1,6 +1,6 @@
 use super::{
-    ClientMessageState, PendingApproval, RecoveryAssessmentKind, RunActionRecord,
-    RunActionStatus, RunCheckpoint, RunStage,
+    ClientMessageState, PendingApproval, RecoveryAssessmentKind, RunActionRecord, RunActionStatus,
+    RunCheckpoint, RunStage,
 };
 use serde::{Deserialize, Serialize};
 

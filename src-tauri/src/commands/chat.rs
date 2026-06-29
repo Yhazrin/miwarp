@@ -325,9 +325,7 @@ pub async fn send_chat_message(
     // warning then spawn anyway" left the ledger out of sync with the
     // spawn and was the root cause of the v1.1.0 retention regression.
     if let Some(ref cid) = client_message_id {
-        if let Err(error) =
-            storage::run_journal::record_prepared(&run_id, cid, Some(&message))
-        {
+        if let Err(error) = storage::run_journal::record_prepared(&run_id, cid, Some(&message)) {
             log::error!(
                 "[chat] P0-3 record_prepared failed for client_message_id={}: refusing to spawn",
                 cid
@@ -365,9 +363,7 @@ pub async fn send_chat_message(
     // we want retries to surface so the frontend never silently
     // double-spawns.
     if let Some(ref cid) = cid_for_dispatched {
-        if let Err(error) =
-            storage::run_journal::record_dispatched(&run_id_for_dispatched, cid)
-        {
+        if let Err(error) = storage::run_journal::record_dispatched(&run_id_for_dispatched, cid) {
             // A failure here means the journal is degraded; surface
             // it as a typed error instead of silently swallowing.
             log::error!(

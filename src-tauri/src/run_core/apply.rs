@@ -531,10 +531,7 @@ pub fn lookup_client_message_state(
 /// True when the snapshot already has the cid in a `Terminal` state.
 /// Used by the chat command to refuse idempotent re-spawns even when
 /// the legacy `is_message_accepted` would have answered `true`.
-pub fn is_terminal_client_message(
-    snapshot: &RunJournalSnapshot,
-    client_message_id: &str,
-) -> bool {
+pub fn is_terminal_client_message(snapshot: &RunJournalSnapshot, client_message_id: &str) -> bool {
     matches!(
         lookup_client_message_state(snapshot, client_message_id),
         Some(ClientMessageState::Terminal { .. })

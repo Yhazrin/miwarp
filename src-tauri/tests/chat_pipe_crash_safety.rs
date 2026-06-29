@@ -27,7 +27,9 @@
 //! Run with:
 //!   cargo test --test chat_pipe_crash_safety --manifest-path src-tauri/Cargo.toml
 
-use miwarp_desktop_lib::run_core::{ClientMessageState, TerminalReason, AMBIGUOUS_ACCEPTANCE_PREFIX};
+use miwarp_desktop_lib::run_core::{
+    ClientMessageState, TerminalReason, AMBIGUOUS_ACCEPTANCE_PREFIX,
+};
 use miwarp_desktop_lib::storage::run_journal::{
     get_or_init, get_state, is_dispatched, is_terminal, record_dispatched, record_prepared,
     record_terminal,
@@ -158,7 +160,10 @@ fn spawn_failure_records_terminal_spawn_failed() {
         Some(ClientMessageState::Terminal {
             reason: TerminalReason::SpawnFailed { message },
         }) => {
-            assert_eq!(message, spawn_error, "spawn-failure message must round-trip");
+            assert_eq!(
+                message, spawn_error,
+                "spawn-failure message must round-trip"
+            );
         }
         other => panic!("expected Terminal(SpawnFailed) after spawn failure, got {other:?}"),
     }
@@ -326,9 +331,9 @@ fn journal_event_log_replays_state_machine() {
             miwarp_desktop_lib::run_core::RunJournalEventKind::UserMessageAccepted { .. } => {
                 "accepted"
             }
-            miwarp_desktop_lib::run_core::RunJournalEventKind::UserMessageStateChanged { .. } => {
-                "state_changed"
-            }
+            miwarp_desktop_lib::run_core::RunJournalEventKind::UserMessageStateChanged {
+                ..
+            } => "state_changed",
             _ => "other",
         })
         .collect();
@@ -336,11 +341,7 @@ fn journal_event_log_replays_state_machine() {
     // bootstraps with that), followed by the P0-3 prepared +
     // state_changed transitions. We assert the cid-relevant prefix
     // rather than the full sequence.
-    let cid_relevant: Vec<&str> = kinds
-        .iter()
-        .copied()
-        .filter(|k| *k != "other")
-        .collect();
+    let cid_relevant: Vec<&str> = kinds.iter().copied().filter(|k| *k != "other").collect();
     assert_eq!(
         cid_relevant,
         vec!["prepared", "state_changed", "state_changed"],

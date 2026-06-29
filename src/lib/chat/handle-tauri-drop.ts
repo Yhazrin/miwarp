@@ -99,11 +99,7 @@ export async function handleTauriDrop(
     const fileResults = await mapSettled(
       fileEntries,
       async ({ p, name }) => {
-        const [base64, mime] = await api.readFileBase64(
-          p,
-          undefined,
-          dropGrantId ?? undefined,
-        );
+        const [base64, mime] = await api.readFileBase64(p, undefined, dropGrantId ?? undefined);
         const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
         return { file: new File([bytes], name, { type: mime }), name, mime, size: bytes.length };
       },

@@ -511,10 +511,7 @@ mod tests {
                     .push(delta.text.clone());
             };
             let mut bus_cb = |ev: &BusEvent| {
-                self.bus_event_types
-                    .lock()
-                    .unwrap()
-                    .push(variant_label(ev));
+                self.bus_event_types.lock().unwrap().push(variant_label(ev));
             };
             let mut persist_cb = |ev: &BusEvent| {
                 self.persist_emit_types

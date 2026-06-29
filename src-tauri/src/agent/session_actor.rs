@@ -3104,8 +3104,9 @@ impl SessionActor {
                     // now correctly reports `stopped`; a natural EOF
                     // followed by a parse error reports `crashed`.
                     match self.last_stop_reason {
-                        Some(ActorStopReason::UserRequested)
-                        | Some(ActorStopReason::Cancelled) => "stopped",
+                        Some(ActorStopReason::UserRequested) | Some(ActorStopReason::Cancelled) => {
+                            "stopped"
+                        }
                         _ => "crashed",
                     },
                     RecoveryState::Healthy,
@@ -3718,7 +3719,9 @@ mod tests {
         // Receiver side: consume the typed Result. If the channel were
         // ever changed to `bool`, this line would not compile because
         // `bool: TryInto<ActorStopReason>` does not exist.
-        let received = rx.blocking_recv().expect("reply channel must yield a value");
+        let received = rx
+            .blocking_recv()
+            .expect("reply channel must yield a value");
         assert_eq!(received.unwrap(), super::ActorStopReason::UserRequested);
     }
 }
