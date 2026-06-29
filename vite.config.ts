@@ -21,6 +21,18 @@ export default defineConfig({
           if (id.includes("node_modules/@codemirror") || id.includes("node_modules/@lezer"))
             return "codemirror-vendor";
           if (id.includes("node_modules/@xterm")) return "xterm-vendor";
+          // Heavy vendor modules: pin each into its own chunk so the entry chunk and
+          // page chunks stay slim. Without these rules, marked/mermaid/vega/diff get
+          // duplicated across every consumer and inflate the initial download.
+          if (id.includes("node_modules/highlight.js")) return "vendor-hljs";
+          if (id.includes("node_modules/marked")) return "vendor-marked";
+          if (id.includes("node_modules/mermaid")) return "vendor-mermaid";
+          if (id.includes("node_modules/dompurify")) return "vendor-dompurify";
+          if (id.includes("node_modules/vega")) return "vendor-vega";
+          if (id.includes("node_modules/exceljs")) return "vendor-exceljs";
+          if (id.includes("node_modules/mammoth")) return "vendor-fileconvert";
+          if (id.includes("node_modules/turndown")) return "vendor-fileconvert";
+          if (id.includes("node_modules/diff/")) return "vendor-diff";
         },
       },
     },
