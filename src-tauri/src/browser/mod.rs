@@ -8,9 +8,16 @@ pub mod cdp_client;
 pub mod chrome_process;
 pub mod profile_manager;
 pub mod runtime_registry;
+pub mod webview_runtime;
+
+#[cfg(test)]
+mod integration_test;
 
 // 重新导出核心类型
 pub use cdp_client::{CdpClient, CdpEvent};
 pub use chrome_process::ChromeProcess;
 pub use profile_manager::{BrowserProfile, ProfileManager};
-pub use runtime_registry::{BrowserAction, BrowserRuntime, BrowserRuntimeRegistry, BrowserSession};
+pub use runtime_registry::{
+    BrowserAction, BrowserObservation, BrowserRuntime, BrowserRuntimeRegistry, BrowserSession,
+    BrowserTab, InteractiveElement, Viewport,
+};

@@ -39,6 +39,19 @@ const SUPPORTED_COMMANDS: &[&str] = &[
     "browser_navigate",
     "browser_screenshot",
     "browser_get_dom",
+    "browser_runtime_list_profiles",
+    "browser_runtime_create_profile",
+    "browser_runtime_get_profile",
+    "browser_runtime_delete_profile",
+    "browser_runtime_launch_profile",
+    "browser_runtime_list_sessions",
+    "browser_runtime_get_session",
+    "browser_runtime_list_tabs",
+    "browser_runtime_observe",
+    "browser_runtime_navigate",
+    "browser_runtime_perform",
+    "browser_runtime_close_session",
+    "browser_runtime_list_runtimes",
 ];
 
 #[derive(Debug, Clone, Serialize)]

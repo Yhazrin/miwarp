@@ -129,6 +129,10 @@ impl ChromeProcess {
         let mut args = vec![
             format!("--user-data-dir={}", config.user_data_dir.display()),
             format!("--remote-debugging-port={}", debugging_port),
+            // Chrome ≥111 blocks remote CDP unless the origin is allow-listed;
+            // * is acceptable because we control the launch and never serve
+            // this port outside 127.0.0.1.
+            "--remote-allow-origins=*".to_string(),
             "--no-first-run".to_string(),
             "--no-default-browser-check".to_string(),
             "--disable-background-networking".to_string(),

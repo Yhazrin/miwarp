@@ -1,66 +1,45 @@
 /**
  * Browser Runtime Store - Svelte 5 状态管理
  *
- * 管理浏览器运行时的全局状态
+ * 管理浏览器运行时的全局状态。所有 Tauri 通信经过 `src/lib/api/browser-runtime.ts`，
+ * 当前活跃 session 的 `sessionId` 保留在 store 里，让 BrowserPanel 不必每次
+ * 显式传 sessionId。
  */
 
-export interface BrowserProfile {
-  id: string;
-  name: string;
-  engine: "chrome" | "webview";
-  dataDirectory: string;
-  createdAt: string;
-  lastUsedAt: string | null;
-}
+import {
+  type BrowserActionDto,
+  type BrowserObservationDto,
+  type BrowserProfileDto,
+  type BrowserSessionDto,
+  type BrowserTabDto,
+  type BrowserEngine,
+  closeBrowserSession,
+  createBrowserProfile,
+  deleteBrowserProfile,
+  launchBrowserProfile,
+  listBrowserProfiles,
+  listBrowserSessions,
+  listBrowserTabs,
+  navigateBrowserTab,
+  observeBrowserTab,
+  performBrowserAction,
+} from "$lib/api/browser-runtime";
 
-export interface BrowserSession {
-  sessionId: string;
-  profileId: string;
-  engine: string;
-  debuggingUrl: string;
-  createdAt: string;
-  tabs: BrowserTab[];
-}
+export type {
+  BrowserActionDto as BrowserAction,
+  BrowserObservationDto as BrowserObservation,
+  BrowserProfileDto as BrowserProfile,
+  BrowserSessionDto as BrowserSession,
+  BrowserTabDto as BrowserTab,
+  BrowserEngine,
+};
 
-export interface BrowserTab {
-  targetId: string;
-  url: string;
-  title: string;
-  attached: boolean;
-}
-
-export interface BrowserObservation {
-  url: string;
-  title: string;
-  visibleText: string;
-  screenshot: string | null;
-  viewport: { width: number; height: number };
-  interactiveElements: InteractiveElement[];
-}
-
-export interface InteractiveElement {
-  refId: string;
-  role: string;
-  name: string;
-  bounds: [number, number, number, number];
-}
-
-export type BrowserAction =
-  | { type: "Click"; x: number; y: number }
-  | { type: "Type"; text: string }
-  | { type: "Scroll"; deltaX: number; deltaY: number }
-  | { type: "Navigate"; url: string }
-  | { type: "GoBack" }
-  | { type: "GoForward" }
-  | { type: "Refresh" }
-  | { type: "Close" };
-
-// 内部状态包装，避免在 $state 中直接使用 const
 interface StoreState {
-  profiles: BrowserProfile[];
-  sessions: BrowserSession[];
-  currentSession: BrowserSession | null;
-  currentObservation: BrowserObservation | null;
+  profiles: BrowserProfileDto[];
+  sessions: BrowserSessionDto[];
+  currentSessionId: string | null;
+  currentTabId: string | null;
+  currentObservation: BrowserObservationDto | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -69,72 +48,123 @@ export function createBrowserRuntimeStore() {
   const state = $state<StoreState>({
     profiles: [],
     sessions: [],
-    currentSession: null,
+    currentSessionId: null,
+    currentTabId: null,
     currentObservation: null,
     isLoading: false,
     error: null,
   });
 
+  function setError(message: string) {
+    state.error = message;
+  }
+
+  function clearError() {
+    state.error = null;
+  }
+
   async function loadProfiles() {
     state.isLoading = true;
-    state.error = null;
+    clearError();
     try {
-      // TODO: 调用Tauri命令
-      console.log("[browser] loadProfiles - TODO");
+      state.profiles = await listBrowserProfiles();
     } catch (e) {
-      state.error = String(e);
+      setError(String(e));
     } finally {
       state.isLoading = false;
     }
   }
 
-  async function createProfile(name: string, engine: "chrome" | "webview") {
+  async function createProfile(name: string, engine: BrowserEngine) {
     state.isLoading = true;
-    state.error = null;
+    clearError();
     try {
-      console.log("[browser] createProfile - TODO");
-      return null;
+      const profile = await createBrowserProfile(name, engine);
+      state.profiles = [...state.profiles, profile];
+      return profile;
     } catch (e) {
-      state.error = String(e);
+      setError(String(e));
       throw e;
     } finally {
       state.isLoading = false;
     }
   }
 
-  async function launchProfile(profileId: string) {
-    state.isLoading = true;
-    state.error = null;
+  async function deleteProfile(profileId: string) {
+    clearError();
     try {
-      console.log("[browser] launchProfile - TODO");
-      return null;
+      await deleteBrowserProfile(profileId);
+      state.profiles = state.profiles.filter((p) => p.id !== profileId);
     } catch (e) {
-      state.error = String(e);
+      setError(String(e));
+      throw e;
+    }
+  }
+
+  async function launchProfile(profileId: string, runtimeName?: string) {
+    state.isLoading = true;
+    clearError();
+    try {
+      const session = await launchBrowserProfile(profileId, runtimeName);
+      state.sessions = [...state.sessions, session];
+      state.currentSessionId = session.sessionId;
+      state.currentTabId = session.tabs[0]?.targetId ?? null;
+      state.currentObservation = null;
+      return session;
+    } catch (e) {
+      setError(String(e));
       throw e;
     } finally {
       state.isLoading = false;
     }
   }
 
-  async function listTabs(sessionId: string) {
-    state.error = null;
+  async function refreshSessions() {
+    clearError();
     try {
-      console.log("[browser] listTabs - TODO");
-      return [];
+      state.sessions = await listBrowserSessions();
+      // If current session no longer exists, drop it.
+      if (
+        state.currentSessionId &&
+        !state.sessions.some((s) => s.sessionId === state.currentSessionId)
+      ) {
+        state.currentSessionId = null;
+        state.currentTabId = null;
+        state.currentObservation = null;
+      }
     } catch (e) {
-      state.error = String(e);
+      setError(String(e));
       throw e;
     }
   }
 
-  async function observe(tabId: string) {
-    state.isLoading = true;
-    state.error = null;
+  async function listTabs(sessionId: string): Promise<BrowserTabDto[]> {
+    clearError();
     try {
-      console.log("[browser] observe - TODO");
-      return null;
+      return await listBrowserTabs(sessionId);
     } catch (e) {
-      state.error = String(e);
+      setError(String(e));
+      throw e;
+    }
+  }
+
+  async function selectTab(tabId: string) {
+    state.currentTabId = tabId;
+    state.currentObservation = null;
+  }
+
+  async function observe(tabId?: string) {
+    const sessionId = state.currentSessionId;
+    const effectiveTabId = tabId ?? state.currentTabId;
+    if (!sessionId || !effectiveTabId) return null;
+    state.isLoading = true;
+    clearError();
+    try {
+      const observation = await observeBrowserTab(sessionId, effectiveTabId);
+      state.currentObservation = observation;
+      return observation;
+    } catch (e) {
+      setError(String(e));
       throw e;
     } finally {
       state.isLoading = false;
@@ -142,31 +172,45 @@ export function createBrowserRuntimeStore() {
   }
 
   async function navigate(tabId: string, url: string) {
-    state.error = null;
+    const sessionId = state.currentSessionId;
+    if (!sessionId) return;
+    clearError();
     try {
-      console.log("[browser] navigate - TODO");
+      await navigateBrowserTab(sessionId, tabId, url);
+      state.currentTabId = tabId;
     } catch (e) {
-      state.error = String(e);
+      setError(String(e));
       throw e;
     }
   }
 
-  async function perform(action: BrowserAction) {
-    state.error = null;
+  async function perform(action: BrowserActionDto) {
+    const sessionId = state.currentSessionId;
+    const tabId = state.currentTabId;
+    if (!sessionId || !tabId) return;
+    clearError();
     try {
-      console.log("[browser] perform - TODO", action);
+      await performBrowserAction(sessionId, tabId, action);
     } catch (e) {
-      state.error = String(e);
+      setError(String(e));
       throw e;
     }
   }
 
-  async function closeSession(sessionId: string) {
-    state.error = null;
+  async function closeSession(sessionId?: string) {
+    const target = sessionId ?? state.currentSessionId;
+    if (!target) return;
+    clearError();
     try {
-      console.log("[browser] closeSession - TODO");
+      await closeBrowserSession(target);
+      state.sessions = state.sessions.filter((s) => s.sessionId !== target);
+      if (state.currentSessionId === target) {
+        state.currentSessionId = null;
+        state.currentTabId = null;
+        state.currentObservation = null;
+      }
     } catch (e) {
-      state.error = String(e);
+      setError(String(e));
       throw e;
     }
   }
@@ -178,8 +222,15 @@ export function createBrowserRuntimeStore() {
     get sessions() {
       return state.sessions;
     },
-    get currentSession() {
-      return state.currentSession;
+    get currentSessionId() {
+      return state.currentSessionId;
+    },
+    get currentTabId() {
+      return state.currentTabId;
+    },
+    /** Backwards-compat: return the live session object (or null). */
+    get currentSession(): BrowserSessionDto | null {
+      return state.sessions.find((s) => s.sessionId === state.currentSessionId) ?? null;
     },
     get currentObservation() {
       return state.currentObservation;
@@ -192,8 +243,11 @@ export function createBrowserRuntimeStore() {
     },
     loadProfiles,
     createProfile,
+    deleteProfile,
     launchProfile,
+    refreshSessions,
     listTabs,
+    selectTab,
     observe,
     navigate,
     perform,

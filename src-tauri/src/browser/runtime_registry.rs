@@ -11,7 +11,7 @@ use tokio::sync::RwLock;
 
 use super::cdp_client::CdpClient;
 use super::chrome_process::{ChromeConfig, ChromeProcess};
-use super::profile_manager::{BrowserProfile, ProfileManager};
+use super::profile_manager::ProfileManager;
 
 /// Browser Runtime trait - 统一的运行时接口
 #[async_trait]
@@ -98,12 +98,171 @@ pub enum BrowserAction {
 struct ChromeRuntime {
     profile_manager: Arc<ProfileManager>,
     active_sessions: RwLock<HashMap<String, ChromeSession>>,
+    /// Last target that `observe()` attached to. Drives Phase 2
+    /// `perform(Click|Type|Scroll|GoBack|...)` so the trait signature
+    /// does not need per-action tab context.
+    last_target: RwLock<Option<(String, String)>>,
 }
 
 struct ChromeSession {
     session: BrowserSession,
     chrome_process: ChromeProcess,
     cdp_client: Arc<CdpClient>,
+}
+
+impl ChromeRuntime {
+    /// Locate the CDP client whose session hosts the given target_id.
+    /// The read lock is released before any await so callers can chain
+    /// additional ChromeRuntime state mutations afterwards.
+    async fn cdp_client_for_target(&self, target_id: &str) -> Result<Arc<CdpClient>, String> {
+        let client = {
+            let sessions = self.active_sessions.read().await;
+            let chrome_session = sessions
+                .values()
+                .find(|s| s.session.tabs.iter().any(|t| t.target_id == target_id))
+                .ok_or_else(|| format!("Tab not found: {target_id}"))?;
+            chrome_session.cdp_client.clone()
+        };
+        Ok(client)
+    }
+
+    /// Get the active target id stored by the most recent `observe()` call.
+    /// Returns a (CdpClient, target_id, browser-session-id) triple bound
+    /// to a fresh attached CDP session.
+    async fn active_cdp_context(&self) -> Result<(Arc<CdpClient>, String, String), String> {
+        let (session_id, target_id) = {
+            let last = self.last_target.read().await;
+            last.clone()
+                .ok_or_else(|| "No active tab: observe() must be called first".to_string())?
+        };
+        let cdp = self.cdp_client_for_target(&target_id).await?;
+        Ok((cdp, target_id, session_id))
+    }
+
+    /// Attach to the active target — needed because CDP commands like
+    /// `Input.dispatchMouseEvent` must go through a per-target session
+    /// (not the browser-level session).
+    async fn attach_active(&self) -> Result<(Arc<CdpClient>, String), String> {
+        let (cdp, target_id, _) = self.active_cdp_context().await?;
+        let cdp_session_id = cdp.attach_to_target(&target_id).await?;
+        Ok((cdp, cdp_session_id))
+    }
+
+    // ── Phase 2 dispatchers ─────────────────────────────────────────────
+
+    async fn dispatch_click(&self, x: f64, y: f64) -> Result<(), String> {
+        let (cdp, cdp_session) = self.attach_active().await?;
+        cdp.send_command_to_session(
+            &cdp_session,
+            "Input.dispatchMouseEvent",
+            serde_json::json!({
+                "type": "mousePressed",
+                "x": x,
+                "y": y,
+                "button": "left",
+                "buttons": 1,
+                "clickCount": 1
+            }),
+        )
+        .await?;
+        cdp.send_command_to_session(
+            &cdp_session,
+            "Input.dispatchMouseEvent",
+            serde_json::json!({
+                "type": "mouseReleased",
+                "x": x,
+                "y": y,
+                "button": "left",
+                "buttons": 0,
+                "clickCount": 1
+            }),
+        )
+        .await?;
+        Ok(())
+    }
+
+    async fn dispatch_type(&self, text: &str) -> Result<(), String> {
+        if text.is_empty() {
+            return Ok(());
+        }
+        let (cdp, cdp_session) = self.attach_active().await?;
+        cdp.send_command_to_session(
+            &cdp_session,
+            "Input.insertText",
+            serde_json::json!({ "text": text }),
+        )
+        .await
+        .map(|_| ())
+    }
+
+    async fn dispatch_scroll(&self, delta_x: f64, delta_y: f64) -> Result<(), String> {
+        let (cdp, cdp_session) = self.attach_active().await?;
+        cdp.send_command_to_session(
+            &cdp_session,
+            "Input.dispatchMouseEvent",
+            serde_json::json!({
+                "type": "mouseWheel",
+                "x": 0,
+                "y": 0,
+                "deltaX": delta_x,
+                "deltaY": delta_y
+            }),
+        )
+        .await
+        .map(|_| ())
+    }
+
+    async fn dispatch_history_back(&self) -> Result<(), String> {
+        let (cdp, cdp_session) = self.attach_active().await?;
+        cdp.send_command_to_session(
+            &cdp_session,
+            "Runtime.evaluate",
+            serde_json::json!({ "expression": "history.back()" }),
+        )
+        .await
+        .map(|_| ())
+    }
+
+    async fn dispatch_history_forward(&self) -> Result<(), String> {
+        let (cdp, cdp_session) = self.attach_active().await?;
+        cdp.send_command_to_session(
+            &cdp_session,
+            "Runtime.evaluate",
+            serde_json::json!({ "expression": "history.forward()" }),
+        )
+        .await
+        .map(|_| ())
+    }
+
+    async fn dispatch_reload(&self) -> Result<(), String> {
+        let (cdp, cdp_session) = self.attach_active().await?;
+        cdp.send_command_to_session(
+            &cdp_session,
+            "Page.reload",
+            serde_json::json!({ "ignoreCache": false }),
+        )
+        .await
+        .map(|_| ())
+    }
+
+    async fn dispatch_close_tab(&self) -> Result<(), String> {
+        let target_id = {
+            let last = self.last_target.read().await;
+            let (_, target_id) = last
+                .clone()
+                .ok_or_else(|| "No active tab to close".to_string())?;
+            target_id
+        };
+        let cdp = self.cdp_client_for_target(&target_id).await?;
+        // Target.closeTarget is sent on the browser-level session, not a
+        // target session.
+        cdp.send_command(
+            "Target.closeTarget",
+            serde_json::json!({ "targetId": target_id }),
+        )
+        .await
+        .map(|_| ())
+    }
 }
 
 #[async_trait]
@@ -189,26 +348,33 @@ impl BrowserRuntime for ChromeRuntime {
     }
 
     async fn observe(&self, tab_id: &str) -> Result<BrowserObservation, String> {
-        let sessions = self.active_sessions.read().await;
+        // Look up the owning session, then drop the read lock before
+        // chaining CDP awaits so we can also update `last_target`.
+        let (cdp_client, owning_session_id) = {
+            let sessions = self.active_sessions.read().await;
+            let chrome_session = sessions
+                .values()
+                .find(|s| s.session.tabs.iter().any(|t| t.target_id == tab_id))
+                .ok_or_else(|| format!("Tab not found: {}", tab_id))?;
+            (
+                chrome_session.cdp_client.clone(),
+                chrome_session.session.session_id.clone(),
+            )
+        };
 
-        // 找到包含这个tab的session
-        let chrome_session = sessions
-            .values()
-            .find(|s| s.session.tabs.iter().any(|t| t.target_id == tab_id))
-            .ok_or_else(|| format!("Tab not found: {}", tab_id))?;
+        // Record this tab as the active one for subsequent Phase 2 actions.
+        *self.last_target.write().await = Some((owning_session_id, tab_id.to_string()));
 
         // 附加到目标
-        let session_id = chrome_session.cdp_client.attach_to_target(tab_id).await?;
+        let session_id = cdp_client.attach_to_target(tab_id).await?;
 
         // 启用Page域
-        chrome_session
-            .cdp_client
+        cdp_client
             .send_command_to_session(&session_id, "Page.enable", serde_json::json!({}))
             .await?;
 
         // 获取页面信息
-        let document = chrome_session
-            .cdp_client
+        let document = cdp_client
             .send_command_to_session(
                 &session_id,
                 "Runtime.evaluate",
@@ -226,8 +392,7 @@ impl BrowserRuntime for ChromeRuntime {
             .to_string();
 
         // 获取URL
-        let url_result = chrome_session
-            .cdp_client
+        let url_result = cdp_client
             .send_command_to_session(
                 &session_id,
                 "Runtime.evaluate",
@@ -245,8 +410,7 @@ impl BrowserRuntime for ChromeRuntime {
             .to_string();
 
         // 获取可见文本（简化版）
-        let text_result = chrome_session
-            .cdp_client
+        let text_result = cdp_client
             .send_command_to_session(
                 &session_id,
                 "Runtime.evaluate",
@@ -264,8 +428,7 @@ impl BrowserRuntime for ChromeRuntime {
             .to_string();
 
         // 截图（WebP格式）
-        let screenshot_result = chrome_session
-            .cdp_client
+        let screenshot_result = cdp_client
             .send_command_to_session(
                 &session_id,
                 "Page.captureScreenshot",
@@ -317,50 +480,25 @@ impl BrowserRuntime for ChromeRuntime {
     }
 
     async fn perform(&self, action: BrowserAction) -> Result<(), String> {
+        // Resolve the active tab. `perform` doesn't carry tab context, so we
+        // look at the last (session_id, tab_id) recorded by `observe()`.
+        // `BrowserAction::Navigate { url }` is special: it just navigates the
+        // current tab without changing the active target.
         match action {
             BrowserAction::Navigate { url } => {
-                // 找到当前活跃的tab并导航
-                let target_tab = {
-                    let sessions = self.active_sessions.read().await;
-                    sessions
-                        .values()
-                        .next()
-                        .and_then(|s| s.session.tabs.first().map(|t| t.target_id.clone()))
-                };
-                match target_tab {
-                    Some(tab_id) => self.navigate(&tab_id, &url).await,
-                    None => Err("No active tab found".to_string()),
-                }
+                let last = self.last_target.read().await.clone();
+                let (_, tab_id) = last.ok_or_else(|| "No active tab".to_string())?;
+                self.navigate(&tab_id, &url).await
             }
-            BrowserAction::Click { x, y } => {
-                // Phase 2实现
-                log::info!("[browser] Click at ({}, {}) - Phase 2", x, y);
-                Ok(())
-            }
-            BrowserAction::Type { text } => {
-                log::info!("[browser] Type '{}' - Phase 2", text);
-                Ok(())
-            }
+            BrowserAction::Click { x, y } => self.dispatch_click(x, y).await,
+            BrowserAction::Type { text } => self.dispatch_type(&text).await,
             BrowserAction::Scroll { delta_x, delta_y } => {
-                log::info!("[browser] Scroll ({}, {}) - Phase 2", delta_x, delta_y);
-                Ok(())
+                self.dispatch_scroll(delta_x, delta_y).await
             }
-            BrowserAction::GoBack => {
-                log::info!("[browser] GoBack - Phase 2");
-                Ok(())
-            }
-            BrowserAction::GoForward => {
-                log::info!("[browser] GoForward - Phase 2");
-                Ok(())
-            }
-            BrowserAction::Refresh => {
-                log::info!("[browser] Refresh - Phase 2");
-                Ok(())
-            }
-            BrowserAction::Close => {
-                log::info!("[browser] Close - Phase 2");
-                Ok(())
-            }
+            BrowserAction::GoBack => self.dispatch_history_back().await,
+            BrowserAction::GoForward => self.dispatch_history_forward().await,
+            BrowserAction::Refresh => self.dispatch_reload().await,
+            BrowserAction::Close => self.dispatch_close_tab().await,
         }
     }
 
@@ -392,13 +530,31 @@ impl BrowserRuntimeRegistry {
         }
     }
 
+    /// Access the profile manager so commands can do CRUD outside of
+    /// launching sessions.
+    pub fn profile_manager(&self) -> &Arc<ProfileManager> {
+        &self.profile_manager
+    }
+
     /// 注册默认的Chrome运行时
     pub async fn register_default_chrome_runtime(&self) {
         let runtime = Arc::new(ChromeRuntime {
             profile_manager: self.profile_manager.clone(),
             active_sessions: RwLock::new(HashMap::new()),
+            last_target: RwLock::new(None),
         });
         self.register_runtime("chrome".to_string(), runtime).await;
+    }
+
+    /// Register the WebViewRuntime under the `"webview"` engine name.
+    /// Must be called from inside Tauri's setup closure (where AppHandle
+    /// is available) since spawning a WebviewWindow needs an AppHandle.
+    pub async fn register_default_webview_runtime(&self, app_handle: tauri::AppHandle) {
+        let runtime = Arc::new(super::webview_runtime::WebViewRuntime::new(
+            self.profile_manager.clone(),
+            app_handle,
+        ));
+        self.register_runtime("webview".to_string(), runtime).await;
     }
 
     /// 注册新的运行时
@@ -480,6 +636,18 @@ impl BrowserRuntimeRegistry {
         sessions.remove(session_id);
 
         Ok(())
+    }
+
+    /// Given a session id, return the runtime that owns it so callers
+    /// can drive `list_tabs` / `navigate` / `perform` without re-deriving
+    /// the engine from the cached session.
+    pub async fn get_runtime_by_session(
+        &self,
+        session_id: &str,
+    ) -> Option<Arc<dyn BrowserRuntime>> {
+        let sessions = self.sessions.read().await;
+        let session = sessions.get(session_id)?;
+        self.get_runtime(&session.engine).await
     }
 }
 
