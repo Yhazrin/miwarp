@@ -1,15 +1,15 @@
 # MiWarp v1.1.0 性能与能耗专项优化 — 最终交付报告
 
-**分支**：`perf/v110-performance-energy-core`
+**分支**：`perf/v110-performance-energy-core`（已 push origin）
 **基准**：`origin/master` @ `700b27ef`
-**优化提交**：29 个独立 commit（含 1 个 revert）
+**优化提交**：40 个独立 commit（30 perf + 8 cleanup/bugfix + 2 docs，含 1 个 revert）
 **报告日期**：2026-06-30
 
 ---
 
 ## 1. 工作总结
 
-三轮共 **29 个 commit**，覆盖 6 大类 28+ 项性能优化。
+三轮共 **40 个 commit**，覆盖 6 大类 35+ 项性能 / 稳定性 / 内存修复优化。
 
 ### 第一轮（13 commits）— 基础热点
 | 类型 | commits |
@@ -36,11 +36,26 @@
 | Build | vendor chunks 拆分（hljs / marked / mermaid / dompurify / vega / exceljs / fileconvert / diff）|
 | Memory leak | permission-coordinator TTL timer dispose |
 
+### 第四轮（10 commits）— 内存泄漏清理 + 卡死修复
+| 类型 | commits |
+|------|---------|
+| Memory leak cleanup | 610a1e16 bootstrap attention unsubscribe、092ad436 fleet reconnect dedupe、9b925415 scheduler monitor cancel、aec7165e respawn backoff cancel |
+| Frontend bug fix | **f693462a workbench click-hang**（svelte 5 effect 误捕 cache.runs 读，async IIFE 同步 prelude 内被 effect tracker 捕获，导致 runsSidebarStore 更新级联 refresh）|
+| Regression test | **bb336790 workbench effect 回归测试**（mount 后修改 runsSidebarStore 不再触发额外 refresh）|
+| Docs | 74be2c02、bf7b1eba delivery report 增量更新 |
+
 ---
 
-## 2. 完整 commit 列表（30 个，含 1 revert）
+## 2. 完整 commit 列表（40 个，含 1 revert）
 
 ```
+bb336790 test(workbench): add regression test for effect re-fire prevention
+f693462a perf(workbench): fix project desk click-hang by untracking cache.runs reads
+aec7165e perf(recovery,bootstrap-test): cancel respawn backoff; cover dispose path
+9b925415 perf(scheduler): cancel monitor on app shutdown
+092ad436 perf(fleet-store): track and dedupe WS reconnect timer
+610a1e16 perf(bootstrap): unsubscribe attention queue on dispose
+bf7b1eba docs(perf): update delivery report for 30 commits across 3 rounds
 fa99e8d2 Revert "perf(arch): wire runtime perf-budget gate to actual SvelteKit manifest keys"
 b0c53cc5 perf(arch): wire runtime perf-budget gate to actual SvelteKit manifest keys  ← reverted
 69dee31a perf(permission-coordinator): clear inFlight TTL timers on dispose
@@ -50,6 +65,7 @@ b0c53cc5 perf(arch): wire runtime perf-budget gate to actual SvelteKit manifest 
 4d9439f8 perf(session-store): bump structuralVersion only on length changes
 ce400421 perf(timeline-annotations): mutate usageByTurn Map in place on length change
 78dd03ea perf(session-derived): cache userHistory on length + user-entry signature
+74be2c02 docs(perf): update delivery report with 22 optimization commits
 7ef52f2e perf(timeline-state): gate computeTimelineMetadata on length only
 e4cbd1d6 perf(team-watcher): replace recv_timeout poll with tokio::select! on cancel
 4ece28f1 perf(config-watcher): collapse per-event thread spawn into single persistent worker
@@ -130,8 +146,15 @@ d48cfc72 perf(agent): reduce session_actor tick interval from 250ms to 1000ms
 - SplitChatPane 30s snapshot（WB2）
 - app-update-coordinator hourly auto-check（WB3）
 
-### 内存泄漏修复（1 项）
+### 内存泄漏修复（5 项）
 - permission-coordinator dispose 不清 TTL timer（69dee31a）
+- bootstrap attention queue dispose 时未退订（610a1e16）
+- fleet-store WS reconnect setTimeout 没 dedupe，rapid reconnect 会堆叠（092ad436）
+- scheduler monitor 在 app shutdown 后还在跑（9b925415）
+- recovery respawn backoff setTimeout 无 cancel 路径（aec7165e）
+
+### UI Bug 修复（1 项）
+- **f693462a workbench 项目台卡死**：async IIFE 同步 prelude 内读 `cache.runs` getter，触发 effect 重跑级联 refresh；改 `onMount` 一次性挂载
 
 ### Build / Bundle（1 项）
 - vendor chunks 拆分：hljs / marked / mermaid / dompurify / vega / exceljs / fileconvert / diff（7589a411）
