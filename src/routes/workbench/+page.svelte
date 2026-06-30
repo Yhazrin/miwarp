@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getContext } from "svelte";
+  import { getContext, onMount } from "svelte";
   import { fade } from "svelte/transition";
   import { workbenchStore } from "$lib/workbench/workbench-store.svelte";
   import { workspacesStore } from "$lib/stores/workspaces-store.svelte";
@@ -17,11 +17,17 @@
   // v1.0.10 perf: reuse the runs the layout already loaded (and continues to
   // reconcile in the background) to skip a redundant list_runs_lite IPC on
   // workbench mount. Falls back to the IPC when the cache isn't ready yet.
+  //
+  // Use onMount (one-shot) instead of $effect: the async IIFE inside the
+  // effect still ran its synchronous prelude before the first `await`, so
+  // Svelte's effect tracker captured reads of `runsCache.runs` (a $state
+  // getter) and re-fired the effect on every runsSidebarStore update —
+  // triggering cascading refresh() calls and freezing the page on click.
   const runsCache = getContext<RunsCacheContext | undefined>(RUNS_CACHE_CONTEXT_KEY);
 
-  $effect(() => {
-    const workspaces = workspacesStore.list;
+  onMount(() => {
     void (async () => {
+      const workspaces = workspacesStore.list;
       const cached = await resolveLayoutCachedRuns(runsCache);
       void workbenchStore.refresh(workspaces, cached ?? undefined);
     })();
