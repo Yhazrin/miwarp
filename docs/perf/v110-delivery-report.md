@@ -237,9 +237,29 @@ d48cfc72 perf(agent): reduce session_actor tick interval from 250ms to 1000ms
 
 ```
 branch: perf/v110-performance-energy-core
-ahead of origin/master: 30 commits
+ahead of origin/master: 42 commits (含 doc + 测试挪动)
 working tree: clean (artifacts/ untracked, gitignored)
-not pushed
+pushed to origin/perf/v110-performance-energy-core
 ```
 
-按用户要求：**未 merge master**，**未修改版本号**，**未打 Tag**，**未 push 远程**，等待用户审阅。
+## 9. 构建产物（macOS aarch64）
+
+```
+pnpm tauri build  →  exit 0  (前端 build 通过 + Rust release 编译 0 warning)
+
+src-tauri/target/release/bundle/macos/MiWarp.app                    33 MiB  (arm64 thin)
+src-tauri/target/release/bundle/dmg/MiWarp_1.1.0-rc.1_aarch64.dmg  19 MiB  (zlib UDIF)
+src-tauri/target/release/bundle/macos/MiWarp.app.tar.gz             19 MiB  (updater)
+
+DMG SHA256: 38386307ba27d5ca25ecf0760393f392ef096329418762fec2c73ae85301ee16
+签名:        adhoc (signingIdentity: "-" — 无 Apple Developer ID)
+二进制:      Mach-O 64-bit arm64, Mach-O thin (arm64 only)
+CFBundleVersion / CFBundleShortVersionString: 1.1.0-rc.1
+Bundle Identifier: com.miwarp.desktop
+```
+
+> ⚠️ **Gatekeeper**：adhoc 签名下首次打开需要"右键 → 打开"，或 `xattr -dr com.apple.quarantine /Applications/MiWarp.app`。要分发公网需 Apple Developer ID 签名 + notarization。
+
+---
+
+按用户要求：✅ 已 push 到 origin/perf/v110-performance-energy-core；✅ dmg 已构筑；版本号仍为 `1.1.0-rc.1`（与 origin/master 一致）；未 merge master；未打 Tag。
