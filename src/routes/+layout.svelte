@@ -38,6 +38,7 @@
   import { page } from "$app/stores";
   import { get } from "svelte/store";
   import { goto, replaceState } from "$app/navigation";
+  import { afterNavigate } from "$app/navigation";
   import { getTransport } from "$lib/transport";
   import { untrack } from "svelte";
   import { dbg } from "$lib/utils/debug";
@@ -131,6 +132,15 @@
   setContext(BOOTSTRAP_DEMAND_CONTEXT_KEY, bootstrapDemand);
 
   let { children } = $props();
+
+  // P0-debug: log every navigation so we can see whether /workbench
+  // routing actually fires. Quiet by default; set localStorage.miwarpDebug
+  // = "nav" to enable.
+  if (typeof window !== "undefined" && localStorage.getItem("miwarpDebug")?.includes("nav")) {
+    afterNavigate(({ from, to }) => {
+      console.log("[nav]", { from: from?.url.pathname, to: to?.url.pathname });
+    });
+  }
 
   // Keep `<html>` theme attrs in sync with themeStore (bubbles, fonts, surfaces).
   // init() loads persisted state; this effect covers setTheme/setMode/setColorScheme

@@ -138,11 +138,26 @@
 
   let BodyComponent = $state<SidebarBodyComponent | null>(null);
   let bodyLoadError = $state<string | null>(null);
+  // Cache of already-loaded body components, keyed by bodyId. The lazy-load
+  // machinery exists to keep the initial bundle small (chat / explorer /
+  // teams / etc. body modules aren't parsed until first use), but once a
+  // body has been loaded it should be reused instantly on subsequent
+  // navigation without flashing a Spinner. Resets only when the layout
+  // itself unmounts.
+  const bodyCache = new Map<SidebarBodyId, SidebarBodyComponent>();
 
   $effect(() => {
     const bodyId = activeBodyId;
     if (!bodyId) {
       BodyComponent = null;
+      bodyLoadError = null;
+      return;
+    }
+
+    // Cache hit → swap in immediately, no spinner, no async round-trip.
+    const cached = bodyCache.get(bodyId);
+    if (cached) {
+      BodyComponent = cached;
       bodyLoadError = null;
       return;
     }
@@ -154,6 +169,7 @@
     void BODY_LOADERS[bodyId]()
       .then((mod) => {
         if (cancelled) return;
+        bodyCache.set(bodyId, mod.default);
         BodyComponent = mod.default;
       })
       .catch(() => {
@@ -200,43 +216,39 @@
       {@const C = BodyComponent}
       {#if activeBodyId === "chat"}
         <C
-          enrichedProjectFolders={enrichedProjectFolders}
-          visibleSearchResults={visibleSearchResults}
-          selectedRunId={selectedRunId}
-          selectedScheduledTaskId={selectedScheduledTaskId}
-          mascotEnabled={mascotEnabled}
-          selectedGroupKeys={selectedGroupKeys}
-          batchModeActive={batchModeActive}
-          dragRunId={dragRunId}
-          dragOverFolderId={dragOverFolderId}
-          dragOverUnfolderedKey={dragOverUnfolderedKey}
-          highlightMatch={highlightMatch}
-          onNavigateToChatRun={onNavigateToChatRun}
-          onToggleProject={onToggleProject}
-          onRequestDeleteConversation={onRequestDeleteConversation}
-          onToggleSelectConversation={onToggleSelectConversation}
-          onEnterBatchMode={onEnterBatchMode}
-          onSessionDragStart={onSessionDragStart}
-          onSessionDragMove={onSessionDragMove}
-          onSessionDragEnd={onSessionDragEnd}
-          onRequestRemoveProject={onRequestRemoveProject}
-          onNewChatInFolder={onNewChatInFolder}
-          onNewChatInSubFolder={onNewChatInSubFolder}
-          onBatchDeleteConfirm={onBatchDeleteConfirm}
-          onClearBatchSelection={onClearBatchSelection}
+          {enrichedProjectFolders}
+          {visibleSearchResults}
+          {selectedRunId}
+          {selectedScheduledTaskId}
+          {mascotEnabled}
+          {selectedGroupKeys}
+          {batchModeActive}
+          {dragRunId}
+          {dragOverFolderId}
+          {dragOverUnfolderedKey}
+          {highlightMatch}
+          {onNavigateToChatRun}
+          {onToggleProject}
+          {onRequestDeleteConversation}
+          {onToggleSelectConversation}
+          {onEnterBatchMode}
+          {onSessionDragStart}
+          {onSessionDragMove}
+          {onSessionDragEnd}
+          {onRequestRemoveProject}
+          {onNewChatInFolder}
+          {onNewChatInSubFolder}
+          {onBatchDeleteConfirm}
+          {onClearBatchSelection}
         />
       {:else if activeBodyId === "explorer"}
-        <C explorerEmptyAction={explorerEmptyAction} />
+        <C {explorerEmptyAction} />
       {:else if activeBodyId === "teams"}
-        <C filteredTeams={filteredTeams} />
+        <C {filteredTeams} />
       {:else if activeBodyId === "workbench"}
-        <C onPickFolder={onPickFolder} />
+        <C {onPickFolder} />
       {:else if activeBodyId === "plugins"}
-        <C
-          pluginActiveSection={pluginActiveSection}
-          pluginSections={pluginSections}
-          onPluginSectionChange={onPluginSectionChange}
-        />
+        <C {pluginActiveSection} {pluginSections} {onPluginSectionChange} />
       {:else}
         <C />
       {/if}
