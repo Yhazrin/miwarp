@@ -11,8 +11,7 @@
   } from "$lib/layout-chrome-context";
   import Icon from "$lib/components/Icon.svelte";
   import WorkbenchProjectHero from "$lib/components/workbench/WorkbenchProjectHero.svelte";
-  import WorkbenchProjectChat from "$lib/components/workbench/WorkbenchProjectChat.svelte";
-  import WorkbenchControlPanel from "$lib/components/workbench/WorkbenchControlPanel.svelte";
+  import WorkbenchProjectDashboard from "$lib/components/workbench/WorkbenchProjectDashboard.svelte";
 
   // v1.0.10 perf: reuse the runs the layout already loaded (and continues to
   // reconcile in the background) to skip a redundant list_runs_lite IPC on
@@ -20,10 +19,17 @@
   const runsCache = getContext<RunsCacheContext | undefined>(RUNS_CACHE_CONTEXT_KEY);
 
   $effect(() => {
+    const t0 = performance.now();
     const workspaces = workspacesStore.list;
+    console.log("[workbench-page] effect:start", { workspacesCount: workspaces.length });
     void (async () => {
+      console.log("[workbench-page] before resolveLayoutCachedRuns");
       const cached = await resolveLayoutCachedRuns(runsCache);
-      void workbenchStore.refresh(workspaces, cached ?? undefined);
+      console.log("[workbench-page] cached resolved, count=", cached?.length);
+      const r = workbenchStore.refresh(workspaces, cached ?? undefined);
+      console.log("[workbench-page] refresh() returned", performance.now() - t0, "ms");
+      await r;
+      console.log("[workbench-page] refresh() resolved", performance.now() - t0, "ms");
     })();
   });
 
@@ -36,7 +42,7 @@
 
 <!--
   workbench 路由的左侧 sidebar 由 +layout.svelte 的全局 `<aside class:glass-sidebar>`
-  统一渲染(挂载 `<WorkbenchSidebar />`)。本页只负责右侧主区:hero + chat。
+  统一渲染(挂载 `<WorkbenchSidebar />`)。本页只负责右侧主区:hero + 项目仪表盘。
 
   原先这里有一个 `hidden w-[260px] shrink-0 md:block` 的页面级 sidebar wrapper,
   那是重复实现,已删除;padding 由 `p-3` 直接让给全局 aside 即可。
@@ -54,21 +60,15 @@
       </div>
       <div class="flex-1 space-y-3">
         <div class="wb-skeleton h-16 w-full"></div>
-        <div class="grid flex-1 gap-2 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div class="wb-skeleton h-full min-h-[420px]"></div>
-          <div class="wb-skeleton h-full min-h-[420px]"></div>
-        </div>
+        <div class="wb-skeleton h-full min-h-[420px]"></div>
       </div>
     </div>
   {:else if workbenchStore.selectedProject}
     {#key workbenchStore.selectedProject.id}
       <div in:fade={{ duration: 180, delay: 60 }} class="flex h-full min-w-0 flex-1 flex-col gap-2">
         <WorkbenchProjectHero />
-        <div class="grid min-h-0 flex-1 grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div class="wb-frame flex min-h-[520px] flex-col overflow-hidden xl:min-h-0">
-            <WorkbenchProjectChat />
-          </div>
-          <WorkbenchControlPanel />
+        <div class="wb-frame min-h-0 flex-1 overflow-hidden">
+          <WorkbenchProjectDashboard />
         </div>
       </div>
     {/key}

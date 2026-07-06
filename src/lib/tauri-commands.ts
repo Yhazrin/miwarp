@@ -123,6 +123,8 @@ export const CMD = {
   list_marketplaces: "list_marketplaces",
   list_memory_files: "list_memory_files",
   list_project_commands: "list_project_commands",
+  list_project_git_status: "list_project_git_status",
+  list_project_metadata: "list_project_metadata",
   list_prompt_favorites: "list_prompt_favorites",
   list_prompt_tags: "list_prompt_tags",
   list_remote_directory: "list_remote_directory",
@@ -143,6 +145,7 @@ export const CMD = {
   refresh_app_readme: "refresh_app_readme",
   read_clipboard_file: "read_clipboard_file",
   read_file_base64: "read_file_base64",
+  read_project_notes: "read_project_notes",
   read_task_output: "read_task_output",
   read_text_file: "read_text_file",
   regenerate_web_server_token: "regenerate_web_server_token",
@@ -223,6 +226,7 @@ export const CMD = {
   update_user_settings: "update_user_settings",
   validate_media_file: "validate_media_file",
   write_html_export: "write_html_export",
+  write_project_notes: "write_project_notes",
 } as const;
 
 export type CmdName = (typeof CMD)[keyof typeof CMD];

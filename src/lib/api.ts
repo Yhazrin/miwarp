@@ -52,6 +52,9 @@ import type {
   ImportReport,
   CliSessionInfo,
   BackendCapabilities,
+  ProjectMetadata,
+  ProjectGitStatus,
+  ProjectNotes,
 } from "./types";
 import type {
   ConfigTransactionPreview,
@@ -844,6 +847,31 @@ export async function checkAgentCli(agent: string): Promise<CliCheckResult> {
 export async function checkProjectInit(cwd: string): Promise<ProjectInitStatus> {
   dbg("api", "checkProjectInit", cwd);
   return invoke<ProjectInitStatus>(CMD.check_project_init, { cwd });
+}
+
+// ── Project Desk metadata (v1.2.0+) ──
+//
+// Lightweight per-project snapshot: stack fingerprint + detected scripts +
+// CLAUDE.md/README excerpts. Returns `{}`-style defaults on parse failure so
+// the project desk sidebar can render without crashing on weird repos.
+export async function listProjectMetadata(cwd: string): Promise<ProjectMetadata> {
+  dbg("api", "listProjectMetadata", cwd);
+  return invoke<ProjectMetadata>(CMD.list_project_metadata, { cwd });
+}
+
+export async function listProjectGitStatus(cwd: string): Promise<ProjectGitStatus> {
+  dbg("api", "listProjectGitStatus", cwd);
+  return invoke<ProjectGitStatus>(CMD.list_project_git_status, { cwd });
+}
+
+export async function readProjectNotes(cwd: string): Promise<ProjectNotes> {
+  dbg("api", "readProjectNotes", cwd);
+  return invoke<ProjectNotes>(CMD.read_project_notes, { cwd });
+}
+
+export async function writeProjectNotes(cwd: string, content: string): Promise<void> {
+  dbg("api", "writeProjectNotes", { cwd, contentLen: content.length });
+  return invoke<void>(CMD.write_project_notes, { cwd, content });
 }
 
 export async function getCliDistTags(): Promise<CliDistTags> {

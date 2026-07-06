@@ -624,6 +624,61 @@ export interface GitTimelineResponse {
   entries: GitTimelineEntry[];
 }
 
+// ── Project Profile types ──
+//
+// Used by `ProjectProfileStore` to feed the Workbench ControlPanel:
+// stack detector, command list, doc excerpts, git status, and user notes.
+// Mirrors `src-tauri/src/models.rs::ProjectMetadata` / `ProjectGitStatus`
+// / `ProjectNotes` (camelCase serde).
+
+export interface ProjectStack {
+  typescript: boolean;
+  rust: boolean;
+  python: boolean;
+  go: boolean;
+}
+
+export interface ProjectCommands {
+  test: string[];
+  build: string[];
+  dev: string[];
+  lint: string[];
+  start: string[];
+}
+
+export interface ProjectDocExcerpt {
+  exists: boolean;
+  excerpt: string;
+}
+
+export interface ProjectMetadata {
+  stack: ProjectStack;
+  commands: ProjectCommands;
+  claude_md: ProjectDocExcerpt;
+  readme: ProjectDocExcerpt;
+}
+
+export interface ProjectLastCommit {
+  shortHash: string;
+  subject: string;
+  author: string;
+  timeIso: string;
+}
+
+export interface ProjectGitStatus {
+  isGitRepo: boolean;
+  branch: string | null;
+  ahead: number | null;
+  behind: number | null;
+  dirtyCount: number;
+  lastCommit: ProjectLastCommit | null;
+}
+
+export interface ProjectNotes {
+  content: string;
+  modifiedAt: string | null;
+}
+
 // ── Media Artifact types ──
 
 export type MediaArtifactKind = "image" | "video" | "audio" | "html" | "pdf" | "file";
@@ -1918,4 +1973,116 @@ export interface FleetMetrics {
 export interface FleetSendResult {
   runId: string;
   accepted: boolean;
+}
+
+// ── Project Desk metadata (v1.2.0+) ──
+//
+// Lightweight stat-shape types surfaced to the project desk sidebar:
+// stack fingerprint, available commands, curated docs, git snapshot,
+// user-curated notes. camelCase alignment with
+// `src-tauri/src/models.rs` `ProjectStack` / `ProjectCommands` /
+// `DocExcerpt` / `ProjectMetadata` / `LastCommit` / `ProjectGitStatus`
+// / `ProjectNotes` (serde `rename_all = "camelCase"`).
+
+export interface ProjectStack {
+  typescript: boolean;
+  rust: boolean;
+  python: boolean;
+  go: boolean;
+}
+
+export interface ProjectCommands {
+  test: string[];
+  build: string[];
+  dev: string[];
+  lint: string[];
+  start: string[];
+}
+
+export interface DocExcerpt {
+  exists: boolean;
+  excerpt: string;
+}
+
+export interface ProjectMetadata {
+  stack: ProjectStack;
+  commands: ProjectCommands;
+  claudeMd: DocExcerpt;
+  readme: DocExcerpt;
+}
+
+export interface LastCommit {
+  shortHash: string;
+  subject: string;
+  author: string;
+  timeIso: string;
+}
+
+export interface ProjectGitStatus {
+  isGitRepo: boolean;
+  branch: string | null;
+  ahead: number | null;
+  behind: number | null;
+  dirtyCount: number;
+  lastCommit: LastCommit | null;
+}
+
+export interface ProjectNotes {
+  content: string;
+  modifiedAt: string | null;
+}
+
+// ── Project Desk metadata (v1.2.0+) ──
+//
+// Mirrors the Rust types in `src-tauri/src/models.rs` (ProjectStack,
+// ProjectCommands, DocExcerpt, ProjectMetadata, LastCommit, ProjectGitStatus,
+// ProjectNotes). All fields are camelCase because the Rust side uses
+// `#[serde(rename_all = "camelCase")]`.
+
+export interface ProjectStack {
+  typescript: boolean;
+  rust: boolean;
+  python: boolean;
+  go: boolean;
+}
+
+export interface ProjectCommands {
+  test: string[];
+  build: string[];
+  dev: string[];
+  lint: string[];
+  start: string[];
+}
+
+export interface DocExcerpt {
+  exists: boolean;
+  excerpt: string;
+}
+
+export interface ProjectMetadata {
+  stack: ProjectStack;
+  commands: ProjectCommands;
+  claudeMd: DocExcerpt;
+  readme: DocExcerpt;
+}
+
+export interface LastCommit {
+  shortHash: string;
+  subject: string;
+  author: string;
+  timeIso: string;
+}
+
+export interface ProjectGitStatus {
+  isGitRepo: boolean;
+  branch: string | null;
+  ahead: number | null;
+  behind: number | null;
+  dirtyCount: number;
+  lastCommit: LastCommit | null;
+}
+
+export interface ProjectNotes {
+  content: string;
+  modifiedAt: string | null;
 }

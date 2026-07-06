@@ -737,6 +737,7 @@ fn build_project_desk_system_context(meta: &RunMeta) -> String {
             .collect::<Vec<_>>()
             .join("\n")
     };
+    let notes_block = read_project_notes_excerpt(project_cwd);
     format!(
         r#"You are running inside MiWarp's Project Desk surface.
 
@@ -761,7 +762,7 @@ Project state snapshot:
 - idle_runs_for_project: {idle_runs}
 - project_desk_runs_for_project: {project_desk_runs}
 - recent_runs:
-{recent_runs}"#,
+{recent_runs}{notes_block}"#,
         run_id = meta.id,
         project_cwd = project_cwd,
         execution_cwd = execution_cwd,
@@ -769,7 +770,27 @@ Project state snapshot:
         active_runs = summary.active_runs,
         idle_runs = summary.idle_runs,
         project_desk_runs = summary.project_desk_runs,
-        recent_runs = recent_runs
+        recent_runs = recent_runs,
+        notes_block = notes_block
+    )
+}
+
+/// Read user-curated notes for `project_cwd` (mirrors
+/// `commands::project_meta::encoded_cwd`). Returns an empty string when no
+/// notes.md exists, so the caller can append unconditionally.
+fn read_project_notes_excerpt(project_cwd: &str) -> String {
+    let encoded = project_cwd.replace(['/', '\\', ':'], "_");
+    let path = crate::storage::data_dir()
+        .join("projects")
+        .join(&encoded)
+        .join("notes.md");
+    let content = match std::fs::read_to_string(&path) {
+        Ok(s) if !s.trim().is_empty() => s,
+        _ => return String::new(),
+    };
+    format!(
+        "\n\nProject notes (curated by user):\n{}",
+        content.trim_end()
     )
 }
 
