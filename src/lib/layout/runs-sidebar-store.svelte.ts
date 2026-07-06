@@ -88,11 +88,18 @@ export class RunsSidebarStore {
 
   /** Load runs. Cache-first on cold start; incremental after that. */
   async loadRuns(): Promise<void> {
+    console.log(
+      "[loadRuns] start, runsLoadSucceededOnce=",
+      this.runsLoadSucceededOnce,
+      "currentRuns=",
+      this.runs.length,
+    );
     if (!this.runsLoadSucceededOnce) {
       try {
         const cached = await readRunsListCache();
         if (cached.length > 0) {
           this.runs = cached;
+          console.log("[loadRuns] cache-first hit, runs=", cached.length);
           dbg("layout", "loadRuns: cache-first hit", { count: cached.length });
         }
       } catch (e) {
@@ -115,15 +122,29 @@ export class RunsSidebarStore {
           void mergeRunsIntoCache(changed.filter((r) => !r.deleted_at));
         }
       } else {
+        const ipcStart = performance.now();
         const fresh = await listRuns();
+        console.log(
+          "[loadRuns] listRuns IPC returned",
+          fresh.length,
+          "in",
+          (performance.now() - ipcStart).toFixed(1),
+          "ms",
+        );
         this.runs = fresh;
         void writeRunsListCache(fresh);
       }
       this._lastRunsSync = new Date().toISOString();
       this.runsLoadSucceededOnce = true;
-      this._signalRunsReadyOnce();
     } catch (e) {
+      console.warn("[loadRuns] IPC failed", e);
       dbgWarn("layout", "loadRuns failed", e);
+      // Defense-in-depth: signal readiness even on failure so consumers
+      // (e.g. /workbench awaiting resolveLayoutCachedRuns) don't hang
+      // forever waiting for runs that will never arrive.
+    } finally {
+      console.log("[loadRuns] signaling ready, runs=", this.runs.length);
+      this._signalRunsReadyOnce();
     }
   }
 

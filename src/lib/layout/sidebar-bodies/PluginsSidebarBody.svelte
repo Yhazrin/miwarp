@@ -10,7 +10,11 @@
     onPluginSectionChange: (sectionId: string) => void;
   }
 
-  let { pluginActiveSection, pluginSections, onPluginSectionChange }: Props = $props();
+  let {
+    pluginActiveSection = "",
+    pluginSections = [],
+    onPluginSectionChange = () => {},
+  }: Props = $props();
 </script>
 
 <div class="flex-1 overflow-y-auto py-2">

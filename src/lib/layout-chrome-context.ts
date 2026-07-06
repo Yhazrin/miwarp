@@ -66,10 +66,49 @@ export type RunsCacheContext = {
 
 export async function resolveLayoutCachedRuns(
   cache: RunsCacheContext | undefined,
+  opts: { timeoutMs?: number } = {},
 ): Promise<TaskRun[] | null> {
+  const t0 = performance.now();
+  console.log("[resolveLayoutCachedRuns] start", {
+    hasCache: !!cache,
+    cacheRunsLen: cache?.runs.length,
+  });
   if (!cache) return null;
-  if (cache.runs.length > 0) return cache.runs;
-  return cache.whenReady();
+  if (cache.runs.length > 0) {
+    console.log(
+      "[resolveLayoutCachedRuns] fast path, runs=",
+      cache.runs.length,
+      "in",
+      (performance.now() - t0).toFixed(1),
+      "ms",
+    );
+    return cache.runs;
+  }
+  // Defense-in-depth: race the gate against a timeout so a stuck backend
+  // (e.g. listRuns() throws and the gate never fires) doesn't hang
+  // /workbench forever. The consumer falls back to its own IPC when we
+  // return null.
+  const timeoutMs = opts.timeoutMs ?? 8_000;
+  console.log("[resolveLayoutCachedRuns] awaiting gate with timeoutMs=", timeoutMs);
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<TaskRun[] | null>((resolve) => {
+    timeoutHandle = setTimeout(() => {
+      console.warn("[resolveLayoutCachedRuns] gate timeout fired after", timeoutMs, "ms");
+      resolve(null);
+    }, timeoutMs);
+  });
+  try {
+    const result = await Promise.race([cache.whenReady(), timeoutPromise]);
+    console.log(
+      "[resolveLayoutCachedRuns] resolved in",
+      (performance.now() - t0).toFixed(1),
+      "ms, count=",
+      result?.length ?? null,
+    );
+    return result;
+  } finally {
+    if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+  }
 }
 
 /** Demand-driven layout bootstrap (runs / teams / attention). */

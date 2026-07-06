@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import type { UserSettings } from "$lib/types";
+import type { TaskRun, UserSettings } from "$lib/types";
 import {
+  resolveLayoutCachedRuns,
   resolveLayoutCachedSettings,
   routeNeedsLayoutContentPanel,
+  type RunsCacheContext,
   type SettingsCacheContext,
 } from "./layout-chrome-context";
 
@@ -55,5 +57,45 @@ describe("resolveLayoutCachedSettings", () => {
 
   it("returns null when no cache is provided", async () => {
     await expect(resolveLayoutCachedSettings(undefined)).resolves.toBeNull();
+  });
+});
+
+describe("resolveLayoutCachedRuns", () => {
+  const sampleRuns = [{ id: "r1", started_at: "2026-01-01T00:00:00Z" }] as unknown as TaskRun[];
+
+  it("returns immediate runs without awaiting whenReady", async () => {
+    const cache: RunsCacheContext = {
+      runs: sampleRuns,
+      whenReady: vi.fn().mockResolvedValue([]),
+    };
+
+    await expect(resolveLayoutCachedRuns(cache)).resolves.toEqual(sampleRuns);
+    expect(cache.whenReady).not.toHaveBeenCalled();
+  });
+
+  it("awaits whenReady when runs are not yet hydrated", async () => {
+    const cache: RunsCacheContext = {
+      runs: [],
+      whenReady: vi.fn().mockResolvedValue(sampleRuns),
+    };
+
+    await expect(resolveLayoutCachedRuns(cache)).resolves.toEqual(sampleRuns);
+    expect(cache.whenReady).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns null after timeout when whenReady never resolves", async () => {
+    // Gate that never resolves — simulates a stuck backend where listRuns
+    // threw and the gate never fired. Without the timeout race the page
+    // would hang forever.
+    const cache: RunsCacheContext = {
+      runs: [],
+      whenReady: () => new Promise<TaskRun[]>(() => {}),
+    };
+
+    await expect(resolveLayoutCachedRuns(cache, { timeoutMs: 50 })).resolves.toBeNull();
+  });
+
+  it("returns null when no cache is provided", async () => {
+    await expect(resolveLayoutCachedRuns(undefined)).resolves.toBeNull();
   });
 });
