@@ -59,6 +59,17 @@
           ? 'bg-sidebar-accent text-sidebar-accent-foreground'
           : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
         title={item.label()}
+        onclick={(e: MouseEvent) => {
+          // Belt-and-suspenders: explicit CSR via goto(). The bare <a href>
+          // relies on SvelteKit's delegated link handler which can be skipped
+          // by intervening capture-phase listeners (e.preventDefault) or by
+          // HMR re-binding mid-flight. Forcing preventDefault + goto here
+          // guarantees SPA navigation without a full page reload.
+          if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          e.preventDefault();
+          beginRouteTransition();
+          void goto(getNavItemHref(item)).finally(endRouteTransition);
+        }}
       >
         {#if isActive}
           <span class="absolute left-0 top-1.5 h-5 w-[3px] rounded-r-full bg-primary"></span>

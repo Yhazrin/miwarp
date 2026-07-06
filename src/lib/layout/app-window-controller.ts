@@ -30,7 +30,6 @@ import { isPerfEnabled } from "$lib/utils/perf";
 import { installWindowHarness } from "$lib/perf/harness";
 import { applyVisualPerformance } from "$lib/services/window-display";
 import { installPreventRootOverscroll } from "$lib/utils/prevent-root-overscroll";
-import { SPLASH_REMOVE_DELAY_MS } from "$lib/utils/layout-timings";
 import { getTransport } from "$lib/transport";
 import { showToast } from "$lib/stores/toast-store.svelte";
 import { t } from "$lib/i18n/index.svelte";
@@ -84,13 +83,15 @@ export function installAppWindowController(opts: WindowControllerOptions = {}): 
   // 2. Overscroll prevention
   cleanups.push(installPreventRootOverscroll());
 
-  // 3. Splash teardown
+  // 3. Splash teardown — remove synchronously. The previous opacity-fade
+  // approach had a 320ms window during which HMR or navigation could
+  // briefly show the splash logo to the user. `display: none` removes
+  // it from the layout immediately, then we drop the node.
   if (typeof document !== "undefined") {
     const splash = document.getElementById("app-splash");
     if (splash) {
-      splash.style.opacity = "0";
-      const t = setTimeout(() => splash.remove(), SPLASH_REMOVE_DELAY_MS);
-      cleanups.push(() => clearTimeout(t));
+      splash.style.display = "none";
+      splash.remove();
     }
   }
 

@@ -16,6 +16,7 @@
   import Spinner from "$lib/components/Spinner.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import MiConfirmDialog from "$lib/components/MiConfirmDialog.svelte";
+  import { untrack } from "svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import type { AgentDefinitionSummary } from "$lib/types";
   import AgentEditor from "./AgentEditor.svelte";
@@ -212,18 +213,23 @@
     }
   }
 
-  // Keep selection valid when the underlying list changes.
+  // Keep selection valid when the underlying list changes. Writes to
+  // `selectedAgent` are wrapped in `untrack` so the effect doesn't
+  // re-subscribe to the field it just updated (which would cause
+  // Svelte 5 to flag "effect updated its own state" + re-run forever).
   $effect(() => {
     const current = selectedAgent;
     if (!current) return;
     const pool = current.source === "built-in" ? builtInAgents : [...customAgents, ...pluginAgents];
     const next = pool.find((a) => isSameAgent(a, current));
-    if (!next) {
-      selectedAgent = null;
-      selectedContent = null;
-    } else if (next !== current) {
-      selectedAgent = next;
-    }
+    untrack(() => {
+      if (!next) {
+        selectedAgent = null;
+        selectedContent = null;
+      } else if (next !== current) {
+        selectedAgent = next;
+      }
+    });
   });
 
   // ── Inline rename ────────────────────────────────────────────────────────
