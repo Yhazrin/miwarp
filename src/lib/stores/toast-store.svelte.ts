@@ -6,6 +6,12 @@
  * session-island's start/end flash language. Rich payload supports a
  * primary message, optional description, an action button, and a
  * quiet/silent flag (sound opt-out).
+ *
+ * v1.1.1: listener pattern — the chat page registers a listener so
+ * toasts are routed through the SessionStatusBar overlay instead of the
+ * standalone ToastHost capsule. When no listener is registered (non-chat
+ * pages) toasts are silently dropped (the SessionStatusBar IS the toast
+ * surface now).
  */
 import { playNotificationCue } from "$lib/utils/notification-cue";
 
@@ -36,6 +42,14 @@ let _current = $state<Toast | null>(null);
 let _counter = 0;
 let _timer: ReturnType<typeof setTimeout> | null = null;
 
+/** Listener registered by the chat page's SessionStatusBar. */
+type ToastListener = (toast: Toast) => void;
+let _listener: ToastListener | null = null;
+
+export function registerToastListener(listener: ToastListener | null): void {
+  _listener = listener;
+}
+
 export function getCurrentToast(): Toast | null {
   return _current;
 }
@@ -63,7 +77,7 @@ export function showToast(
   _counter += 1;
   const id = `toast-${_counter}`;
   const soundEnabled = options.sound !== false;
-  _current = {
+  const toast: Toast = {
     id,
     message,
     description: options.description,
@@ -72,6 +86,13 @@ export function showToast(
     action: options.action,
     sound: soundEnabled,
   };
+  _current = toast;
+
+  // Route through SessionStatusBar listener when registered (chat page).
+  if (_listener) {
+    _listener(toast);
+  }
+
   if (duration > 0) {
     _timer = setTimeout(() => {
       if (_current?.id === id) _current = null;

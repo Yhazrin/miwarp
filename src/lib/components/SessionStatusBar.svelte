@@ -20,11 +20,14 @@
   import {
     getPermissionStatusPresentation,
     getSendStatusPresentation,
+    getToastStatusPresentation,
   } from "$lib/chat/send-status-presentation";
   import type {
     PermissionStatusInput,
     PermissionStatusPresentation,
+    ToastStatusPresentation,
   } from "$lib/chat/send-status-presentation";
+  import type { Toast } from "$lib/stores/toast-store.svelte";
 
   let {
     run = null,
@@ -103,6 +106,8 @@
     permissionStatus = null as PermissionStatusInput | null,
     onPermissionStatusDismiss = undefined as (() => void) | undefined,
     autoDismissMs = 2400,
+    toastNotification = null as Toast | null,
+    onToastDismiss = undefined as (() => void) | undefined,
   }: {
     run?: TaskRun | null;
     agent?: string;
@@ -176,6 +181,9 @@
     onPermissionStatusDismiss?: () => void;
     /** Auto-dismiss delay for permission statuses; ignored when `transient: false`. */
     autoDismissMs?: number;
+    /** Toast notification routed through the unified overlay. */
+    toastNotification?: Toast | null;
+    onToastDismiss?: () => void;
   } = $props();
 
   let showChromeActions = $derived(
@@ -310,10 +318,41 @@
   );
   const permissionOverlayActive = $derived(Boolean(permissionPresentation?.visible));
 
+  // ── Toast notification overlay (replaces standalone ToastHost) ──
+  let toastLocal = $state<Toast | null>(null);
+  let toastDismissTimer: ReturnType<typeof setTimeout> | undefined;
+
+  $effect(() => {
+    const incoming = toastNotification;
+    if (incoming === toastLocal) return;
+    clearTimeout(toastDismissTimer);
+    toastDismissTimer = undefined;
+    toastLocal = incoming ?? null;
+    if (incoming && incoming.duration > 0) {
+      toastDismissTimer = setTimeout(() => {
+        toastLocal = null;
+        toastDismissTimer = undefined;
+        onToastDismiss?.();
+      }, incoming.duration);
+    }
+  });
+
+  $effect(() => {
+    return () => {
+      clearTimeout(toastDismissTimer);
+      toastDismissTimer = undefined;
+    };
+  });
+
+  const toastPresentation = $derived<ToastStatusPresentation | null>(
+    getToastStatusPresentation(toastLocal),
+  );
+  const toastOverlayActive = $derived(Boolean(toastPresentation?.visible));
+
   // ── Capsule morph: running / done / stopped / cached (flash) + waiting (persistent) ──
   type MorphFlash = "none" | "running" | "done" | "stopped" | "cached";
   type MorphShell = "none" | "running" | "done" | "stopped" | "cached" | "waiting";
-  type StatusOverlayMode = "none" | "send" | "permission" | "morph";
+  type StatusOverlayMode = "none" | "send" | "permission" | "toast" | "morph";
 
   let morphFlash = $state<MorphFlash>("none");
   let morphFlashTimer: ReturnType<typeof setTimeout> | undefined;
@@ -347,6 +386,7 @@
   let statusOverlayMode = $derived.by((): StatusOverlayMode => {
     if (sendOverlayActive) return "send";
     if (permissionOverlayActive) return "permission";
+    if (toastOverlayActive) return "toast";
     if (morphShell !== "none") return "morph";
     return "none";
   });
@@ -362,6 +402,9 @@
       // shell class (send-pending / send-warning / send-failed) still owns
       // color, shadow, and rounded geometry.
       return `${permissionPresentation.shellClass} session-island-permission-shell`;
+    }
+    if (statusOverlayMode === "toast" && toastPresentation) {
+      return `${toastPresentation.shellClass} session-island-permission-shell`;
     }
     if (statusOverlayMode === "morph") {
       return morphShellClass(morphShell);
@@ -805,6 +848,72 @@
         >
           {permissionPresentation.text}
         </span>
+      {:else if statusOverlayMode === "toast" && toastPresentation}
+        <div class="flex w-full max-w-full items-center gap-2 px-1">
+          <svg
+            class="h-3.5 w-3.5 shrink-0 text-miwarp-accent-on-accent"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.25"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            {#if toastPresentation.tone === "success"}
+              <path d="M5 12l4.5 4.5L19 7" />
+            {:else if toastPresentation.tone === "error"}
+              <path d="M6 6l12 12M18 6L6 18" />
+            {:else if toastPresentation.tone === "warning"}
+              <path d="M12 8v5m0 3h.01" />
+            {:else}
+              <path d="M12 8h.01M11 12h1v5h1" />
+            {/if}
+          </svg>
+          <span class="truncate text-sm font-semibold tracking-wide text-miwarp-accent-on-accent">
+            {toastPresentation.text}
+          </span>
+          {#if toastPresentation.action}
+            <button
+              type="button"
+              class="no-drag shrink-0 rounded-md border border-current/40 px-2 py-0.5 text-xs font-medium text-miwarp-accent-on-accent transition hover:bg-current/10"
+              onclick={() => {
+                toastPresentation.action?.onClick();
+                toastLocal = null;
+                clearTimeout(toastDismissTimer);
+                toastDismissTimer = undefined;
+                onToastDismiss?.();
+              }}
+            >
+              {toastPresentation.action.label}
+            </button>
+          {/if}
+          <button
+            type="button"
+            class="no-drag shrink-0 rounded-md p-0.5 text-miwarp-accent-on-accent/60 transition hover:bg-current/10 hover:text-miwarp-accent-on-accent"
+            onclick={() => {
+              toastLocal = null;
+              clearTimeout(toastDismissTimer);
+              toastDismissTimer = undefined;
+              onToastDismiss?.();
+            }}
+            aria-label={t("common_dismiss")}
+            title={t("common_dismiss")}
+          >
+            <svg
+              class="h-3 w-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
       {:else if statusOverlayMode === "morph"}
         <span
           class="text-base font-black tracking-widest text-miwarp-accent-on-accent {morphShell ===

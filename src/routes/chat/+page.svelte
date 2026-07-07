@@ -43,6 +43,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { showToast as _showToast } from "$lib/stores/toast-store.svelte";
   import { registerSessionIslandNotify } from "$lib/stores/session-island-notify.svelte";
+  import { registerToastListener } from "$lib/stores/toast-store.svelte";
   import { workspacesStore } from "$lib/stores/workspaces-store.svelte";
   import { getTransport } from "$lib/transport";
   import { dbg, dbgWarn } from "$lib/utils/debug";
@@ -329,6 +330,12 @@
 
     registerSessionIslandNotify(pushPermissionStatus);
 
+    // Route toast notifications through SessionStatusBar overlay.
+    registerToastListener((toast) => {
+      toastOverlay = toast;
+      toastOverlayVersion = Date.now();
+    });
+
     const onSessionIslandAlignmentChanged = (event: Event) => {
       const detail = (event as CustomEvent<{ alignment?: unknown }>).detail;
       sessionIslandAlignmentOverride = normalizeSessionIslandAlignment(detail?.alignment);
@@ -347,6 +354,7 @@
     return () => {
       setSplitWorkspaceXtermRef(null);
       registerSessionIslandNotify(null);
+      registerToastListener(null);
       window.removeEventListener(
         SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT,
         onSessionIslandAlignmentChanged,
@@ -445,6 +453,18 @@
   function clearPermissionStatusOverlay(): void {
     permissionStatusOverlay = null;
   }
+
+  /**
+   * Toast notifications are routed through the unified SessionStatusBar
+   * overlay (replaces the standalone ToastHost capsule). The toast store
+   * listener pushes toasts here; SessionStatusBar auto-dismisses them.
+   */
+  let toastOverlay = $state<import("$lib/stores/toast-store.svelte").Toast | null>(null);
+  let toastOverlayVersion = $state(0);
+  function clearToastOverlay(): void {
+    toastOverlay = null;
+  }
+
   let toolPanelActiveTab = $state<ToolActivityPanelTab>(chatViewCache.toolPanelActiveTab);
   let toolPanelIndicators = $state({ context: false, files: false, tasks: false });
   let requestedPreviewPath = $state<string | null>(chatViewCache.requestedPreviewPath);
@@ -1860,6 +1880,8 @@
       onSendRetry={(event) => handleSendRetry(event)}
       permissionStatus={permissionStatusOverlay?.payload ?? null}
       onPermissionStatusDismiss={clearPermissionStatusOverlay}
+      toastNotification={toastOverlay}
+      onToastDismiss={clearToastOverlay}
     />
 
     <!-- MCP panel (floating below status bar) -->

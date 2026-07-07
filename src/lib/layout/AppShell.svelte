@@ -88,7 +88,6 @@
 
   // ── Components ──────────────────────────────────────────────────
   import OverlayStack from "$lib/components/layout/OverlayStack.svelte";
-  import ToastHost from "$lib/components/ToastHost.svelte";
   import type { Component } from "svelte";
 
   // ── Props ───────────────────────────────────────────────────────
@@ -1115,5 +1114,3 @@
     />
   {/if}
 {/if}
-
-<ToastHost />

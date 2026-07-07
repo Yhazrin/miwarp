@@ -1,4 +1,5 @@
 import type { SendStatusEvent, SendState } from "$lib/chat/send-coordinator";
+import type { Toast, ToastType } from "$lib/stores/toast-store.svelte";
 
 export type SendStatusTone = "warning" | "error" | "info";
 
@@ -139,5 +140,44 @@ export function getSendStatusPresentation(
     retryable: Boolean(event.error?.retryable),
     state: event.state,
     errorCode: event.error?.code,
+  };
+}
+
+// ── Toast overlay (replaces standalone ToastHost) ──
+
+export type ToastStatusTone = "info" | "success" | "warning" | "error";
+
+export interface ToastStatusPresentation {
+  visible: boolean;
+  text: string;
+  description?: string;
+  tone: ToastStatusTone;
+  shellClass: string;
+  action?: { label: string; onClick: () => void };
+}
+
+function toastShellClass(tone: ToastType): string {
+  switch (tone) {
+    case "success":
+      return "session-island-send-pending";
+    case "error":
+      return "session-island-send-failed";
+    case "warning":
+      return "session-island-send-warning";
+    case "info":
+    default:
+      return "session-island-send-pending";
+  }
+}
+
+export function getToastStatusPresentation(toast: Toast | null): ToastStatusPresentation | null {
+  if (!toast) return null;
+  return {
+    visible: true,
+    text: toast.message,
+    description: toast.description,
+    tone: toast.type,
+    shellClass: toastShellClass(toast.type),
+    action: toast.action,
   };
 }
