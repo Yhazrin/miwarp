@@ -16,8 +16,8 @@ import {
 
 describe("settings tab registry", () => {
   describe("SETTINGS_TABS", () => {
-    it("contains exactly 12 tabs", () => {
-      expect(SETTINGS_TABS).toHaveLength(12);
+    it("contains exactly 11 tabs (providers hidden — see registry.ts TODO)", () => {
+      expect(SETTINGS_TABS).toHaveLength(11);
     });
 
     it("has unique tab ids", () => {
@@ -68,10 +68,12 @@ describe("settings tab registry", () => {
     it("returns the 4 expected groups, each with the right tabs", () => {
       const grouped = tabsByGroup();
       expect(grouped.display.map((t) => t.id)).toEqual(["appearance", "theme"]);
-      expect(grouped.integration.map((t) => t.id)).toEqual(["providers", "devices"]);
+      // providers is currently hidden — see registry.ts TODO.
+      // remote-hosts sits next to devices because both are network / connection
+      // setup; automation now stays focused on workflow + behavior.
+      expect(grouped.integration.map((t) => t.id)).toEqual(["devices", "remote-hosts"]);
       expect(grouped.automation.map((t) => t.id)).toEqual([
         "shortcuts",
-        "remote-hosts",
         "cli-behavior",
         "worktree",
         "runtimes",
@@ -126,13 +128,17 @@ describe("settings tab registry", () => {
     });
 
     it("returns the new id unchanged when valid", () => {
-      expect(resolveTabId("providers")).toBe("providers");
+      // `providers` is hidden — see registry.ts TODO. The legacy map routes
+      // it to `appearance`; new callers should pick a currently-listed tab.
       expect(resolveTabId("data-debug")).toBe("data-debug");
+      expect(resolveTabId("appearance")).toBe("appearance");
     });
 
     it("maps legacy id to new id", () => {
       expect(resolveTabId("general")).toBe("appearance");
-      expect(resolveTabId("connection")).toBe("providers");
+      // `connection` historically mapped to the hidden `providers` tab —
+      // now falls back to `appearance` until the providers tab is re-enabled.
+      expect(resolveTabId("connection")).toBe("appearance");
       expect(resolveTabId("mobile")).toBe("devices");
       expect(resolveTabId("debug")).toBe("data-debug");
       // 'theme' used to be an alias for 'appearance'; after the refactor

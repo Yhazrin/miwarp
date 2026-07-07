@@ -85,13 +85,16 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     iconPath: ICON_PALETTE,
     groupId: "display",
   },
-  {
-    id: "providers",
-    labelKey: "settings_tab_providers",
-    fallbackLabel: "Providers",
-    iconPath: ICON_KEY,
-    groupId: "integration",
-  },
+  // HIDDEN: providers tab is a v1.0.6 follow-up shell — CLI mode block is
+  // missing and callbacks are no-op stubs. Re-enable once the tab is wired
+  // to settings + platform-presets end-to-end.
+  //   {
+  //     id: "providers",
+  //     labelKey: "settings_tab_providers",
+  //     fallbackLabel: "Providers",
+  //     iconPath: ICON_KEY,
+  //     groupId: "integration",
+  //   },
   {
     id: "devices",
     labelKey: "settings_tab_devices",
@@ -111,7 +114,12 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_remote",
     fallbackLabel: "Remote Hosts",
     iconPath: ICON_SERVER,
-    groupId: "automation",
+    // SSH host config is "where can this MiWarp reach", which is a network
+    // connection concept — same family as the web server / mobile pairing
+    // on the Devices tab. Keeping it in `integration` makes the sidebar
+    // signal "all connection setup lives here" rather than scattering
+    // networking across automation.
+    groupId: "integration",
   },
   {
     id: "cli-behavior",
@@ -160,7 +168,10 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
 /** Legacy tab id → new tab id. Used by +page.svelte to keep old URLs working. */
 export const LEGACY_TAB_MAP: Record<string, SettingsTabId> = {
   general: "appearance",
-  connection: "providers",
+  // `connection` historically mapped to the `providers` tab, but that tab is
+  // currently hidden (see SETTINGS_TABS TODO). Fall back to `appearance` so
+  // old URLs still land somewhere sensible.
+  connection: "appearance",
   mobile: "devices",
   "cli-config": "cli-behavior",
   shortcuts: "shortcuts",
