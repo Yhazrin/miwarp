@@ -147,4 +147,25 @@ describe("BusEvent contract", () => {
     }
     expect(dups, `Duplicate type literals: ${dups.join(", ")}`).toEqual([]);
   });
+
+  it("v1.1.0+ BusEvent variants are present in KNOWN_BUS_EVENT_TYPES (P0-1 release gate)", async () => {
+    // The protocol-quarantine drops unknown `type` strings to `protocol_desync`.
+    // Any new Rust variant that isn't enumerated in `known-event-types.ts`
+    // is silently lost on desktop / web, so the allowlist must stay in sync
+    // with the Rust enum. This spec catches drift on the three v1.1.0
+    // variants (Attention Queue / Runtime Health / Resource Governor).
+    const { KNOWN_BUS_EVENT_TYPES } = await import("../known-event-types");
+    for (const required of [
+      "attention_changed",
+      "runtime_health_changed",
+      "governor_budget_exceeded",
+    ]) {
+      expect(
+        KNOWN_BUS_EVENT_TYPES.has(required),
+        `KNOWN_BUS_EVENT_TYPES is missing "${required}". ` +
+          `Add it to src/lib/bus/known-event-types.ts — the protocol-quarantine ` +
+          `otherwise drops this BusEvent variant to "protocol_desync".`,
+      ).toBe(true);
+    }
+  });
 });

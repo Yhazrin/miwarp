@@ -39,6 +39,12 @@ export const KNOWN_BUS_EVENT_TYPES = new Set<string>([
   "tool_use_summary",
   "usage_update",
   "user_message",
+  // v1.1.0 / 110-A17: Attention Queue durable mutations.
+  "attention_changed",
+  // v1.1.0 / 110-A4: Runtime Health probe result changed.
+  "runtime_health_changed",
+  // v1.1.0 / 110-S5: Resource Governor budget exceeded.
+  "governor_budget_exceeded",
 ]);
 
 export function isKnownBusEventType(type: string): boolean {
