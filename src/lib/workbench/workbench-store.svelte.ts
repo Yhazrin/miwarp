@@ -355,7 +355,6 @@ class WorkbenchStore {
     if (workspaces) this.workspaceOptions = workspaces;
     this.loading = true;
     this.error = "";
-    this.lastRefreshAt = Date.now();
     try {
       let runs: TaskRun[];
       if (preloadedRuns && preloadedRuns.length > 0) {
@@ -395,7 +394,10 @@ class WorkbenchStore {
       this.error = String(e);
       this.projects = this.buildProjects(this.workspaceOptions, this.allRuns);
     } finally {
-      if (myGen === this.refreshGeneration) this.loading = false;
+      if (myGen === this.refreshGeneration) {
+        this.lastRefreshAt = Date.now();
+        this.loading = false;
+      }
     }
   }
 

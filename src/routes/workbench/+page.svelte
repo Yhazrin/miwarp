@@ -19,17 +19,10 @@
   const runsCache = getContext<RunsCacheContext | undefined>(RUNS_CACHE_CONTEXT_KEY);
 
   $effect(() => {
-    const t0 = performance.now();
     const workspaces = workspacesStore.list;
-    console.log("[workbench-page] effect:start", { workspacesCount: workspaces.length });
     void (async () => {
-      console.log("[workbench-page] before resolveLayoutCachedRuns");
       const cached = await resolveLayoutCachedRuns(runsCache);
-      console.log("[workbench-page] cached resolved, count=", cached?.length);
-      const r = workbenchStore.refresh(workspaces, cached ?? undefined);
-      console.log("[workbench-page] refresh() returned", performance.now() - t0, "ms");
-      await r;
-      console.log("[workbench-page] refresh() resolved", performance.now() - t0, "ms");
+      await workbenchStore.refresh(workspaces, cached ?? undefined);
     })();
   });
 

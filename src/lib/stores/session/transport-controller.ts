@@ -17,7 +17,7 @@
  * `error` field) lives on the store.
  */
 
-import { assertTransition, type SessionPhase } from "$lib/stores/types";
+import { assertTransition, isTransitionValid, type SessionPhase } from "$lib/stores/types";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
 export type TransportEventKind = "spawn" | "response";
@@ -73,14 +73,15 @@ export class TransportController {
   /**
    * Apply a phase transition with invariant checking. Stores it on the
    * provided setter so the caller can wire to its own `$state` field.
+   * Invalid transitions are blocked in production and warned in dev.
    */
   setPhase(store: { phase: SessionPhase }, to: SessionPhase): void {
     const from = store.phase;
     if (from === to) return;
-    try {
-      assertTransition(from, to);
-    } catch (err) {
-      dbgWarn("phase", "invalid transition", { from, to, err });
+    assertTransition(from, to);
+    if (!isTransitionValid(from, to)) {
+      dbgWarn("phase", "blocked invalid transition", { from, to });
+      return;
     }
     store.phase = to;
   }

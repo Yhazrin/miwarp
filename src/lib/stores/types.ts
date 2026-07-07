@@ -87,7 +87,7 @@ const VALID_TRANSITIONS: Record<SessionPhase, Set<SessionPhase>> = {
     "cached",
     "stale_cached",
   ]),
-  ready: new Set(["spawning", "running", "empty", "loading"]),
+  ready: new Set(["spawning", "running", "empty", "loading", "idle"]),
   spawning: new Set(["running", "failed", "stopped", "idle", "empty", "loading"]),
   running: new Set(["idle", "completed", "failed", "stopped", "empty", "loading"]),
   idle: new Set(["running", "spawning", "completed", "failed", "stopped", "empty", "loading"]),
@@ -136,6 +136,17 @@ export function assertTransition(from: SessionPhase, to: SessionPhase): void {
   if (!allowed || !allowed.has(to)) {
     console.warn(`[ocv:phase] invalid transition: ${from} → ${to}`, new Error().stack);
   }
+}
+
+/**
+ * Returns true when the transition from `from` to `to` is allowed by the
+ * phase state machine. Used by TransportController.setPhase to block
+ * invalid transitions in production (assertTransition only warns).
+ */
+export function isTransitionValid(from: SessionPhase, to: SessionPhase): boolean {
+  if (from === to) return true;
+  const allowed = VALID_TRANSITIONS[from];
+  return !!allowed && allowed.has(to);
 }
 
 /** Returns a warning string if the run's error matches context-full patterns, or null if safe to resume. */
