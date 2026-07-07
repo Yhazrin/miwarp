@@ -141,3 +141,5 @@ Use priority labels:
 ## Reference
 
 Read `references/evidence-matrix.md` when selecting commands, evidence types, or MiWarp-specific gates.
+
+Read `references/scheduled-run.md` when planning the dual-track cadence (mechanical weekly GitHub Action + per-release reasoning run in a Claude Code session).

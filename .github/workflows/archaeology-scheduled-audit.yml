@@ -1,0 +1,139 @@
+name: archaeology-scheduled-audit
+
+# v1.1.0 / archaeology-cadence: weekly mechanical health check.
+#
+# This workflow is the **CI half** of the dual-track archaeology cadence
+# documented in `docs/architecture/archaeology-schedule.md`:
+#
+#   - Mechanical half (this workflow):
+#       * Re-runs every `arch:*` gate + frontend vitest + Rust unit tests
+#         on a weekly schedule so drift between two consecutive Claude
+#         sessions is caught automatically, not just at human review.
+#       * Uploads `archaeology-report.md` as artifact so a Claude session
+#         can diff two consecutive runs and see "what changed since the
+#         last archaeology".
+#
+#   - Reasoning half (Claude session, /miwarp-codebase-archaeologist):
+#       * 4-agent parallel review + synthesis with evidence-grounded
+#         findings. See `.claude/skills/miwarp-codebase-archaeologist/SKILL.md`.
+#       * Cannot run in CI; requires LLM judgement to classify drift
+#         into P0/P1/P2/P3 + draft next-slice migrations.
+#
+# The two halves are independent: weekly CI catches mechanical drift; the
+# Claude session classifies and proposes fixes when drift is significant.
+# See `.claude/skills/miwarp-codebase-archaeologist/references/scheduled-run.md`
+# for the full SOP.
+
+on:
+  schedule:
+    # Every Monday 09:00 UTC. Coarse enough to avoid flapping on
+    # transient IPC flakes, frequent enough to catch a 1-week
+    # accumulation of god-module growth or contract drift before it
+    # ships a v1.1.0 release.
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch / SHA to audit (defaults to master)"
+        required: false
+        default: "master"
+
+concurrency:
+  group: archaeology-audit
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Scheduled audit (${{ github.event.inputs.ref || 'master' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.ref || 'master' }}
+          fetch-depth: 50
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install JS deps
+        run: npm ci
+
+      - name: SvelteKit sync
+        run: npx svelte-kit sync
+
+      - name: Architecture gates (arch:check)
+        id: arch
+        run: npm run arch:check 2>&1 | tee arch-gates.log
+
+      - name: Frontend tests (vitest)
+        id: vitest
+        run: npm test 2>&1 | tee frontend-tests.log
+        continue-on-error: true
+
+      - name: Rust unit tests
+        id: rust
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib 2>&1 | tee rust-tests.log
+        continue-on-error: true
+
+      - name: Build summary report
+        if: always()
+        run: |
+          {
+            echo "# Archaeology Scheduled Audit"
+            echo ""
+            echo "- **Date:** $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "- **Trigger:** ${{ github.event_name }}"
+            echo "- **Ref:** ${{ github.event.inputs.ref || github.ref }}"
+            echo "- **Commit:** \`${{ github.sha }}\`"
+            echo "- **Run:** ${{ github.run_id }} ([link](../../actions/runs/${{ github.run_id }}))"
+            echo ""
+            echo "## arch:check (9 gates)"
+            echo ""
+            echo '```'
+            tail -n 80 arch-gates.log
+            echo '```'
+            echo ""
+            echo "## vitest"
+            echo ""
+            echo '```'
+            tail -n 40 frontend-tests.log
+            echo '```'
+            echo ""
+            echo "## cargo test --lib"
+            echo ""
+            echo '```'
+            tail -n 40 rust-tests.log
+            echo '```'
+            echo ""
+            echo "## Diff against previous run"
+            echo ""
+            echo "_Compare against the most recent archaeology-report.md artifact"
+            echo "to spot what changed since the last scheduled run._"
+          } > archaeology-report.md
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archaeology-report
+          path: archaeology-report.md
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: Fail on regression
+        if: steps.arch.outcome != 'success' || steps.vitest.outcome != 'success' || steps.rust.outcome != 'success'
+        run: |
+          echo "::error::One or more audit steps regressed."
+          echo "See archaeology-report.md artifact for details."
+          exit 1
