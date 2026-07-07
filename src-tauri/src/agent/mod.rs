@@ -2,6 +2,7 @@ pub mod adapter;
 pub mod attachment;
 pub mod claude_protocol;
 pub mod claude_stream;
+pub mod cli_update;
 pub mod codex_parser;
 pub mod constants;
 pub mod control;

@@ -893,6 +893,54 @@ export async function updateClaudeCli(): Promise<UpdateCliResult> {
   return invoke<UpdateCliResult>(CMD.update_claude_cli);
 }
 
+/** One-click update for Codex CLI (runs `npm install -g @openai/codex`). */
+export async function updateCodexCli(): Promise<UpdateCliResult> {
+  dbg("api", "updateCodexCli");
+  return invoke<UpdateCliResult>(CMD.update_codex_cli);
+}
+
+/** One-click update for MiMo Code (runs `npm install -g @mimo-ai/cli`). */
+export async function updateMimoCli(): Promise<UpdateCliResult> {
+  dbg("api", "updateMimoCli");
+  return invoke<UpdateCliResult>(CMD.update_mimo_cli);
+}
+
+/** One-click update for CC-Switch (macOS: `brew upgrade --cask cc-switch`). */
+export async function updateCcswitch(): Promise<UpdateCliResult> {
+  dbg("api", "updateCcswitch");
+  return invoke<UpdateCliResult>(CMD.update_ccswitch);
+}
+
+/** Unified one-click install/update dispatcher — used by the CLI update registry.
+ *  toolId is one of: "claude-code", "codex", "mimo", "ccswitch". */
+export async function runCliUpdate(toolId: string): Promise<UpdateCliResult> {
+  dbg("api", "runCliUpdate", toolId);
+  return invoke<UpdateCliResult>(CMD.run_cli_update, { toolId });
+}
+
+/** Probe an arbitrary CLI binary by name (used for tools like CC-Switch that
+ *  aren't MiWarp session agents). Returns the same shape as `checkAgentCli`. */
+export async function checkCliBinary(name: string): Promise<CliCheckResult> {
+  dbg("api", "checkCliBinary", name);
+  return invoke<CliCheckResult>(CMD.check_cli_binary, { name });
+}
+
+export interface DetectCliToolResult {
+  tool_id: string;
+  found: boolean;
+  version: string | null;
+  install_method: string; // "npm" | "brew_cask" | "dmg" | "deb" | "rpm" | "appimage" | "msi" | "unknown"
+  install_path: string | null;
+}
+
+/** Multi-source detection for known CLI tools (Spotlight on macOS, `dpkg -l`
+ *  on Linux, etc.). Use this for tools that might not be on `PATH` — e.g.
+ *  CC-Switch installed via a downloaded DMG won't show up under `which`. */
+export async function detectCliTool(toolId: string): Promise<DetectCliToolResult> {
+  dbg("api", "detectCliTool", toolId);
+  return invoke<DetectCliToolResult>(CMD.detect_cli_tool, { toolId });
+}
+
 export async function checkSshKey(): Promise<SshKeyInfo> {
   dbg("api", "checkSshKey");
   return invoke<SshKeyInfo>(CMD.check_ssh_key);

@@ -5,6 +5,9 @@ vi.mock("$lib/api", () => ({
   checkAgentCli: vi.fn(),
   getCliDistTags: vi.fn(),
   detectMimoRuntime: vi.fn(),
+  checkCliBinary: vi.fn(),
+  detectCliTool: vi.fn(),
+  runCliUpdate: vi.fn(),
 }));
 
 vi.mock("$lib/utils/debug", () => ({
@@ -12,7 +15,14 @@ vi.mock("$lib/utils/debug", () => ({
   dbgWarn: vi.fn(),
 }));
 
-import { checkAgentCli, getCliDistTags, detectMimoRuntime } from "$lib/api";
+import {
+  checkAgentCli,
+  getCliDistTags,
+  detectMimoRuntime,
+  checkCliBinary,
+  detectCliTool,
+  runCliUpdate,
+} from "$lib/api";
 import {
   createCliUpdateRegistry,
   cliUpdateRegistry,
@@ -22,6 +32,9 @@ import {
 const mockCheckAgentCli = vi.mocked(checkAgentCli);
 const mockGetCliDistTags = vi.mocked(getCliDistTags);
 const mockDetectMimoRuntime = vi.mocked(detectMimoRuntime);
+const mockCheckCliBinary = vi.mocked(checkCliBinary);
+const mockDetectCliTool = vi.mocked(detectCliTool);
+const mockRunCliUpdate = vi.mocked(runCliUpdate);
 
 const STORAGE_KEY = "ocv:cli-update-registry";
 
@@ -42,6 +55,9 @@ beforeEach(() => {
   mockCheckAgentCli.mockReset();
   mockGetCliDistTags.mockReset();
   mockDetectMimoRuntime.mockReset();
+  mockCheckCliBinary.mockReset();
+  mockDetectCliTool.mockReset();
+  mockRunCliUpdate.mockReset();
 
   cliUpdateRegistry.reset();
 });
@@ -283,6 +299,140 @@ describe("CliUpdateRegistry", () => {
 
       expect(cliUpdateRegistry.getEntry("claude-code")?.status).toBe("up_to_date");
       cliUpdateRegistry.reset();
+    });
+  });
+
+  describe("CC-Switch detection", () => {
+    it("lists ccswitch in the default registry entries", () => {
+      const registry = createCliUpdateRegistry();
+      const entry = registry.getEntry("ccswitch");
+      expect(entry).toBeDefined();
+      expect(entry?.id).toBe("ccswitch");
+      expect(entry?.strategy).toBe("homebrew_cask");
+      expect(entry?.name).toBe("CC Switch");
+    });
+
+    it("reports installed when detected via Spotlight (DMG install)", async () => {
+      const registry = createCliUpdateRegistry();
+      mockDetectCliTool.mockResolvedValue({
+        tool_id: "ccswitch",
+        found: true,
+        version: "3.16.5",
+        install_method: "dmg",
+        install_path: "/Applications/CC-Switch.app",
+      });
+
+      await registry.checkTool("ccswitch");
+
+      const ccswitch = registry.getEntry("ccswitch");
+      expect(ccswitch?.status).toBe("installed");
+      expect(ccswitch?.installedVersion).toBe("3.16.5");
+      expect(ccswitch?.installMethod).toBe("dmg");
+      expect(ccswitch?.installPath).toBe("/Applications/CC-Switch.app");
+      expect(mockDetectCliTool).toHaveBeenCalledWith("ccswitch");
+    });
+
+    it("reports installed when detected via Homebrew Cask", async () => {
+      const registry = createCliUpdateRegistry();
+      mockDetectCliTool.mockResolvedValue({
+        tool_id: "ccswitch",
+        found: true,
+        version: "3.16.5",
+        install_method: "brew_cask",
+        install_path: "/Applications/CC-Switch.app/Contents/MacOS/CC-Switch",
+      });
+
+      await registry.checkTool("ccswitch");
+
+      const ccswitch = registry.getEntry("ccswitch");
+      expect(ccswitch?.installMethod).toBe("brew_cask");
+    });
+
+    it("reports unknown when CC-Switch is not on disk at all", async () => {
+      const registry = createCliUpdateRegistry();
+      mockDetectCliTool.mockResolvedValue({
+        tool_id: "ccswitch",
+        found: false,
+        version: null,
+        install_method: "unknown",
+        install_path: null,
+      });
+
+      await registry.checkTool("ccswitch");
+
+      const ccswitch = registry.getEntry("ccswitch");
+      expect(ccswitch?.status).toBe("unknown");
+      expect(ccswitch?.installMethod).toBe("unknown");
+    });
+  });
+
+  describe("one-click install/update", () => {
+    it("canAutoUpdate returns true for npm_global and homebrew_cask strategies", () => {
+      const registry = createCliUpdateRegistry();
+      expect(registry.canAutoUpdate("claude-code")).toBe(true);
+      expect(registry.canAutoUpdate("codex")).toBe(true);
+      expect(registry.canAutoUpdate("mimo")).toBe(true);
+      expect(registry.canAutoUpdate("ccswitch")).toBe(true);
+    });
+
+    it("installOrUpdate marks status as installing then install_done on success", async () => {
+      const registry = createCliUpdateRegistry();
+      mockRunCliUpdate.mockResolvedValue({
+        success: true,
+        stdout: "added 1 package",
+        stderr: "",
+      });
+      // Post-refresh via checkTool will set status to "installed" once the
+      // background fire-and-forget resolves. Pre-stage the mock so it lands
+      // on a known terminal state.
+      mockDetectCliTool.mockResolvedValue({
+        tool_id: "ccswitch",
+        found: true,
+        version: "3.16.6",
+        install_method: "dmg",
+        install_path: "/Applications/CC-Switch.app",
+      });
+
+      const result = await registry.installOrUpdate("ccswitch");
+      // Let the post-refresh microtask settle before asserting.
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(result.success).toBe(true);
+      expect(mockRunCliUpdate).toHaveBeenCalledWith("ccswitch");
+      expect(registry.getEntry("ccswitch")?.status).toMatch(/install_done|installed/);
+    });
+
+    it("installOrUpdate marks install_failed when the backend reports failure", async () => {
+      const registry = createCliUpdateRegistry();
+      mockRunCliUpdate.mockResolvedValue({
+        success: false,
+        stdout: "",
+        stderr: "EACCES permission denied",
+      });
+      // Post-refresh hits checkAgentCli("codex"); stage it so the background
+      // checkTool doesn't override our install_failed assertion with "error".
+      mockCheckAgentCli.mockResolvedValue({
+        agent: "codex",
+        found: true,
+        version: "0.142.6",
+      });
+
+      const result = await registry.installOrUpdate("codex");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(result.success).toBe(false);
+      const codex = registry.getEntry("codex");
+      expect(codex?.status).toBe("install_failed");
+      expect(codex?.error).toContain("EACCES");
+    });
+
+    it("installOrUpdate throws and marks install_failed when the backend rejects", async () => {
+      const registry = createCliUpdateRegistry();
+      mockRunCliUpdate.mockRejectedValue(new Error("network unreachable"));
+
+      await expect(registry.installOrUpdate("mimo")).rejects.toThrow("network unreachable");
+      expect(registry.getEntry("mimo")?.status).toBe("install_failed");
+      expect(registry.getEntry("mimo")?.error).toBe("network unreachable");
     });
   });
 });

@@ -392,24 +392,31 @@ describe("AppUpdateCoordinator", () => {
   });
 
   describe("CLI strategy mapping", () => {
-    it("Claude Code uses native_update strategy", async () => {
+    it("Claude Code uses npm_global one-click update strategy", async () => {
       // This tests the CLI registry, not the coordinator
       const { cliUpdateRegistry } = await import("./cli-update-registry.svelte");
       const claude = cliUpdateRegistry.getEntry("claude-code");
-      expect(claude?.strategy).toBe("native_update");
-      expect(claude?.updateCommand).toBe("claude update");
+      expect(claude?.strategy).toBe("npm_global");
+      expect(claude?.updateCommand).toBeUndefined();
     });
 
-    it("Codex uses official_installer strategy", async () => {
+    it("Codex uses npm_global one-click update strategy", async () => {
       const { cliUpdateRegistry } = await import("./cli-update-registry.svelte");
       const codex = cliUpdateRegistry.getEntry("codex");
-      expect(codex?.strategy).toBe("official_installer");
+      expect(codex?.strategy).toBe("npm_global");
     });
 
-    it("MiMo uses repo_guided strategy", async () => {
+    it("MiMo uses npm_global one-click update strategy", async () => {
       const { cliUpdateRegistry } = await import("./cli-update-registry.svelte");
       const mimo = cliUpdateRegistry.getEntry("mimo");
-      expect(mimo?.strategy).toBe("repo_guided");
+      expect(mimo?.strategy).toBe("npm_global");
+    });
+
+    it("CC-Switch uses homebrew_cask one-click update strategy", async () => {
+      const { cliUpdateRegistry } = await import("./cli-update-registry.svelte");
+      const ccswitch = cliUpdateRegistry.getEntry("ccswitch");
+      expect(ccswitch?.strategy).toBe("homebrew_cask");
+      expect(ccswitch?.name).toBe("CC Switch");
     });
   });
 });

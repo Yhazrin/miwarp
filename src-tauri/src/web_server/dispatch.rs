@@ -948,6 +948,16 @@ pub async fn dispatch_command(
             let result = crate::commands::diagnostics::check_agent_cli(agent).await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
+        "check_cli_binary" => {
+            let name = extract_str(&params, "name")?;
+            let result = crate::commands::diagnostics::check_cli_binary(name).await?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "detect_cli_tool" => {
+            let tool_id = extract_str(&params, "tool_id")?;
+            let result = crate::commands::diagnostics::detect_cli_tool(tool_id).await?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
         "check_project_init" => {
             let cwd = extract_str(&params, "cwd")?;
             let result = crate::commands::diagnostics::check_project_init(cwd)?;
@@ -964,6 +974,23 @@ pub async fn dispatch_command(
         }
         "update_claude_cli" => {
             let result = crate::commands::diagnostics::update_claude_cli().await?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "update_codex_cli" => {
+            let result = crate::commands::diagnostics::update_codex_cli().await?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "update_mimo_cli" => {
+            let result = crate::commands::diagnostics::update_mimo_cli().await?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "update_ccswitch" => {
+            let result = crate::commands::diagnostics::update_ccswitch().await?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "run_cli_update" => {
+            let tool_id = extract_str(&params, "tool_id")?;
+            let result = crate::commands::diagnostics::run_cli_update(tool_id).await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
         "detect_local_proxy" => {
