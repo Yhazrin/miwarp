@@ -274,6 +274,13 @@
     store.permissionMode = permissionMode;
   });
 
+  // ── IME composition guard ──
+  // Track whether the user is in the middle of IME composition (e.g. Chinese
+  // pinyin). During composition, suppress auto-resize and capsule collapse to
+  // prevent layout shifts that would commit the partial composition and break
+  // the IME popup.
+  let isComposing = $state(false);
+
   // ── BTW mode (side question) ──
   let btwMode = $state(false);
 
@@ -286,7 +293,7 @@
   $effect(() => {
     const _layout = useCapsuleStrip;
     void _layout;
-    scheduleAutoResize();
+    if (!isComposing) scheduleAutoResize();
   });
 
   // ── v1.0.9: collapse the multi-line composer back to a capsule when the
@@ -302,7 +309,7 @@
     const wasNonEmpty = _prevInputLen > 0;
     const isEmpty = len === 0;
     _prevInputLen = len;
-    if (wasNonEmpty && isEmpty && capsuleExpanded && !pendingPermission) {
+    if (wasNonEmpty && isEmpty && capsuleExpanded && !pendingPermission && !isComposing) {
       capsuleExpanded = false;
       scheduleAutoResize();
     }
@@ -1798,7 +1805,7 @@
   }
 
   function autoResize() {
-    if (!store.textareaEl) return;
+    if (!store.textareaEl || isComposing) return;
     const el = store.textareaEl;
     const maxHeight = 4 * 24; // ~4 lines
     const hasNewline = store.inputText.includes("\n");
@@ -2373,6 +2380,8 @@
           onbeforeinput={handleBeforeInput}
           oninput={handleInput}
           onpaste={handlePaste}
+          oncompositionstart={() => (isComposing = true)}
+          oncompositionend={() => (isComposing = false)}
           placeholder={effectivePlaceholder}
           rows={1}
           {disabled}
@@ -2392,6 +2401,8 @@
         onbeforeinput={handleBeforeInput}
         oninput={handleInput}
         onpaste={handlePaste}
+        oncompositionstart={() => (isComposing = true)}
+        oncompositionend={() => (isComposing = false)}
         placeholder={effectivePlaceholder}
         rows={1}
         {disabled}
