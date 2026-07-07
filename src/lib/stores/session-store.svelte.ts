@@ -638,8 +638,8 @@ export class SessionStore {
     }
   }
 
-  /** Push an optimistic user message to the timeline (deduped by content in _reduce). */
-  private _pushOptimisticUser(content: string, attachments?: Attachment[]): void {
+  /** Push an optimistic user message to the timeline (deduped by content in _reduce). Returns the entry ID for rollback. */
+  private _pushOptimisticUser(content: string, attachments?: Attachment[]): string {
     const id = uuid();
     this._pushTimeline(null, {
       kind: "user",
@@ -651,6 +651,12 @@ export class SessionStore {
         ? { attachments: timelineAttachments(attachments) }
         : {}),
     });
+    return id;
+  }
+
+  /** Remove an optimistic user message from the timeline by ID (rollback on send failure). */
+  private _removeOptimisticUser(entryId: string): void {
+    this.timeline = this.timeline.filter((e) => e.id !== entryId);
   }
 
   /** Append a hook event entry and update tool index if applicable.
@@ -2026,7 +2032,7 @@ export class SessionStore {
         // api.startSession(), but the middleware subscription isn't set up
         // until after goto() triggers the URL $effect.  Content-based dedup
         // in _reduce(user_message) prevents double display.
-        this._pushOptimisticUser(prompt, attachments);
+        const optimisticId = this._pushOptimisticUser(prompt, attachments);
         // Subscribe middleware BEFORE spawning so no bus-events are dropped.
         // The $effect in chat page will call subscribeCurrent again (idempotent).
         const mw = getEventMiddleware();
@@ -2034,15 +2040,20 @@ export class SessionStore {
         this._connection.subscribeFresh(run.id);
         dbg("store", "stream session start, run=", run.id);
         const backendAtt = mapAttachments(attachments) ?? undefined;
-        await api.startSession(
-          run.id,
-          undefined,
-          undefined,
-          undefined,
-          backendAtt,
-          this.platformId || undefined,
-          permissionModeOverride,
-        );
+        try {
+          await api.startSession(
+            run.id,
+            undefined,
+            undefined,
+            undefined,
+            backendAtt,
+            this.platformId || undefined,
+            permissionModeOverride,
+          );
+        } catch (startErr) {
+          this._removeOptimisticUser(optimisticId);
+          throw startErr;
+        }
         dbg("store", "startSession resolved");
         // phase will be set by run_state bus event
         this._startSpawnTimeout(run.id);
@@ -2081,13 +2092,20 @@ export class SessionStore {
         // Optimistic user message — matches the pattern in startSession().
         // Content-based dedup in _reduce(user_message) prevents double display
         // when the backend's UserMessage bus event arrives.
-        this._pushOptimisticUser(text, attachments);
-        await api.sendSessionMessage(
-          this.run.id,
-          text,
-          mapAttachments(attachments) ?? undefined,
-          clientMessageId,
-        );
+        const optimisticId = this._pushOptimisticUser(text, attachments);
+        try {
+          await api.sendSessionMessage(
+            this.run.id,
+            text,
+            mapAttachments(attachments) ?? undefined,
+            clientMessageId,
+          );
+        } catch (sendErr) {
+          // Rollback: remove the optimistic message so the user doesn't see
+          // a message that was never actually sent.
+          this._removeOptimisticUser(optimisticId);
+          throw sendErr;
+        }
         if (this.isKnownSlashCommand(text)) {
           dbg("store", "skip response timeout for slash command", { cmd: text.split(" ")[0] });
         } else {
