@@ -441,4 +441,110 @@ describe("SendCoordinator (Phase 2 reconnect queue)", () => {
     coordinator.dispose();
     expect(coordinator.reconcile({ generation: 1, healthy: true })).toBe(0);
   });
+
+  // ── Submit timeout ──
+
+  it("times out an in-flight submit after submitTimeoutMs", async () => {
+    const timeoutCoord = new SendCoordinator({
+      timers,
+      submitTimeoutMs: 5_000,
+      initialPhase: "connected",
+      initialGeneration: 0,
+    });
+    const timeoutEvents: SendStatusEvent[] = [];
+    timeoutCoord.subscribe((e) => timeoutEvents.push(e));
+    try {
+      const id = "timeout-1";
+      const promise = timeoutCoord.submit({
+        runId: "run-1",
+        sessionId: "s1",
+        draft: DRAFT,
+        clientMessageId: id,
+        transport: () => new Promise(() => {}), // never resolves
+      });
+      // Record is in flight.
+      expect(timeoutCoord.busy).toBe(true);
+
+      // Advance the clock past the timeout.
+      timers.flush();
+      await Promise.resolve(); // microtask for promise settlement
+
+      await expect(promise).rejects.toBeInstanceOf(SendCoordinatorError);
+      const last = timeoutEvents.at(-1);
+      expect(last?.state).toBe("failed");
+      expect(last?.error?.code).toBe("timeout");
+      expect(last?.error?.retryable).toBe(true);
+      expect(timeoutCoord.busy).toBe(false);
+    } finally {
+      timeoutCoord.dispose();
+    }
+  });
+
+  it("submit timeout does not fire if transport resolves first", async () => {
+    const timeoutCoord = new SendCoordinator({
+      timers,
+      submitTimeoutMs: 5_000,
+      initialPhase: "connected",
+      initialGeneration: 0,
+    });
+    const timeoutEvents: SendStatusEvent[] = [];
+    timeoutCoord.subscribe((e) => timeoutEvents.push(e));
+    try {
+      const id = "timeout-2";
+      const promise = timeoutCoord.submit({
+        runId: "run-1",
+        sessionId: "s1",
+        draft: DRAFT,
+        clientMessageId: id,
+        transport: async () => undefined, // resolves immediately
+      });
+      await promise;
+
+      // Timer should have been cleared after transport resolved.
+      expect(timers.size()).toBe(0);
+
+      // Flushing timers now must not produce a timeout failure.
+      timers.flush();
+      await Promise.resolve();
+      const timeoutFailures = timeoutEvents.filter((e) => e.error?.code === "timeout");
+      expect(timeoutFailures).toHaveLength(0);
+    } finally {
+      timeoutCoord.dispose();
+    }
+  });
+
+  it("submit timeout timer is cleared on cancel", async () => {
+    const timeoutCoord = new SendCoordinator({
+      timers,
+      submitTimeoutMs: 5_000,
+      initialPhase: "connected",
+      initialGeneration: 0,
+    });
+    const timeoutEvents: SendStatusEvent[] = [];
+    timeoutCoord.subscribe((e) => timeoutEvents.push(e));
+    try {
+      const id = "timeout-3";
+      const promise = timeoutCoord.submit({
+        runId: "run-1",
+        sessionId: "s1",
+        draft: DRAFT,
+        clientMessageId: id,
+        transport: () => new Promise(() => {}),
+      });
+      void promise.catch(() => undefined);
+
+      timeoutCoord.cancel(id, "user clicked Cancel");
+
+      // Timer should have been cleared.
+      expect(timers.size()).toBe(0);
+
+      // Flushing timers now must not produce a timeout failure.
+      timers.flush();
+      await Promise.resolve();
+      const timeoutFailures = timeoutEvents.filter((e) => e.error?.code === "timeout");
+      expect(timeoutFailures).toHaveLength(0);
+    } finally {
+      timeoutCoord.dispose();
+    }
+  });
 });

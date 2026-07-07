@@ -22,6 +22,7 @@ import type {
 import {
   addAcknowledgedBounded,
   addRetryableBounded,
+  clearSubmitTimeoutTimer,
   clearTtlTimer,
   rejectRecord,
 } from "./queue-policy";
@@ -70,6 +71,7 @@ export function completeWithAccepted(ctx: TransitionContext, record: InFlightRec
   ctx.maps.inFlight.delete(record.clientMessageId);
   ctx.maps.queued.delete(record.clientMessageId);
   clearTtlTimer(ctx.timers, record);
+  clearSubmitTimeoutTimer(ctx.timers, record);
   ctx.maps.retryable.delete(record.clientMessageId);
   addAcknowledgedBounded(
     ctx.maps,
@@ -106,6 +108,7 @@ export function transitionToFailed(
   ctx.maps.inFlight.delete(record.clientMessageId);
   ctx.maps.queued.delete(record.clientMessageId);
   clearTtlTimer(ctx.timers, record);
+  clearSubmitTimeoutTimer(ctx.timers, record);
   if (failure.retryable) {
     addRetryableBounded(ctx.maps, ctx.maxRetryable, record, failure);
   } else {
@@ -150,6 +153,7 @@ export function transitionToCancelled(
   ctx.maps.inFlight.delete(record.clientMessageId);
   ctx.maps.queued.delete(record.clientMessageId);
   clearTtlTimer(ctx.timers, record);
+  clearSubmitTimeoutTimer(ctx.timers, record);
   ctx.maps.retryable.delete(record.clientMessageId);
   const event: SendStatusEvent = {
     state: "cancelled",
@@ -322,6 +326,7 @@ export function disposeAll(ctx: TransitionContext, failure: SendFailure): void {
   for (const record of ctx.maps.inFlight.values()) {
     record.settled = true;
     clearTtlTimer(ctx.timers, record);
+    clearSubmitTimeoutTimer(ctx.timers, record);
     rejectRecord(record, failure);
   }
   for (const record of ctx.maps.queued.values()) {

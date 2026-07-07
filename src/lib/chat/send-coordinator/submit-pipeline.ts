@@ -11,7 +11,12 @@ import type { TimeoutApi } from "$lib/transport";
 import { dbg } from "$lib/utils/debug";
 import { SendCoordinatorError, toSendFailure } from "./failure";
 import { createInFlightRecord } from "./identity";
-import { dropOldestQueued, rejectRecord, setupTtlTimer } from "./queue-policy";
+import {
+  clearSubmitTimeoutTimer,
+  dropOldestQueued,
+  rejectRecord,
+  setupTtlTimer,
+} from "./queue-policy";
 import type { BoundedMapState } from "./queue-policy";
 import { completeWithAccepted, transitionToFailed } from "./transitions";
 import type { TransitionContext } from "./transitions";
@@ -23,6 +28,8 @@ export interface SubmitPipelineContext {
   timers: TimeoutApi;
   maxQueued: number;
   queueTtlMs: number;
+  /** How long before an in-flight submit is considered timed out (ms). */
+  submitTimeoutMs: number;
   /** Emit a status event to the orchestrator's listener set. */
   emit: (event: SendStatusEvent) => void;
 }
@@ -88,6 +95,22 @@ export function dispatchSubmit(
   const record = createInFlightRecord(options, clientMessageId, generation, "submitting");
   ctx.maps.inFlight.set(clientMessageId, record);
 
+  // Schedule a submit timeout. If the record is still not settled when
+  // the timer fires, transition it to failed with code "timeout".
+  if (ctx.submitTimeoutMs > 0) {
+    record.submitTimeoutTimer = ctx.timers.setTimeout(() => {
+      if (record.settled) return;
+      const failure: SendFailure = {
+        code: "timeout",
+        message: `Submit timed out after ${ctx.submitTimeoutMs}ms`,
+        retryable: true,
+      };
+      transitionToFailed(ctx.context, record, failure, "submit-timeout");
+      ctx.maps.inFlight.delete(record.clientMessageId);
+      rejectRecord(record, failure);
+    }, ctx.submitTimeoutMs);
+  }
+
   ctx.emit({
     state: "submitting",
     runId: record.runId,
@@ -135,6 +158,7 @@ export async function invokeTransport(
   try {
     await transport(record.clientMessageId);
   } catch (rawError) {
+    clearSubmitTimeoutTimer(ctx.timers, record);
     if (record.settled) {
       throw new SendCoordinatorError(
         record.failure ?? {
@@ -149,6 +173,7 @@ export async function invokeTransport(
     rejectRecord(record, failure);
     return;
   }
+  clearSubmitTimeoutTimer(ctx.timers, record);
   if (record.settled) {
     rejectRecord(
       record,

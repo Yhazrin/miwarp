@@ -105,6 +105,17 @@ export function clearTtlTimer(timers: TimeoutApi, record: InFlightRecord): void 
   record.ttlTimer = undefined;
 }
 
+/** Clear the submit timeout timer attached to a record, swallowing clearTimeout errors. */
+export function clearSubmitTimeoutTimer(timers: TimeoutApi, record: InFlightRecord): void {
+  if (record.submitTimeoutTimer === undefined) return;
+  try {
+    timers.clearTimeout(record.submitTimeoutTimer);
+  } catch (e) {
+    dbgWarn("send", "clearTimeout failed", { error: e });
+  }
+  record.submitTimeoutTimer = undefined;
+}
+
 /**
  * Find a pending record by `clientMessageId` (preferred) or by `runId`.
  * The id match is exact; the runId match returns the first hit in

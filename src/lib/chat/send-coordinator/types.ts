@@ -158,6 +158,8 @@ export interface InFlightRecord {
   transport: (clientMessageId: string) => Promise<void>;
   /** Timer handle for the queue TTL — cleared on dispose or drain. */
   ttlTimer?: ReturnType<typeof setTimeout>;
+  /** Timer handle for the submit timeout — cleared on settle. */
+  submitTimeoutTimer?: ReturnType<typeof setTimeout>;
 }
 
 export interface RetryableRecord {

@@ -37,7 +37,12 @@ import {
   DEFAULT_QUEUE_TTL_MS,
   DEFAULT_SUBMIT_TIMEOUT_MS,
 } from "./send-coordinator/policy";
-import { clearTtlTimer, findPendingRecord, rejectRecord } from "./send-coordinator/queue-policy";
+import {
+  clearSubmitTimeoutTimer,
+  clearTtlTimer,
+  findPendingRecord,
+  rejectRecord,
+} from "./send-coordinator/queue-policy";
 import type { BoundedMapState } from "./send-coordinator/queue-policy";
 import {
   cancelMatchingInFlight,
@@ -348,6 +353,7 @@ export class SendCoordinator {
     this.maps.inFlight.delete(clientMessageId);
     this.maps.queued.delete(clientMessageId);
     clearTtlTimer(this.timers, record);
+    clearSubmitTimeoutTimer(this.timers, record);
     rejectRecord(record, failure);
     return true;
   }
@@ -393,6 +399,7 @@ export class SendCoordinator {
     this.maps.inFlight.delete(record.clientMessageId);
     this.maps.queued.delete(record.clientMessageId);
     clearTtlTimer(this.timers, record);
+    clearSubmitTimeoutTimer(this.timers, record);
   }
 
   /** Cancel any pending submits for a run (when run is disposed/replaced). */
@@ -456,6 +463,7 @@ export class SendCoordinator {
       timers: this.timers,
       maxQueued: this.maxQueued,
       queueTtlMs: this.queueTtlMs,
+      submitTimeoutMs: this.submitTimeoutMs,
       emit: (event: SendStatusEvent) => this.emit(event),
     };
   }
