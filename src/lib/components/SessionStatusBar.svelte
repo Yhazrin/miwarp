@@ -3,7 +3,6 @@
   import type { TaskRun, McpServerInfo, CliModelInfo } from "$lib/types";
   import type { TurnUsage } from "$lib/stores/types";
   import { EVT_STATUSBAR_TOGGLE } from "$lib/utils/bus-events";
-  import { dbg } from "$lib/utils/debug";
   import ProcessVisibilityPicker from "$lib/components/ProcessVisibilityPicker.svelte";
   import StatusBarModelMenu from "$lib/components/StatusBarModelMenu.svelte";
   import { getCliModels, loadCliInfo } from "$lib/stores/cli-info.svelte";
@@ -36,7 +35,7 @@
     outputTokens: _outputTokens = 0,
     cacheReadTokens: _cacheReadTokens = 0,
     cacheWriteTokens: _cacheWriteTokens = 0,
-    running = false,
+    running: _running = false,
     /** True while the agent is actively working (spawning/running). Drives morph flash. */
     taskRunning = false,
     /** Blocked on permission / elicitation / inline choice — persistent yellow morph. */
@@ -50,7 +49,7 @@
     mcpServers,
     onMcpToggle: _onMcpToggle,
     cliVersion: _cliVersion,
-    permissionMode = "default",
+    permissionMode: _permissionMode = "default",
     fastModeState: _fastModeState,
     numTurns: _numTurns,
     durationMs: _durationMs,
@@ -59,7 +58,7 @@
     contextUtilization,
     contextWarningLevel,
     contextWindow,
-    cwd = "",
+    cwd: _cwd = "",
     lastCompactedAt = 0,
     compactCount: _compactCount = 0,
     microcompactCount: _microcompactCount = 0,
@@ -525,6 +524,8 @@
   // ── Island hover state (tier 2 expansion) ──
   let islandHover = $state(false);
   let hoverLeaveTimer: ReturnType<typeof setTimeout> | undefined;
+  let tier2Open = $state(false);
+  let tier2OpenTimer: ReturnType<typeof setTimeout> | undefined;
 
   function onShellPointerEnter() {
     clearTimeout(hoverLeaveTimer);
@@ -554,12 +555,33 @@
 
   /** Tier 2 expands on hover/menus when there is something to show. */
   let islandExpanded = $derived(!statusOverlayActive && islandActive && tier2HasContent);
+  let islandTier2Class = $derived(tier2Open ? "session-island-tier2-active" : "");
+
+  $effect(() => {
+    clearTimeout(tier2OpenTimer);
+    tier2OpenTimer = undefined;
+
+    if (!islandExpanded) {
+      tier2Open = false;
+      return;
+    }
+
+    tier2OpenTimer = setTimeout(() => {
+      tier2Open = true;
+      tier2OpenTimer = undefined;
+    }, 140);
+
+    return () => {
+      clearTimeout(tier2OpenTimer);
+      tier2OpenTimer = undefined;
+    };
+  });
 
   // Dispatch event when island expansion state changes (for tool panel positioning)
   $effect(() => {
     if (typeof window !== "undefined") {
       window.dispatchEvent(
-        new CustomEvent(EVT_STATUSBAR_TOGGLE, { detail: { expanded: islandExpanded } }),
+        new CustomEvent(EVT_STATUSBAR_TOGGLE, { detail: { expanded: tier2Open } }),
       );
     }
   });
@@ -624,6 +646,7 @@
     clearTimeout(compactTimer);
     clearTimeout(confirmTimer);
     clearTimeout(hoverLeaveTimer);
+    clearTimeout(tier2OpenTimer);
     clearMorphFlash();
   });
 
@@ -727,9 +750,9 @@
   Retains .session-status-drag for window drag region functionality.
 -->
 <div
-  class="session-status-drag session-island-shell {islandOverlayShellClass()} {islandInteractionClass} {islandCompactClass} {tier2HasContent
+  class="session-status-drag session-island-shell {islandOverlayShellClass()} {islandInteractionClass} {islandTier2Class} {islandCompactClass} {tier2HasContent
     ? 'session-island-has-tier2'
-    : ''} {islandExpanded ? 'session-island-expanded' : ''} {alignment === 'right'
+    : ''} {tier2Open ? 'session-island-expanded' : ''} {alignment === 'right'
     ? 'session-island-align-right'
     : ''}"
   data-session-island-alignment={alignment}
@@ -799,7 +822,7 @@
 
   <!-- Tier 1: icon rail -->
   <div
-    class="session-island-tier1-frame relative inline-flex h-9 w-max max-w-full shrink-0 items-center transition-opacity duration-300 {statusOverlayActive
+    class="session-island-tier1-frame relative inline-flex h-9 shrink-0 items-center transition-opacity duration-300 {statusOverlayActive
       ? 'opacity-0'
       : ''}"
   >
@@ -813,202 +836,253 @@
         class="session-island-tier1 {showChromeActions ? 'session-island-tier1-with-chrome' : ''}"
       >
         <!--
-          10-position row, 3 leading reveal + 4 chrome anchors (always centered
-          when collapsed) + 3 trailing reveal. The 6 reveal tabs collapse to 0
-          width in the collapsed state so the 4 chrome anchors remain
-          visually clustered in the center, both collapsed and expanded.
-            1 home (workspace) · 2 wrench (tools) · 3 file (files) ·
-            4 layout (chrome) · 5 settings (chrome) ·
-            6 plug (chrome) · 7 plus (chrome) ·
-            8 monitor (preview) · 9 clock (scheduled-tasks) · 10 summarize
+          Three-part row: left reveal + centered chrome anchors + right reveal.
+          The chrome group is its own centered grid column, so reveal buttons
+          never push the base controls sideways during expansion.
+            1 home (workspace) · 2 wrench (tools) · 3 chart (context) ·
+            4 file (files) · layout/split/settings/plug/plus (chrome) ·
+            monitor (preview) · check-square (tasks) · clock (scheduled-tasks) ·
+            scroll-text (summarize)
         -->
 
-        <!-- 1: leading reveal — workspace (home) -->
-        <button
-          type="button"
-          role="tab"
-          aria-selected={toolPanelActiveTab === "workspace"}
-          aria-label={tabLabel("workspace")}
-          class="session-island-tab session-island-reveal session-island-reveal-left transition-colors {toolPanelActiveTab ===
-          'workspace'
-            ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
-            : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
-          onclick={() => onToolPanelTabChange("workspace")}
-          title={tabLabel("workspace")}
-        >
-          <Icon name="home" size="md" class="shrink-0 opacity-90" />
-        </button>
-
-        <!-- 2: leading reveal — tools (wrench) -->
-        <button
-          type="button"
-          role="tab"
-          aria-selected={toolPanelActiveTab === "tools"}
-          aria-label={tabLabel("tools")}
-          class="session-island-tab session-island-reveal session-island-reveal-left transition-colors {toolPanelActiveTab ===
-          'tools'
-            ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
-            : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
-          onclick={() => onToolPanelTabChange("tools")}
-          title={tabLabel("tools")}
-        >
-          <Icon name="wrench" size="md" class="shrink-0 opacity-90" />
-        </button>
-
-        <!-- 3: leading reveal — files (file) -->
-        <button
-          type="button"
-          role="tab"
-          aria-selected={toolPanelActiveTab === "files"}
-          aria-label={tabLabel("files")}
-          class="session-island-tab session-island-reveal session-island-reveal-left transition-colors {toolPanelActiveTab ===
-          'files'
-            ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
-            : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
-          onclick={() => onToolPanelTabChange("files")}
-          title={tabLabel("files")}
-        >
-          <span class="relative inline-flex shrink-0">
-            <Icon name="file" size="md" class="opacity-90" />
-            {#if toolPanelIndicators?.files}
-              <span
-                class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
-              ></span>
-            {/if}
-          </span>
-        </button>
-
-        <!-- 4: chrome anchor — layout (sidebar toggle) -->
-        {#if onToggleLayoutSidebar}
+        <div class="session-island-reveal-group session-island-reveal-group-left">
+          <!-- 1: leading reveal — workspace (home) -->
           <button
             type="button"
-            class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
-            tabindex={islandActive ? 0 : -1}
-            onclick={(e) => {
-              e.stopPropagation();
-              onToggleLayoutSidebar();
-            }}
-            title={t("keybind_toggleSidebar")}
-            aria-label={t("keybind_toggleSidebar")}
-            aria-expanded={layoutSidebarOpen}
+            role="tab"
+            aria-selected={toolPanelActiveTab === "workspace"}
+            aria-label={tabLabel("workspace")}
+            class="session-island-tab session-island-reveal session-island-reveal-left transition-colors {toolPanelActiveTab ===
+            'workspace'
+              ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+              : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+            onclick={() => onToolPanelTabChange("workspace")}
+            title={tabLabel("workspace")}
           >
-            <Icon name="layout" size="md" class="shrink-0 opacity-90" />
+            <Icon name="home" size="md" class="shrink-0 opacity-90" />
           </button>
-        {/if}
 
-        {#if onToggleSplitMode}
+          <!-- 2: leading reveal — tools (wrench) -->
           <button
             type="button"
-            class="session-island-tab session-island-chrome-anchor transition-colors hover:bg-muted/45 hover:text-foreground
-              {splitModeEnabled ? 'bg-primary/15 text-primary' : 'text-muted-foreground'}"
-            tabindex={islandActive ? 0 : -1}
-            onclick={(e) => {
-              e.stopPropagation();
-              onToggleSplitMode();
-            }}
-            title={splitModeEnabled ? t("split_mode_exit") : t("split_mode_enter")}
-            aria-label={splitModeEnabled ? t("split_mode_exit") : t("split_mode_enter")}
-            aria-pressed={splitModeEnabled}
+            role="tab"
+            aria-selected={toolPanelActiveTab === "tools"}
+            aria-label={tabLabel("tools")}
+            class="session-island-tab session-island-reveal session-island-reveal-left transition-colors {toolPanelActiveTab ===
+            'tools'
+              ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+              : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+            onclick={() => onToolPanelTabChange("tools")}
+            title={tabLabel("tools")}
+          >
+            <Icon name="wrench" size="md" class="shrink-0 opacity-90" />
+          </button>
+
+          <!-- 3: leading reveal — context (chart) -->
+          <button
+            type="button"
+            role="tab"
+            aria-selected={toolPanelActiveTab === "context"}
+            aria-label={tabLabel("context")}
+            class="session-island-tab session-island-reveal session-island-reveal-left transition-colors {toolPanelActiveTab ===
+            'context'
+              ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+              : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+            onclick={() => onToolPanelTabChange("context")}
+            title={tabLabel("context")}
+          >
+            <span class="relative inline-flex shrink-0">
+              <Icon name="bar-chart-2" size="md" class="opacity-90" />
+              {#if toolPanelIndicators?.context}
+                <span
+                  class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-success"
+                ></span>
+              {/if}
+            </span>
+          </button>
+
+          <!-- 4: leading reveal — files (file) -->
+          <button
+            type="button"
+            role="tab"
+            aria-selected={toolPanelActiveTab === "files"}
+            aria-label={tabLabel("files")}
+            class="session-island-tab session-island-reveal session-island-reveal-left transition-colors {toolPanelActiveTab ===
+            'files'
+              ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+              : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+            onclick={() => onToolPanelTabChange("files")}
+            title={tabLabel("files")}
+          >
+            <span class="relative inline-flex shrink-0">
+              <Icon name="file" size="md" class="opacity-90" />
+              {#if toolPanelIndicators?.files}
+                <span
+                  class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
+                ></span>
+              {/if}
+            </span>
+          </button>
+        </div>
+
+        <div class="session-island-chrome-group">
+          <!-- Chrome anchor — layout (sidebar toggle) -->
+          {#if onToggleLayoutSidebar}
+            <button
+              type="button"
+              class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+              tabindex={islandActive ? 0 : -1}
+              onclick={(e) => {
+                e.stopPropagation();
+                onToggleLayoutSidebar();
+              }}
+              title={t("keybind_toggleSidebar")}
+              aria-label={t("keybind_toggleSidebar")}
+              aria-expanded={layoutSidebarOpen}
+            >
+              <Icon name="layout" size="md" class="shrink-0 opacity-90" />
+            </button>
+          {/if}
+
+          {#if onToggleSplitMode}
+            <button
+              type="button"
+              class="session-island-tab session-island-chrome-anchor transition-colors hover:bg-muted/45 hover:text-foreground
+                {splitModeEnabled ? 'bg-primary/15 text-primary' : 'text-muted-foreground'}"
+              tabindex={islandActive ? 0 : -1}
+              onclick={(e) => {
+                e.stopPropagation();
+                onToggleSplitMode();
+              }}
+              title={splitModeEnabled ? t("split_mode_exit") : t("split_mode_enter")}
+              aria-label={splitModeEnabled ? t("split_mode_exit") : t("split_mode_enter")}
+              aria-pressed={splitModeEnabled}
+            >
+              <Icon name="monitor" size="md" class="shrink-0 opacity-90" />
+            </button>
+          {/if}
+
+          <!-- Chrome anchor — settings -->
+          {#if onOpenSettings}
+            <button
+              type="button"
+              class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+              tabindex={islandActive ? 0 : -1}
+              onclick={(e) => {
+                e.stopPropagation();
+                onOpenSettings();
+              }}
+              title={t("nav_settings")}
+              aria-label={t("nav_settings")}
+            >
+              <Icon name="settings" size="md" class="shrink-0 opacity-90" />
+            </button>
+          {/if}
+
+          <!-- Chrome anchor — plug (CLI import) -->
+          {#if onOpenCliImport}
+            <button
+              type="button"
+              class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+              tabindex={islandActive ? 0 : -1}
+              onclick={(e) => {
+                e.stopPropagation();
+                onOpenCliImport();
+              }}
+              title={t("cliSync_title")}
+              aria-label={t("sidebar_cliBrowser")}
+            >
+              <Icon name="plug" size="md" class="shrink-0 opacity-90" />
+            </button>
+          {/if}
+
+          <!-- Chrome anchor — plus (new chat) -->
+          {#if onNewChat}
+            <button
+              type="button"
+              class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+              tabindex={islandActive ? 0 : -1}
+              onclick={(e) => {
+                e.stopPropagation();
+                onNewChat();
+              }}
+              title={t("layout_newConversation")}
+              aria-label={t("sidebar_newChat")}
+            >
+              <Icon name="plus" size="md" class="shrink-0 opacity-90" />
+            </button>
+          {/if}
+        </div>
+
+        <div class="session-island-reveal-group session-island-reveal-group-right">
+          <!-- trailing reveal — preview (monitor) -->
+          <button
+            type="button"
+            role="tab"
+            aria-selected={toolPanelActiveTab === "preview"}
+            aria-label={tabLabel("preview")}
+            class="session-island-tab session-island-reveal session-island-reveal-right transition-colors {toolPanelActiveTab ===
+            'preview'
+              ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+              : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+            onclick={() => onToolPanelTabChange("preview")}
+            title={tabLabel("preview")}
           >
             <Icon name="monitor" size="md" class="shrink-0 opacity-90" />
           </button>
-        {/if}
 
-        <!-- 5: chrome anchor — settings -->
-        {#if onOpenSettings}
+          <!-- trailing reveal — tasks (check-square) -->
           <button
             type="button"
-            class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
-            tabindex={islandActive ? 0 : -1}
-            onclick={(e) => {
-              e.stopPropagation();
-              onOpenSettings();
-            }}
-            title={t("nav_settings")}
-            aria-label={t("nav_settings")}
+            role="tab"
+            aria-selected={toolPanelActiveTab === "tasks"}
+            aria-label={tabLabel("tasks")}
+            class="session-island-tab session-island-reveal session-island-reveal-right transition-colors {toolPanelActiveTab ===
+            'tasks'
+              ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+              : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+            onclick={() => onToolPanelTabChange("tasks")}
+            title={tabLabel("tasks")}
           >
-            <Icon name="settings" size="md" class="shrink-0 opacity-90" />
+            <span class="relative inline-flex shrink-0">
+              <Icon name="check-square" size="md" class="opacity-90" />
+              {#if toolPanelIndicators?.tasks}
+                <span
+                  class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 animate-pulse rounded-full bg-miwarp-status-info"
+                ></span>
+              {/if}
+            </span>
           </button>
-        {/if}
 
-        <!-- 6: chrome anchor — plug (CLI import) -->
-        {#if onOpenCliImport}
+          <!-- trailing reveal — scheduled-tasks (clock) -->
           <button
             type="button"
-            class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
-            tabindex={islandActive ? 0 : -1}
-            onclick={(e) => {
-              e.stopPropagation();
-              onOpenCliImport();
-            }}
-            title={t("cliSync_title")}
-            aria-label={t("sidebar_cliBrowser")}
+            role="tab"
+            aria-selected={toolPanelActiveTab === "scheduled-tasks"}
+            aria-label={tabLabel("scheduled-tasks")}
+            class="session-island-tab session-island-reveal session-island-reveal-right transition-colors {toolPanelActiveTab ===
+            'scheduled-tasks'
+              ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+              : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+            onclick={() => onToolPanelTabChange("scheduled-tasks")}
+            title={tabLabel("scheduled-tasks")}
           >
-            <Icon name="plug" size="md" class="shrink-0 opacity-90" />
+            <Icon name="clock" size="md" class="shrink-0 opacity-90" />
           </button>
-        {/if}
 
-        <!-- 7: chrome anchor — plus (new chat) -->
-        {#if onNewChat}
-          <button
-            type="button"
-            class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
-            tabindex={islandActive ? 0 : -1}
-            onclick={(e) => {
-              e.stopPropagation();
-              onNewChat();
-            }}
-            title={t("layout_newConversation")}
-            aria-label={t("sidebar_newChat")}
-          >
-            <Icon name="plus" size="md" class="shrink-0 opacity-90" />
-          </button>
-        {/if}
-
-        <!-- 8: trailing reveal — preview (monitor) -->
-        <button
-          type="button"
-          role="tab"
-          aria-selected={toolPanelActiveTab === "preview"}
-          aria-label={tabLabel("preview")}
-          class="session-island-tab session-island-reveal session-island-reveal-right transition-colors {toolPanelActiveTab ===
-          'preview'
-            ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
-            : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
-          onclick={() => onToolPanelTabChange("preview")}
-          title={tabLabel("preview")}
-        >
-          <Icon name="monitor" size="md" class="shrink-0 opacity-90" />
-        </button>
-
-        <!-- 9: trailing reveal — scheduled-tasks (clock) -->
-        <button
-          type="button"
-          role="tab"
-          aria-selected={toolPanelActiveTab === "scheduled-tasks"}
-          aria-label={tabLabel("scheduled-tasks")}
-          class="session-island-tab session-island-reveal session-island-reveal-right transition-colors {toolPanelActiveTab ===
-          'scheduled-tasks'
-            ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
-            : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
-          onclick={() => onToolPanelTabChange("scheduled-tasks")}
-          title={tabLabel("scheduled-tasks")}
-        >
-          <Icon name="clock" size="md" class="shrink-0 opacity-90" />
-        </button>
-
-        <!-- 10: trailing reveal — summarize (optional) -->
-        {#if onSummarize}
-          <button
-            type="button"
-            class="session-island-tab session-island-reveal session-island-reveal-right text-muted-foreground hover:bg-muted/45 hover:text-foreground transition-colors"
-            onclick={onSummarize}
-            title={t("statusbar_summarize")}
-            aria-label={t("statusbar_summarize")}
-          >
-            <Icon name="scroll-text" size="md" class="shrink-0 opacity-90" />
-          </button>
-        {/if}
+          <!-- trailing reveal — summarize (optional) -->
+          {#if onSummarize}
+            <button
+              type="button"
+              class="session-island-tab session-island-reveal session-island-reveal-right text-muted-foreground hover:bg-muted/45 hover:text-foreground transition-colors"
+              onclick={onSummarize}
+              title={t("statusbar_summarize")}
+              aria-label={t("statusbar_summarize")}
+            >
+              <Icon name="scroll-text" size="md" class="shrink-0 opacity-90" />
+            </button>
+          {/if}
+        </div>
       </div>
     {/if}
   </div>
@@ -1025,7 +1099,7 @@
       intrinsic height lets the grid `0fr` track smoothly from 1fr → 0fr.
     -->
     <div
-      class="tier-2-content flex shrink-0 items-center justify-between overflow-hidden {islandActive
+      class="tier-2-content flex shrink-0 items-center justify-between overflow-hidden {tier2Open
         ? 'session-island-tier2-open border-t border-border/20'
         : 'border-0'} {statusOverlayActive ? 'opacity-0 pointer-events-none' : ''}"
     >

@@ -1559,7 +1559,7 @@ textarea,
 @property --session-island-tier1-max-width {
   syntax: "<length>";
   inherits: true;
-  initial-value: 7rem;
+  initial-value: 9.75rem;
 }
 
 :root {
@@ -1577,11 +1577,11 @@ textarea,
   --session-chrome-slot-width: 0px;
   /* Single gap between every tier-1 capsule (tabs, chrome, center pill columns) */
   --session-island-rail-gap: 6px;
-  --session-island-tier2-width-cap: min(calc(100% - 24px), 42rem);
+  --session-island-tier2-width-cap: var(--session-island-tier1-max-width-expanded);
   --session-island-morph-width: min(180px, calc(100% - 24px));
   /* Tier-1 track caps — animated in lockstep with tier-2 width on collapse. */
-  --session-island-tier1-max-width-expanded: 20rem;
-  --session-island-tier1-max-width-collapsed: 7rem;
+  --session-island-tier1-max-width-expanded: 26.5rem;
+  --session-island-tier1-max-width-collapsed: 9.75rem;
 }
 
 .session-island-shell {
@@ -1653,7 +1653,7 @@ textarea,
 }
 
 .session-island-shell.session-island-align-right .session-island-tier1 {
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .session-island-shell.session-island-align-right .tier-2-content {
@@ -1689,6 +1689,7 @@ textarea,
   --session-chrome-slot-width: var(--session-chrome-width-active);
   transition:
     grid-template-rows var(--session-island-duration) var(--session-island-ease),
+    width var(--session-island-duration) var(--session-island-ease),
     --context-pill-slot-width var(--session-island-duration) var(--session-island-ease),
     --session-chrome-slot-width var(--session-island-duration) var(--session-island-ease) 80ms,
     --session-island-tier1-max-width var(--session-island-duration) var(--session-island-ease),
@@ -1718,14 +1719,17 @@ textarea,
 /* Tier 2 row: grid 0fr ↔ 1fr; tier-1 + tier-2 widths animate together on collapse */
 .session-island-shell.session-island-has-tier2 {
   display: grid;
-  grid-template-columns: minmax(0, max-content);
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: center;
   justify-items: center;
   align-content: start;
   grid-template-rows: auto 0fr;
   --session-island-tier1-max-width: var(--session-island-tier1-max-width-collapsed);
   --session-island-tier2-max-width: 0px;
+  width: var(--session-island-tier1-max-width);
   transition:
     grid-template-rows var(--session-island-duration) var(--session-island-ease),
+    width var(--session-island-duration) var(--session-island-ease),
     --context-pill-slot-width var(--session-island-duration) var(--session-island-ease),
     --session-chrome-slot-width var(--session-island-duration) var(--session-island-ease),
     --session-island-tier1-max-width var(--session-island-duration) var(--session-island-ease),
@@ -1737,8 +1741,11 @@ textarea,
 }
 
 .session-island-shell.session-island-active.session-island-has-tier2 {
-  grid-template-rows: auto 1fr;
   --session-island-tier1-max-width: var(--session-island-tier1-max-width-expanded);
+}
+
+.session-island-shell.session-island-tier2-active.session-island-has-tier2 {
+  grid-template-rows: auto 1fr;
   --session-island-tier2-max-width: var(--session-island-tier2-width-cap);
 }
 
@@ -1747,11 +1754,9 @@ textarea,
   overflow: hidden;
 }
 
-/* Collapse: tier-2 must not keep layout width while row height animates.
-   width/max-width transition through the --session-island-tier2-max-width
-   custom property on .session-island-shell (registered via @property above),
-   so we leave them alone here — hardcoding 0 would short-circuit the
-   variable transition and snap tier 2 to invisible. */
+/* Collapse: tier-2 must not keep visual padding while row height animates.
+   The shell width is driven by the animated tier variables above, so tier-2
+   can keep its max-width transition instead of snapping to 0. */
 .session-island-shell.session-island-has-tier2:not(.session-island-active) .tier-2-content {
   padding: 0;
   border-width: 0 !important;
@@ -1759,49 +1764,68 @@ textarea,
 
 .session-island-tier1-frame {
   grid-row: 1;
-  width: max-content;
+  box-sizing: border-box;
+  width: var(--session-island-tier1-max-width);
   max-width: 100%;
   justify-content: center;
   min-width: 0;
   align-self: center;
   flex-shrink: 0;
+  overflow: hidden;
+  transition: width var(--session-island-duration) var(--session-island-ease);
 }
 
-/* Tier 1: 10-position row — 3 leading reveal + 4 chrome anchors (always
-   centered in both collapsed and expanded states) + 3 trailing reveal.
-   In the collapsed state the 6 reveal columns collapse to 0 width so only
-   the 4 chrome anchors remain visible, sitting compact in the center.
-   Order: home · wrench · file · layout · settings · plug · plus · monitor
-   · clock · summarize.
-   column-gap is always 0 so the 4 chrome anchors never spread apart on
-   hover; reveal-to-reveal spacing is carried by .session-island-reveal's
-   own margin-right so it fades in with the reveal itself. */
+/* Tier 1: three-part row. The chrome anchors live in the center column, so
+   left reveal controls can expand without pushing the base controls sideways. */
 .session-island-tier1 {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   justify-content: center;
-  column-gap: 0;
-  width: max-content;
+  width: 100%;
   max-width: 100%;
   padding: 0;
-  grid-template-columns:
-    auto /* 1 home */
-    auto /* 2 wrench */
-    auto /* 3 file */
-    auto /* 4 layout */
-    auto /* 5 settings */
-    auto /* 6 plug */
-    auto /* 7 plus */
-    auto /* 8 monitor */
-    auto /* 9 clock */
-    auto; /* 10 summarize */
+  column-gap: 0;
+  transition: column-gap var(--session-island-duration) var(--session-island-ease);
 }
 
-/* Collapsed capsule: only the 4 chrome anchors (layout / settings / plug /
-   plus) are visible. The 6 reveal tabs collapse to 0 width, and
-   margin/padding/border are zeroed out so they don't push the 4 anchors
+.session-island-shell.session-island-active .session-island-tier1 {
+  column-gap: var(--session-island-rail-gap);
+}
+
+.session-island-reveal-group,
+.session-island-chrome-group {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.session-island-reveal-group {
+  gap: 0;
+  overflow: hidden;
+  transition: gap var(--session-island-duration) var(--session-island-ease);
+}
+
+.session-island-shell.session-island-active .session-island-reveal-group {
+  gap: var(--session-island-rail-gap);
+}
+
+.session-island-reveal-group-left {
+  justify-content: flex-end;
+}
+
+.session-island-reveal-group-right {
+  justify-content: flex-start;
+}
+
+.session-island-chrome-group {
+  justify-content: center;
+}
+
+/* Collapsed capsule: only the chrome anchors are visible. Reveal tabs collapse to 0 width, and
+   padding/border are zeroed out so they don't push the chrome anchors
    apart. Active state grows them back with width + scale + opacity
-   transitions, and margin-right fades in alongside the reveal. */
+   transitions. */
 .session-island-shell:not(.session-island-active) .session-island-reveal {
   width: 0;
   height: 0;
@@ -1815,8 +1839,7 @@ textarea,
     opacity var(--session-island-duration) var(--session-island-ease),
     transform var(--session-island-duration) var(--session-island-ease),
     width var(--session-island-duration) var(--session-island-ease),
-    height var(--session-island-duration) var(--session-island-ease),
-    margin var(--session-island-duration) var(--session-island-ease);
+    height var(--session-island-duration) var(--session-island-ease);
 }
 
 .session-island-shell.session-island-active .session-island-reveal {
@@ -2120,7 +2143,7 @@ textarea,
   grid-row: 2;
   min-width: 0;
   min-height: 0;
-  width: max-content;
+  width: 100%;
   max-width: var(--session-island-tier2-max-width);
   overflow: hidden;
   pointer-events: none;
@@ -2128,7 +2151,7 @@ textarea,
   transition: border-color var(--session-island-duration) var(--session-island-ease);
 }
 
-.session-island-shell.session-island-active.session-island-has-tier2 .tier-2-content,
+.session-island-shell.session-island-tier2-active.session-island-has-tier2 .tier-2-content,
 .tier-2-content.session-island-tier2-open {
   pointer-events: auto;
 }
@@ -2165,7 +2188,7 @@ textarea,
   will-change: transform, opacity;
 }
 
-.session-island-shell.session-island-active.session-island-has-tier2 .session-island-tier2,
+.session-island-shell.session-island-tier2-active.session-island-has-tier2 .session-island-tier2,
 .tier-2-content.session-island-tier2-open .session-island-tier2 {
   opacity: 1;
   transform: translate3d(0, 0, 0) scale(1);
@@ -2188,8 +2211,8 @@ textarea,
 
 /* Reveal-only tier-1 buttons: hidden in the collapsed state and grow
    outward from the center on hover. Transform-origin is set per side:
-   - .session-island-reveal-left (home, wrench, file): right-center → grows leftward
-   - .session-island-reveal-right (monitor, clock, summarize): left-center → grows rightward
+   - .session-island-reveal-left (home, wrench, bar-chart, file): right-center → grows leftward
+   - .session-island-reveal-right (monitor, check-square, clock, summarize): left-center → grows rightward
    Width + scale + opacity all transition together so the icon visibly
    fades-and-grows in from the center pill. */
 .session-island-reveal {
@@ -2198,19 +2221,14 @@ textarea,
   width: 0;
   height: 28px;
   min-width: 0;
-  margin: 0 var(--session-island-rail-gap) 0 0;
+  margin: 0;
   overflow: hidden;
   pointer-events: none;
   transition:
     opacity var(--session-island-duration) var(--session-island-ease),
     transform var(--session-island-duration) var(--session-island-ease),
     width var(--session-island-duration) var(--session-island-ease),
-    height var(--session-island-duration) var(--session-island-ease),
-    margin var(--session-island-duration) var(--session-island-ease);
-}
-
-.session-island-reveal:last-child {
-  margin-right: 0;
+    height var(--session-island-duration) var(--session-island-ease);
 }
 
 .session-island-shell.session-island-active .session-island-reveal {
