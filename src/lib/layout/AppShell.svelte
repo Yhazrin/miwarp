@@ -88,6 +88,7 @@
 
   // ── Components ──────────────────────────────────────────────────
   import OverlayStack from "$lib/components/layout/OverlayStack.svelte";
+  import AppUpdateNotice from "$lib/components/AppUpdateNotice.svelte";
   import type { Component } from "svelte";
 
   // ── Props ───────────────────────────────────────────────────────
@@ -1010,11 +1011,12 @@
     {sessionDragY}
     {titlebarBandHeight}
     {windowChromeLeftInset}
-    onOpenUpdateCenter={() => (updateCenterOpen = true)}
   >
     {@render children()}
   </ShellMainSurface>
 </div>
+
+<AppUpdateNotice />
 
 <OverlayStack
   bind:commandPaletteOpen

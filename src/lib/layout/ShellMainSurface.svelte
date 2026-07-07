@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
-  import UpdateBanner from "$lib/components/UpdateBanner.svelte";
   import VersionMismatchBanner from "$lib/components/VersionMismatchBanner.svelte";
 
   interface Props {
@@ -15,7 +14,6 @@
     sessionDragY: number;
     titlebarBandHeight: number;
     windowChromeLeftInset: number;
-    onOpenUpdateCenter: () => void;
   }
 
   let {
@@ -29,7 +27,6 @@
     sessionDragY,
     titlebarBandHeight,
     windowChromeLeftInset,
-    onOpenUpdateCenter,
   }: Props = $props();
 </script>
 
@@ -60,9 +57,6 @@
     style="-webkit-app-region: drag; z-index: 0;"
   ></div>
   <VersionMismatchBanner />
-  <div class="pointer-events-none absolute right-3 top-2 z-20">
-    <UpdateBanner onOpenCenter={onOpenUpdateCenter} />
-  </div>
   <main class="miwarp-main-surface flex-1 min-h-0 overflow-hidden flex flex-col">
     <div class="flex-1 min-h-0 flex flex-col">
       {@render children()}

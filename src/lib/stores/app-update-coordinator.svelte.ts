@@ -42,6 +42,7 @@ export interface AppUpdateState {
 }
 
 const SNOOZE_KEY = "ocv:update-snoozed";
+const DISMISSED_PROMPT_PREFIX = "ocv:update-prompt-dismissed:";
 const SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 const AUTO_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
 const STARTUP_CHECK_DELAY_MS = 5000;
@@ -83,9 +84,17 @@ function readAutoCheckInterval(): number {
 
 function isDismissed(version: string): boolean {
   try {
-    return sessionStorage.getItem(`ocv:update-dismissed:${version}`) === "1";
+    return localStorage.getItem(`${DISMISSED_PROMPT_PREFIX}${version}`) === "1";
   } catch {
     return false;
+  }
+}
+
+function writeDismissed(version: string): void {
+  try {
+    localStorage.setItem(`${DISMISSED_PROMPT_PREFIX}${version}`, "1");
+  } catch {
+    // storage full or private mode — silently ignore
   }
 }
 
@@ -104,6 +113,7 @@ class AppUpdateCoordinator {
   private _intervalTimer: ReturnType<typeof setInterval> | null = null;
   private _destroyed = false;
   private _autoCheckEnabled = $state(true);
+  private _promptDismissRevision = $state(0);
 
   get phase(): AppUpdatePhase {
     return this._state.phase;
@@ -114,6 +124,7 @@ class AppUpdateCoordinator {
   }
 
   get hasUpdate(): boolean {
+    void this._promptDismissRevision;
     return (
       this._state.phase === "available" &&
       this._state.offer !== null &&
@@ -221,17 +232,6 @@ class AppUpdateCoordinator {
           return this._state;
         }
 
-        // Session dismissal — skip until next browser session
-        if (isDismissed(result.offer.version)) {
-          this._state = {
-            ...this._state,
-            phase: "idle",
-            offer: null,
-            lastCheckedAt: Date.now(),
-          };
-          return this._state;
-        }
-
         this._state = {
           ...this._state,
           phase: "available",
@@ -312,14 +312,19 @@ class AppUpdateCoordinator {
     }
   }
 
-  /** Dismiss the current offer (permanently for this version via sessionStorage, then reset to idle). */
+  /** Dismiss only the ambient prompt for this version; Settings still keeps the update state. */
+  dismissPrompt(): void {
+    if (this._state.offer) {
+      writeDismissed(this._state.offer.version);
+      this._promptDismissRevision += 1;
+    }
+  }
+
+  /** Dismiss the current offer prompt for this version, then reset to idle. */
   dismiss(): void {
     if (this._state.offer) {
-      try {
-        sessionStorage.setItem(`ocv:update-dismissed:${this._state.offer.version}`, "1");
-      } catch {
-        // ignore
-      }
+      writeDismissed(this._state.offer.version);
+      this._promptDismissRevision += 1;
     }
     this._state = {
       ...this._state,

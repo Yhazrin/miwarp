@@ -110,7 +110,30 @@ describe("AppUpdateCoordinator", () => {
   });
 
   describe("dismiss and snooze", () => {
-    it("dismiss uses sessionStorage", async () => {
+    it("dismissPrompt persists by version but keeps update state available", async () => {
+      mockCheck.mockResolvedValue({
+        offer: {
+          kind: "in_app",
+          version: "1.0.9",
+          currentVersion: "1.0.8",
+          notes: "",
+        },
+        error: null,
+        upToDateVersion: null,
+      });
+
+      await appUpdateCoordinator.checkForUpdate();
+      expect(appUpdateCoordinator.phase).toBe("available");
+      expect(appUpdateCoordinator.hasUpdate).toBe(true);
+
+      appUpdateCoordinator.dismissPrompt();
+      expect(appUpdateCoordinator.phase).toBe("available");
+      expect(appUpdateCoordinator.state.offer?.version).toBe("1.0.9");
+      expect(appUpdateCoordinator.hasUpdate).toBe(false);
+      expect(localStorageStore.get("ocv:update-prompt-dismissed:1.0.9")).toBe("1");
+    });
+
+    it("dismiss persists by version and resets to idle", async () => {
       mockCheck.mockResolvedValue({
         offer: {
           kind: "in_app",
@@ -127,7 +150,28 @@ describe("AppUpdateCoordinator", () => {
 
       appUpdateCoordinator.dismiss();
       expect(appUpdateCoordinator.phase).toBe("idle");
-      expect(sessionStorageStore.get("ocv:update-dismissed:1.0.9")).toBe("1");
+      expect(localStorageStore.get("ocv:update-prompt-dismissed:1.0.9")).toBe("1");
+    });
+
+    it("dismissed prompt does not suppress manual update checks", async () => {
+      mockCheck.mockResolvedValue({
+        offer: {
+          kind: "in_app",
+          version: "1.0.9",
+          currentVersion: "1.0.8",
+          notes: "",
+        },
+        error: null,
+        upToDateVersion: null,
+      });
+
+      await appUpdateCoordinator.checkForUpdate();
+      appUpdateCoordinator.dismissPrompt();
+
+      const result = await appUpdateCoordinator.checkForUpdate();
+      expect(result.phase).toBe("available");
+      expect(result.offer?.version).toBe("1.0.9");
+      expect(appUpdateCoordinator.hasUpdate).toBe(false);
     });
 
     it("snooze uses localStorage with 24h expiry", async () => {
