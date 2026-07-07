@@ -25,7 +25,9 @@
 use crate::process_ext::HideConsole;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
 
@@ -374,8 +376,7 @@ pub fn detect_via_appimage(token: &str, binary: &str) -> Option<InstallInfo> {
     }
     // Fall through to PATH probe — AppImage is sometimes symlinked as just
     // the binary name.
-    let _ = binary; // suppress unused
-    detect_via_path(binary)
+    Some(detect_via_path(binary))
 }
 
 // ── PATH-only fallback (used on Windows + Linux AppImage miss) ─────────
@@ -665,6 +666,7 @@ fn install_rpm(_rpm: &Path) -> Result<String, String> {
     Err(".rpm install is only supported on Linux".to_string())
 }
 
+#[cfg(target_os = "linux")]
 fn install_appimage(appimage: &Path) -> Result<String, String> {
     // AppImage "install" is just `chmod +x` + put somewhere on PATH. We
     // assume the user already has the previous version's location on PATH
@@ -677,6 +679,11 @@ fn install_appimage(appimage: &Path) -> Result<String, String> {
     perms.set_mode(0o755);
     std::fs::set_permissions(appimage, perms).map_err(|e| format!("chmod failed: {}", e))?;
     Ok(appimage.to_string_lossy().to_string())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn install_appimage(_appimage: &Path) -> Result<String, String> {
+    Err("AppImage install is only supported on Linux".to_string())
 }
 
 #[cfg(target_os = "windows")]
