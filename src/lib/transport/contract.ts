@@ -15,6 +15,13 @@ export interface Transport {
   ): Promise<T>;
   listen<T>(event: string, handler: (payload: T) => void): Promise<() => void>;
   isDesktop(): boolean;
+  /**
+   * Resolve a local file path to a URL the renderer can stream (image / video /
+   * audio / binary). Tauri uses the `asset:` protocol so the WebView reads
+   * the file directly from disk; the WebSocket transport returns a
+   * browser-fetchable URL since there's no Tauri runtime in the browser.
+   */
+  fileAssetUrl(path: string): string;
   /** Subscribe to a run's real-time events (WS only, no-op on desktop). */
   subscribeRun(runId: string, lastSeq?: number, ownerId?: string): void;
   /** Unsubscribe one logical owner from a run (WS only, no-op on desktop). */

@@ -29,6 +29,15 @@ export function getTransport(): Transport {
   return _instance;
 }
 
+/**
+ * Resolve a local file path to a streamable URL via the active transport.
+ * Tauri returns the `asset:` protocol URL; the WebSocket transport returns
+ * a browser-fetchable `/_asset/<path>` URL. See Transport.fileAssetUrl.
+ */
+export function getFileAssetUrl(path: string): string {
+  return getTransport().fileAssetUrl(path);
+}
+
 /** Reset the singleton (for testing). Disposes the current instance first. */
 export function _resetTransport(): void {
   if (_instance) {

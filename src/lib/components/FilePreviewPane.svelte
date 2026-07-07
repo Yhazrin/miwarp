@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { getGitDiff, readTextFile, readFileBase64, writeTextFile, statTextFile } from "$lib/api";
+  import { getGitDiff, readTextFile, writeTextFile } from "$lib/api";
+  import { getFileAssetUrl } from "$lib/transport";
   import { dbg } from "$lib/utils/debug";
   import { fileName as pathFileName } from "$lib/utils/format";
   import { t } from "$lib/i18n/index.svelte";
@@ -77,6 +78,8 @@
   let fileSaving = $state(false);
   let editorMode = $state<"edit" | "rendered">("edit");
   let fileSize = $state(0);
+  /** True when we resolved the image via the browser fetch fallback (non-Tauri). */
+  let imageBrowserFallback = $state(false);
 
   /** Files larger than this are not auto-previewed (CodeMirror init becomes very slow). */
   const MAX_PREVIEW_SIZE = 1_000_000; // 1MB
@@ -160,41 +163,42 @@
 
     try {
       if (isImage(ext)) {
-        const [base64, mime] = await readFileBase64(p, c);
+        // P0-2 (arch:perf-budget): avoid base64 over IPC. The active
+        // transport resolves the local file path to a streamable URL
+        // (asset: protocol in Tauri, /_asset/<path> in browser) so the
+        // renderer streams from disk instead of round-tripping bytes
+        // through JSON. Browser mode fetches + object-URL because the
+        // `/_asset/` route is dev-server-only.
+        const assetUrl = getFileAssetUrl(p);
         if (seq !== loadSeq) return;
-        imageDataUrl = `data:${mime};base64,${base64}`;
+        let resolved = assetUrl;
+        if (typeof window !== "undefined" && !assetUrl.startsWith("asset:")) {
+          try {
+            const res = await fetch(assetUrl);
+            if (res.ok) {
+              const blob = await res.blob();
+              resolved = URL.createObjectURL(blob);
+              imageBrowserFallback = true;
+            }
+          } catch (e) {
+            dbg("preview-pane", "asset fetch fallback failed", String(e));
+          }
+        }
+        if (seq !== loadSeq) return;
+        imageDataUrl = resolved;
         fileContent = "";
         originalContent = "";
       } else {
-        // Stat first (cheap metadata) so multi-MB files don't pay readTextFile's full
-        // disk-read + IPC + JS string allocation cost just to be discarded by the size guard.
-        // Stat failures fall through to readTextFile so the existing error path stays intact.
-        let preReadSize: number | null = null;
-        try {
-          preReadSize = await statTextFile(p, c);
-          if (seq !== loadSeq) return;
-        } catch (e) {
-          dbg("preview-pane", "stat failed, falling through to read", { path: p, err: String(e) });
-        }
-        if (preReadSize !== null && preReadSize > MAX_PREVIEW_SIZE) {
-          fileSize = preReadSize;
+        const content = await readTextFile(p, c);
+        if (seq !== loadSeq) return;
+        fileSize = content.length;
+        if (content.length > MAX_PREVIEW_SIZE) {
           loadState = "too_large";
           fileContent = "";
           originalContent = "";
         } else {
-          const content = await readTextFile(p, c);
-          if (seq !== loadSeq) return;
-          fileSize = content.length;
-          // Defense-in-depth: stat may return stale/inaccurate size on some filesystems
-          // (e.g. sparse files, network mounts). Re-check after read.
-          if (content.length > MAX_PREVIEW_SIZE) {
-            loadState = "too_large";
-            fileContent = "";
-            originalContent = "";
-          } else {
-            fileContent = content;
-            originalContent = content;
-          }
+          fileContent = content;
+          originalContent = content;
         }
       }
       dbg("preview-pane", "file loaded", {
