@@ -2082,7 +2082,7 @@ export class SessionStore {
     attachments: Attachment[],
     clientMessageId?: string | null,
   ): Promise<void> {
-    if (!this.run) return;
+    if (!this.run) throw new Error("No active run — message cannot be sent");
     this.error = "";
     // Invalidate idle snapshot — user is sending a new message
     snapshotCache.deleteSnapshot(this.run.id).catch((e) => dbgWarn("snapshot", "delete failed", e));

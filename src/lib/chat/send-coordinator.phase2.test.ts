@@ -108,7 +108,7 @@ describe("SendCoordinator (Phase 2 reconnect queue)", () => {
     expect(coordinator.queuedCount).toBe(1);
     expect(events.at(-1)?.state).toBe("queued");
     expect(events.at(-1)?.queueDepth).toBe(1);
-    expect(coordinator.busy).toBe(false);
+    expect(coordinator.busy).toBe(true);
 
     coordinator.setTransportPhase("connected", { reconcile: true });
     await promise;

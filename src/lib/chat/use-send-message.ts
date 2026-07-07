@@ -287,9 +287,14 @@ export function createSendMessage(ctx: SendMessageContext): SendMessageHandle {
           thinking.setProcessingSlashCmd(slashCmd);
           thinking.setSlashCmdSeenRunning(false);
         }
-        await handleResume("resume", undefined, text, attachments);
-        // Resumes resolve on IPC accept; clear the draft.
-        clearDraftIfOwnedBy(store.run.id);
+        try {
+          await handleResume("resume", undefined, text, attachments);
+          // Resumes resolve on IPC accept; clear the draft.
+          clearDraftIfOwnedBy(store.run.id);
+        } catch (resumeErr) {
+          restoreDraft(draft);
+          throw resumeErr;
+        }
       } else {
         if (slashCmd) {
           thinking.setProcessingSlashCmd(slashCmd);

@@ -156,7 +156,7 @@ export class SendCoordinator {
   }
 
   get busy(): boolean {
-    return this.maps.inFlight.size > 0;
+    return this.maps.inFlight.size > 0 || this.maps.queued.size > 0;
   }
 
   get pendingCount(): number {
