@@ -187,6 +187,38 @@ sealed class BusEvent {
     ) : BusEvent()
     data class Raw(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class FullReload(override val seq: Long, override val runId: String) : BusEvent()
+
+    // v1.1.0: Attention Queue + Runtime Health + Resource Governor.
+    data class AttentionChanged(
+        override val seq: Long,
+        override val runId: String,
+        val revision: Long?,
+        val lastEventSeq: Long?,
+        val openCount: Int?,
+        val acknowledgedCount: Int?,
+        val resolvedCount: Int?,
+        val lastChangedKey: String?,
+    ) : BusEvent()
+    data class RuntimeHealthChanged(
+        override val seq: Long,
+        override val runId: String,
+        val agent: String?,
+        val health: String?,
+        val reason: String?,
+        val binaryPath: String?,
+        val version: String?,
+        val loggedIn: Boolean?,
+        val timestampMs: Long?,
+    ) : BusEvent()
+    data class GovernorBudgetExceeded(
+        override val seq: Long,
+        override val runId: String,
+        val budgetRunId: String?,
+        val budgetKind: String?,
+        val currentValue: Long?,
+        val limitValue: Long?,
+        val reason: String?,
+    ) : BusEvent()
     data class Unknown(override val seq: Long, override val runId: String, val event: String, val payload: JsonElement?) : BusEvent()
 }
 

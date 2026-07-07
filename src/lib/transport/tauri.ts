@@ -4,7 +4,7 @@
  * The listen wrapper unwraps the Tauri event envelope so callers receive
  * the raw payload directly (consistent with WsTransport).
  */
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen as tauriListen } from "@tauri-apps/api/event";
 import { dbg } from "$lib/utils/debug";
 import { getInvokeTimeoutMs, type Transport } from "./contract";
@@ -37,6 +37,12 @@ export class TauriTransport implements Transport {
   async listen<T>(event: string, handler: (payload: T) => void): Promise<() => void> {
     dbg("transport", "tauri.listen", { event });
     return tauriListen<T>(event, (e) => handler(e.payload));
+  }
+
+  fileAssetUrl(path: string): string {
+    // Tauri asset protocol lets the WebView read the file directly from
+    // disk instead of round-tripping bytes through the IPC channel.
+    return convertFileSrc(path, "asset");
   }
 
   isDesktop(): boolean {

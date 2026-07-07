@@ -39,6 +39,10 @@ enum BusEventPayload: Codable {
     case protocolDesync(ProtocolDesyncPayload)
     case fullReload  // Server requests client to clear state and re-fetch
     case raw(RawPayload)
+    // v1.1.0: Attention Queue + Runtime Health + Resource Governor.
+    case attentionChanged(AttentionChangedPayload)
+    case runtimeHealthChanged(RuntimeHealthPayload)
+    case governorBudgetExceeded(GovernorBudgetExceededPayload)
 
     enum CodingKeys: String, CodingKey {
         case type
@@ -81,6 +85,9 @@ enum BusEventPayload: Codable {
         case protocol_desync
         case full_reload
         case raw
+        case attention_changed
+        case runtime_health_changed
+        case governor_budget_exceeded
     }
 
     init(from decoder: Decoder) throws {
@@ -167,6 +174,12 @@ enum BusEventPayload: Codable {
             self = .protocolDesync(try ProtocolDesyncPayload(from: decoder))
         case .full_reload:
             self = .fullReload
+        case .attention_changed:
+            self = .attentionChanged(try AttentionChangedPayload(from: decoder))
+        case .runtime_health_changed:
+            self = .runtimeHealthChanged(try RuntimeHealthPayload(from: decoder))
+        case .governor_budget_exceeded:
+            self = .governorBudgetExceeded(try GovernorBudgetExceededPayload(from: decoder))
         case .raw:
             let rawDict = try decoder.singleValueContainer().decode([String: AnyCodable].self)
             self = .raw(RawPayload(type: "raw", data: rawDict))
@@ -212,6 +225,9 @@ enum BusEventPayload: Codable {
         case .protocolDesync(let p): try p.encode(to: encoder)
         case .fullReload: break  // No payload to encode
         case .raw(let p): try p.encode(to: encoder)
+        case .attentionChanged(let p): try p.encode(to: encoder)
+        case .runtimeHealthChanged(let p): try p.encode(to: encoder)
+        case .governorBudgetExceeded(let p): try p.encode(to: encoder)
         }
     }
 }
@@ -609,4 +625,60 @@ struct ProtocolDesyncPayload: Codable {
 struct RawPayload: Codable {
     let type: String
     let data: [String: AnyCodable]
+}
+
+// MARK: - v1.1.0 BusEvent payloads
+
+struct AttentionChangedPayload: Codable {
+    let revision: UInt64?
+    let lastEventSeq: UInt64?
+    let openCount: UInt32?
+    let acknowledgedCount: UInt32?
+    let resolvedCount: UInt32?
+    let lastChangedKey: String?
+
+    enum CodingKeys: String, CodingKey {
+        case revision
+        case lastEventSeq = "last_event_seq"
+        case openCount = "open_count"
+        case acknowledgedCount = "acknowledged_count"
+        case resolvedCount = "resolved_count"
+        case lastChangedKey = "last_changed_key"
+    }
+}
+
+struct RuntimeHealthPayload: Codable {
+    let agent: String?
+    let health: String?
+    let reason: String?
+    let binaryPath: String?
+    let version: String?
+    let loggedIn: Bool?
+    let timestampMs: UInt64?
+
+    enum CodingKeys: String, CodingKey {
+        case agent
+        case health
+        case reason
+        case binaryPath = "binary_path"
+        case version
+        case loggedIn = "logged_in"
+        case timestampMs = "timestamp_ms"
+    }
+}
+
+struct GovernorBudgetExceededPayload: Codable {
+    let runId: String?
+    let budgetKind: String?
+    let currentValue: UInt64?
+    let limitValue: UInt64?
+    let reason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case runId = "run_id"
+        case budgetKind = "budget_kind"
+        case currentValue = "current_value"
+        case limitValue = "limit_value"
+        case reason
+    }
 }

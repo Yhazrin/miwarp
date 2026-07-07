@@ -487,6 +487,14 @@ export class WsTransport implements Transport {
     return false;
   }
 
+  fileAssetUrl(path: string): string {
+    // Browser / web fallback — no Tauri runtime so the asset protocol is
+    // unavailable. The web server is expected to expose the same files
+    // under `/_asset/<path>` (mounted by the same dev server that serves
+    // the SPA). The caller may still choose to fetch + object-URL.
+    return `/_asset/${path.replace(/^\/+/, "")}`;
+  }
+
   // ---------------------------------------------------------------------------
   // Disposal
   // ---------------------------------------------------------------------------
