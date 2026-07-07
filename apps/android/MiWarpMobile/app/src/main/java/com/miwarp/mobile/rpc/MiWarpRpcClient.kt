@@ -407,6 +407,36 @@ class MiWarpRpcClient(
                 failCount = payload?.jsonObject?.get("fail_count")?.jsonPrimitive?.intOrNull ?: 0,
                 sample = payload?.jsonObject?.get("sample")?.jsonPrimitive?.contentOrNull ?: "",
             )
+            "attention_changed" -> BusEvent.AttentionChanged(
+                seq = seq,
+                runId = runId,
+                revision = payload?.jsonObject?.get("revision")?.jsonPrimitive?.longOrNull,
+                lastEventSeq = payload?.jsonObject?.get("last_event_seq")?.jsonPrimitive?.longOrNull,
+                openCount = payload?.jsonObject?.get("open_count")?.jsonPrimitive?.intOrNull,
+                acknowledgedCount = payload?.jsonObject?.get("acknowledged_count")?.jsonPrimitive?.intOrNull,
+                resolvedCount = payload?.jsonObject?.get("resolved_count")?.jsonPrimitive?.intOrNull,
+                lastChangedKey = payload?.jsonObject?.get("last_changed_key")?.jsonPrimitive?.contentOrNull,
+            )
+            "runtime_health_changed" -> BusEvent.RuntimeHealthChanged(
+                seq = seq,
+                runId = runId,
+                agent = payload?.jsonObject?.get("agent")?.jsonPrimitive?.contentOrNull,
+                health = payload?.jsonObject?.get("health")?.jsonPrimitive?.contentOrNull,
+                reason = payload?.jsonObject?.get("reason")?.jsonPrimitive?.contentOrNull,
+                binaryPath = payload?.jsonObject?.get("binary_path")?.jsonPrimitive?.contentOrNull,
+                version = payload?.jsonObject?.get("version")?.jsonPrimitive?.contentOrNull,
+                loggedIn = payload?.jsonObject?.get("logged_in")?.jsonPrimitive?.booleanOrNull,
+                timestampMs = payload?.jsonObject?.get("timestamp_ms")?.jsonPrimitive?.longOrNull,
+            )
+            "governor_budget_exceeded" -> BusEvent.GovernorBudgetExceeded(
+                seq = seq,
+                runId = runId,
+                budgetRunId = payload?.jsonObject?.get("run_id")?.jsonPrimitive?.contentOrNull,
+                budgetKind = payload?.jsonObject?.get("budget_kind")?.jsonPrimitive?.contentOrNull,
+                currentValue = payload?.jsonObject?.get("current_value")?.jsonPrimitive?.longOrNull,
+                limitValue = payload?.jsonObject?.get("limit_value")?.jsonPrimitive?.longOrNull,
+                reason = payload?.jsonObject?.get("reason")?.jsonPrimitive?.contentOrNull,
+            )
             "raw" -> BusEvent.Raw(seq, runId, payload)
             else -> BusEvent.Unknown(seq, runId, event, payload)
         }
