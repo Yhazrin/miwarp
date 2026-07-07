@@ -3,11 +3,24 @@
  *
  * The listen wrapper unwraps the Tauri event envelope so callers receive
  * the raw payload directly (consistent with WsTransport).
+ *
+ * The desktop-only API methods (`getAppVersion`, `openDialog`, ...) keep the
+ * dynamic-import pattern alive: each one lazy-loads its underlying
+ * `@tauri-apps/api/*` module so SSR and test environments never pay for code
+ * they can't use. Components reach these via `getTransport()` instead of
+ * importing `@tauri-apps/*` directly, keeping the ESLint boundary intact.
  */
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen as tauriListen } from "@tauri-apps/api/event";
 import { dbg } from "$lib/utils/debug";
-import { getInvokeTimeoutMs, type Transport } from "./contract";
+import {
+  getInvokeTimeoutMs,
+  type DesktopWebviewWindowLike,
+  type DesktopWindowLike,
+  type TauriDpiModule,
+  type TauriWebviewModule,
+  type Transport,
+} from "./contract";
 import {
   ConnectionState,
   type ConnectionStateListener,
@@ -67,5 +80,47 @@ export class TauriTransport implements Transport {
 
   dispose(): void {
     // No-op: Tauri transport doesn't own persistent resources
+  }
+
+  // ---------------------------------------------------------------------------
+  // Desktop-only API surface (lazy dynamic imports).
+  // ---------------------------------------------------------------------------
+
+  async getAppVersion(): Promise<string> {
+    const { getVersion } = await import("@tauri-apps/api/app");
+    return getVersion();
+  }
+
+  async getCurrentWindow(): Promise<DesktopWindowLike> {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    return getCurrentWindow() as unknown as DesktopWindowLike;
+  }
+
+  async getCurrentWebviewWindow(): Promise<DesktopWebviewWindowLike> {
+    const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+    return getCurrentWebviewWindow() as unknown as DesktopWebviewWindowLike;
+  }
+
+  async loadWebviewModule(): Promise<TauriWebviewModule> {
+    return await import("@tauri-apps/api/webview");
+  }
+
+  async loadDpiModule(): Promise<TauriDpiModule> {
+    return await import("@tauri-apps/api/dpi");
+  }
+
+  async openDialog(options?: Record<string, unknown>): Promise<unknown> {
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    return open(options as Parameters<typeof open>[0]);
+  }
+
+  async saveDialog(options?: Record<string, unknown>): Promise<string | null> {
+    const { save } = await import("@tauri-apps/plugin-dialog");
+    return save(options as Parameters<typeof save>[0]);
+  }
+
+  async shellOpen(path: string): Promise<void> {
+    const { open } = await import("@tauri-apps/plugin-shell");
+    await open(path);
   }
 }

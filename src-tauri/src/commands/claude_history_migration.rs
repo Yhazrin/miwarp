@@ -18,6 +18,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tauri::{AppHandle, Emitter};
 use zip::write::SimpleFileOptions;
 use zip::{ZipArchive, ZipWriter};
 
@@ -53,6 +54,18 @@ pub struct ImportDetail {
     pub run_id: Option<String>,
     pub status: String,
     pub error: Option<String>,
+}
+
+/// Progress event emitted on the `import:progress` channel after each session
+/// in an archive is processed. The frontend subscribes to surface a live
+/// status indicator (e.g. "3/12 imported") while a long-running import runs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportProgressEvent {
+    pub done: usize,
+    pub total: usize,
+    pub last_session_id: String,
+    pub last_status: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -306,20 +319,23 @@ fn export_single_session(
 // ── Import ────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub fn import_claude_code_history_archive(archive_path: String) -> Result<ImportReport, String> {
+pub async fn import_claude_code_history_archive(
+    app: AppHandle,
+    archive_path: String,
+) -> Result<ImportReport, String> {
     log::debug!("[migration] import: archive_path={}", archive_path);
 
-    let archive_path = PathBuf::from(&archive_path);
-    if !archive_path.exists() {
-        return Err(format!("archive not found: {}", archive_path.display()));
+    let archive_path_buf = PathBuf::from(&archive_path);
+    if !archive_path_buf.exists() {
+        return Err(format!("archive not found: {}", archive_path_buf.display()));
     }
 
-    // Extract to temp directory
+    // Extract to temp directory (synchronous — small amount of IO)
     let temp_dir = tempfile_tempdir()?;
     let temp_path = temp_dir.path().to_path_buf();
 
     // Extract zip with zip-slip protection
-    extract_zip(&archive_path, &temp_path)?;
+    extract_zip(&archive_path_buf, &temp_path)?;
 
     // Read and validate manifest
     let manifest: ArchiveManifest = {
@@ -338,48 +354,88 @@ pub fn import_claude_code_history_archive(archive_path: String) -> Result<Import
         manifest.sessions.len()
     );
 
-    // Build existing import index for dedup
-    let existing_index = build_imported_index();
+    // Build existing import index for dedup (mutable so we update it
+    // in-batch as each session is successfully imported — otherwise
+    // two sessions in the same archive with the same (session_id, cwd)
+    // would both be marked "imported" instead of the second being
+    // detected as a duplicate).
+    let mut existing_index = build_imported_index();
+    let total = manifest.sessions.len();
 
     let event_writer = Arc::new(EventWriter::new());
-    let mut imported = 0;
-    let mut skipped = 0;
-    let mut duplicates = 0;
-    let mut failed = 0;
-    let mut missing_cwd = 0;
-    let mut details: Vec<ImportDetail> = Vec::new();
+    let app_for_blocking = app.clone();
 
-    for session in manifest.sessions {
-        let detail =
-            import_single_session(&session, &temp_path, &existing_index, event_writer.clone());
+    // Run the import loop on a blocking thread so the long sync work
+    // (file IO, JSONL parsing, event writing) does not stall the
+    // async runtime. Progress events are emitted back to the UI after
+    // each session is processed.
+    let (report, app_after_blocking) = tokio::task::spawn_blocking(move || {
+        let mut imported = 0;
+        let mut skipped = 0;
+        let mut duplicates = 0;
+        let mut failed = 0;
+        let mut missing_cwd = 0;
+        let mut details: Vec<ImportDetail> = Vec::new();
 
-        match detail.status.as_str() {
-            "imported" => imported += 1,
-            "skipped" => skipped += 1,
-            "duplicate" => duplicates += 1,
-            "missing_cwd" => missing_cwd += 1,
-            "failed" => failed += 1,
-            _ => {}
+        for (idx, session) in manifest.sessions.into_iter().enumerate() {
+            let detail = import_single_session(
+                &session,
+                &temp_path,
+                &mut existing_index,
+                event_writer.clone(),
+            );
+
+            match detail.status.as_str() {
+                "imported" => imported += 1,
+                "skipped" => skipped += 1,
+                "duplicate" => duplicates += 1,
+                "missing_cwd" => missing_cwd += 1,
+                "failed" => failed += 1,
+                _ => {}
+            }
+
+            // Emit a progress event after each session so the UI can
+            // surface "3/12 imported" without polling.
+            let _ = app_for_blocking.emit(
+                "import:progress",
+                ImportProgressEvent {
+                    done: idx + 1,
+                    total,
+                    last_session_id: detail.session_id.clone(),
+                    last_status: detail.status.clone(),
+                },
+            );
+
+            details.push(detail);
         }
-        details.push(detail);
-    }
+
+        let report = ImportReport {
+            imported,
+            skipped,
+            duplicates,
+            failed,
+            missing_cwd,
+            details,
+        };
+        (report, app_for_blocking)
+    })
+    .await
+    .map_err(|e| format!("import task join error: {}", e))?;
+
+    // `app_after_blocking` is moved into the closure; we no longer
+    // need it here, but reference it to keep the closure signature
+    // honest (returns the same AppHandle for any future post-loop work).
+    let _ = app_after_blocking;
 
     log::info!(
         "[migration] import: done - imported={}, skipped={}, duplicates={}, failed={}, missing_cwd={}",
-        imported, skipped, duplicates, failed, missing_cwd
+        report.imported, report.skipped, report.duplicates, report.failed, report.missing_cwd
     );
 
     // Invalidate imported cache so next discover reflects new imports
     crate::storage::cli_sessions::invalidate_imported_cache();
 
-    Ok(ImportReport {
-        imported,
-        skipped,
-        duplicates,
-        failed,
-        missing_cwd,
-        details,
-    })
+    Ok(report)
 }
 
 fn tempfile_tempdir() -> Result<tempfile::TempDir, String> {
@@ -508,13 +564,35 @@ fn build_imported_index() -> HashMap<(String, String), String> {
 fn import_single_session(
     session: &ManifestSession,
     temp_path: &Path,
-    existing_index: &HashMap<(String, String), String>,
+    existing_index: &mut HashMap<(String, String), String>,
     event_writer: Arc<EventWriter>,
 ) -> ImportDetail {
     let session_id = &session.session_id;
     let cwd = &session.cwd;
 
-    // Check for duplicates
+    // P0-I4: surface "missing_cwd" as a real status. The manifest is
+    // sourced from `~/.claude/projects/**/*.jsonl` and most files
+    // expose cwd via the first user/assistant line, but a corrupted
+    // or empty jsonl could yield an empty cwd. Skipping silently would
+    // hide data-quality problems; the i18n key
+    // `settings_data_missing_cwd` already exists in both locales.
+    if cwd.is_empty() {
+        log::warn!(
+            "[migration] import: session {} has empty cwd, marking as missing_cwd",
+            session_id
+        );
+        return ImportDetail {
+            session_id: session_id.clone(),
+            cwd: cwd.clone(),
+            run_id: None,
+            status: "missing_cwd".to_string(),
+            error: Some("cwd missing in session jsonl".to_string()),
+        };
+    }
+
+    // Check for duplicates (against the in-batch mutable index so two
+    // sessions in the same archive with the same key get deduped —
+    // not just against the on-disk state captured at the start).
     let key = (session_id.clone(), cwd.clone());
     if existing_index.contains_key(&key) {
         log::debug!(
@@ -554,13 +632,21 @@ fn import_single_session(
         &session.relative_path,
         event_writer,
     ) {
-        Ok(run_id) => ImportDetail {
-            session_id: session_id.clone(),
-            cwd: cwd.clone(),
-            run_id: Some(run_id),
-            status: "imported".to_string(),
-            error: None,
-        },
+        Ok(run_id) => {
+            // P0-I3: register the just-imported session in the index
+            // so subsequent sessions in the same batch with the same
+            // (session_id, cwd) are flagged as duplicates instead of
+            // creating a second run_dir.
+            existing_index.insert(key, run_id.clone());
+
+            ImportDetail {
+                session_id: session_id.clone(),
+                cwd: cwd.clone(),
+                run_id: Some(run_id),
+                status: "imported".to_string(),
+                error: None,
+            }
+        }
         Err(e) => ImportDetail {
             session_id: session_id.clone(),
             cwd: cwd.clone(),
@@ -717,230 +803,254 @@ fn run_import_pipeline(
     let run_dir = run_dir(&run_id);
     ensure_dir(&run_dir).map_err(|e| format!("ensure_dir: {}", e))?;
 
-    // Process the jsonl file
-    let mut protocol = ProtocolState::new(false);
-    let mut turn_counter: u32 = 0;
-    let mut pending_usage: Option<serde_json::Value> = None;
-    let mut _has_usage_update_this_turn = false;
-    let mut pending_model: Option<String> = None;
-    let mut last_user_is_command = false;
-    let _known_usage_turns: HashSet<u64> = HashSet::new();
+    // P0-I2: Wrap the event-conversion + index-writing body in a
+    // closure so any `?` failure cleans up `run_dir` before
+    // propagating. Without this, a partial failure (corrupted jsonl,
+    // disk full, permission denied) leaves an empty run_dir on disk
+    // and the next discover/scan reports a half-imported run that
+    // can't be resumed or deleted cleanly.
+    //
+    // Mirrors the pattern in `storage::cli_sessions::import_session`
+    // (see cli_sessions.rs:1250-1301).
+    let pipeline_result = (|| -> Result<(), String> {
+        // Process the jsonl file
+        let mut protocol = ProtocolState::new(false);
+        let mut turn_counter: u32 = 0;
+        let mut pending_usage: Option<serde_json::Value> = None;
+        let mut _has_usage_update_this_turn = false;
+        let mut pending_model: Option<String> = None;
+        let mut last_user_is_command = false;
+        let _known_usage_turns: HashSet<u64> = HashSet::new();
 
-    let index_path = run_dir.join("import-index.jsonl");
-    let index_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&index_path)
-        .map_err(|e| format!("open index: {}", e))?;
-    let mut index_writer = BufWriter::new(index_file);
+        let index_path = run_dir.join("import-index.jsonl");
+        let index_file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&index_path)
+            .map_err(|e| format!("open index: {}", e))?;
+        let mut index_writer = BufWriter::new(index_file);
 
-    let file2 = File::open(jsonl_path).map_err(|e| format!("open: {}", e))?;
-    let reader2 = BufReader::new(file2);
-    let mut byte_offset: u64 = 0;
-    let mut events_imported: u64 = 0;
-    let mut events_skipped: u64 = 0;
-    let mut usage_incomplete = false;
-    let mut skipped_subtypes: HashMap<String, u64> = HashMap::new();
+        let file2 = File::open(jsonl_path).map_err(|e| format!("open: {}", e))?;
+        let reader2 = BufReader::new(file2);
+        let mut byte_offset: u64 = 0;
+        let mut events_imported: u64 = 0;
+        let mut events_skipped: u64 = 0;
+        let mut usage_incomplete = false;
+        let mut skipped_subtypes: HashMap<String, u64> = HashMap::new();
 
-    for line_result in reader2.lines() {
-        let line = line_result.map_err(|e| format!("read: {}", e))?;
-        let current_offset = byte_offset;
-        byte_offset += (line.len() as u64) + 1;
+        for line_result in reader2.lines() {
+            let line = line_result.map_err(|e| format!("read: {}", e))?;
+            let current_offset = byte_offset;
+            byte_offset += (line.len() as u64) + 1;
 
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-
-        let Ok(json_val) = serde_json::from_str::<serde_json::Value>(trimmed) else {
-            continue;
-        };
-
-        // Process using the same logic as TranscriptImporter
-        let raw_trim = trimmed;
-        let lk = shared::line_key(&json_val, current_offset, raw_trim);
-
-        let normalized = match normalize_transcript_line(&json_val) {
-            Some(n) => n,
-            None => {
-                continue;
-            }
-        };
-
-        let norm_type = normalized
-            .get("type")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        let ts = shared::extract_timestamp(&json_val)
-            .or_else(|| shared::extract_timestamp(&normalized))
-            .unwrap_or_default();
-
-        let mut candidates: Vec<BusEvent> = Vec::new();
-
-        // Handle user messages
-        if norm_type == "user" {
-            last_user_is_command = false;
-
-            if is_real_user_prompt(&normalized) {
-                if turn_counter > 0 {
-                    if let Some(usage_ev) = flush_turn_usage(
-                        &run_id,
-                        turn_counter,
-                        &pending_usage,
-                        &pending_model,
-                        &mut usage_incomplete,
-                    ) {
-                        candidates.push(usage_ev);
-                    }
-                }
-                turn_counter += 1;
-                pending_usage = None;
-                _has_usage_update_this_turn = false;
-                pending_model = None;
-
-                let message = normalized.get("message").unwrap_or(&normalized);
-                if let Some(text) = message.get("content").and_then(|v| v.as_str()) {
-                    candidates.push(BusEvent::UserMessage {
-                        run_id: run_id.clone(),
-                        text: text.to_string(),
-                        uuid: normalized
-                            .get("uuid")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string()),
-                    });
-                }
-            } else {
-                let message = normalized.get("message").unwrap_or(&normalized);
-                if let Some(text) = message.get("content").and_then(|v| v.as_str()) {
-                    last_user_is_command = text.contains("<command-name>");
-                }
-            }
-        }
-
-        // Track assistant usage
-        if norm_type == "assistant" {
-            let message = normalized.get("message").unwrap_or(&normalized);
-            if let Some(usage) = message.get("usage") {
-                pending_usage = Some(usage.clone());
-            }
-            if let Some(m) = message.get("model").and_then(|v| v.as_str()) {
-                pending_model = Some(m.to_string());
-            }
-        }
-
-        // Run through map_event
-        let mapped = protocol.map_event(&run_id, &normalized);
-
-        for ev in mapped {
-            if matches!(&ev, BusEvent::UsageUpdate { .. }) {
-                _has_usage_update_this_turn = true;
-            }
-            if let Some(warn) = validate_bus_event(&ev) {
-                log::debug!(
-                    "[migration] invalid event dropped: {}.{}: {}",
-                    warn.event_type,
-                    warn.field,
-                    warn.detail
-                );
-                protocol.stats.invalid_tool_count += 1;
-                continue;
-            }
-            candidates.push(ev);
-        }
-
-        // Write events
-        let mut event_counts: HashMap<String, usize> = HashMap::new();
-
-        for event in candidates {
-            let tag = shared::bus_event_tag(&event);
-
-            // Replayable filter
-            if !is_replayable(&event) {
-                events_skipped += 1;
-                *skipped_subtypes.entry(tag.clone()).or_insert(0) += 1;
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
                 continue;
             }
 
-            // command_output content filter
-            if let BusEvent::CommandOutput { ref content, .. } = event {
-                if content.contains("## Context Usage")
-                    || content.contains("## Session Cost")
-                    || last_user_is_command
-                {
-                    events_skipped += 1;
-                    *skipped_subtypes
-                        .entry("command_output_filtered".to_string())
-                        .or_insert(0) += 1;
+            let Ok(json_val) = serde_json::from_str::<serde_json::Value>(trimmed) else {
+                continue;
+            };
+
+            // Process using the same logic as TranscriptImporter
+            let raw_trim = trimmed;
+            let lk = shared::line_key(&json_val, current_offset, raw_trim);
+
+            let normalized = match normalize_transcript_line(&json_val) {
+                Some(n) => n,
+                None => {
                     continue;
                 }
+            };
+
+            let norm_type = normalized
+                .get("type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let ts = shared::extract_timestamp(&json_val)
+                .or_else(|| shared::extract_timestamp(&normalized))
+                .unwrap_or_default();
+
+            let mut candidates: Vec<BusEvent> = Vec::new();
+
+            // Handle user messages
+            if norm_type == "user" {
+                last_user_is_command = false;
+
+                if is_real_user_prompt(&normalized) {
+                    if turn_counter > 0 {
+                        if let Some(usage_ev) = flush_turn_usage(
+                            &run_id,
+                            turn_counter,
+                            &pending_usage,
+                            &pending_model,
+                            &mut usage_incomplete,
+                        ) {
+                            candidates.push(usage_ev);
+                        }
+                    }
+                    turn_counter += 1;
+                    pending_usage = None;
+                    _has_usage_update_this_turn = false;
+                    pending_model = None;
+
+                    let message = normalized.get("message").unwrap_or(&normalized);
+                    if let Some(text) = message.get("content").and_then(|v| v.as_str()) {
+                        candidates.push(BusEvent::UserMessage {
+                            run_id: run_id.clone(),
+                            text: text.to_string(),
+                            uuid: normalized
+                                .get("uuid")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string()),
+                        });
+                    }
+                } else {
+                    let message = normalized.get("message").unwrap_or(&normalized);
+                    if let Some(text) = message.get("content").and_then(|v| v.as_str()) {
+                        last_user_is_command = text.contains("<command-name>");
+                    }
+                }
             }
 
-            let n = event_counts.entry(tag.clone()).or_insert(0);
-            let ek = shared::event_key(&lk, &tag, *n);
-            *n += 1;
+            // Track assistant usage
+            if norm_type == "assistant" {
+                let message = normalized.get("message").unwrap_or(&normalized);
+                if let Some(usage) = message.get("usage") {
+                    pending_usage = Some(usage.clone());
+                }
+                if let Some(m) = message.get("model").and_then(|v| v.as_str()) {
+                    pending_model = Some(m.to_string());
+                }
+            }
 
-            let seq = event_writer.write_bus_event_with_ts(&run_id, &event, &ts)?;
+            // Run through map_event
+            let mapped = protocol.map_event(&run_id, &normalized);
 
-            writeln!(
-                index_writer,
-                "{}",
-                serde_json::json!({"source_key": ek, "imported_seq": seq})
-            )
-            .map_err(|e| format!("write index: {}", e))?;
+            for ev in mapped {
+                if matches!(&ev, BusEvent::UsageUpdate { .. }) {
+                    _has_usage_update_this_turn = true;
+                }
+                if let Some(warn) = validate_bus_event(&ev) {
+                    log::debug!(
+                        "[migration] invalid event dropped: {}.{}: {}",
+                        warn.event_type,
+                        warn.field,
+                        warn.detail
+                    );
+                    protocol.stats.invalid_tool_count += 1;
+                    continue;
+                }
+                candidates.push(ev);
+            }
 
-            events_imported += 1;
+            // Write events
+            let mut event_counts: HashMap<String, usize> = HashMap::new();
+
+            for event in candidates {
+                let tag = shared::bus_event_tag(&event);
+
+                // Replayable filter
+                if !is_replayable(&event) {
+                    events_skipped += 1;
+                    *skipped_subtypes.entry(tag.clone()).or_insert(0) += 1;
+                    continue;
+                }
+
+                // command_output content filter
+                if let BusEvent::CommandOutput { ref content, .. } = event {
+                    if content.contains("## Context Usage")
+                        || content.contains("## Session Cost")
+                        || last_user_is_command
+                    {
+                        events_skipped += 1;
+                        *skipped_subtypes
+                            .entry("command_output_filtered".to_string())
+                            .or_insert(0) += 1;
+                        continue;
+                    }
+                }
+
+                let n = event_counts.entry(tag.clone()).or_insert(0);
+                let ek = shared::event_key(&lk, &tag, *n);
+                *n += 1;
+
+                let seq = event_writer.write_bus_event_with_ts(&run_id, &event, &ts)?;
+
+                writeln!(
+                    index_writer,
+                    "{}",
+                    serde_json::json!({"source_key": ek, "imported_seq": seq})
+                )
+                .map_err(|e| format!("write index: {}", e))?;
+
+                events_imported += 1;
+            }
         }
-    }
 
-    // Finalize
-    if turn_counter > 0 {
-        if let Some(event) = flush_turn_usage(
-            &run_id,
-            turn_counter,
-            &pending_usage,
-            &pending_model,
-            &mut usage_incomplete,
-        ) {
-            let lk = format!("v1:finalize:{}", turn_counter);
-            let tag = shared::bus_event_tag(&event);
-            let ek = shared::event_key(&lk, &tag, 0);
-            let seq = event_writer.write_bus_event_with_ts(
+        // Finalize
+        if turn_counter > 0 {
+            if let Some(event) = flush_turn_usage(
                 &run_id,
-                &event,
-                &last_ts.unwrap_or_default(),
-            )?;
-            writeln!(
-                index_writer,
-                "{}",
-                serde_json::json!({"source_key": ek, "imported_seq": seq})
-            )
-            .map_err(|e| format!("write index: {}", e))?;
-            events_imported += 1;
+                turn_counter,
+                &pending_usage,
+                &pending_model,
+                &mut usage_incomplete,
+            ) {
+                let lk = format!("v1:finalize:{}", turn_counter);
+                let tag = shared::bus_event_tag(&event);
+                let ek = shared::event_key(&lk, &tag, 0);
+                let seq = event_writer.write_bus_event_with_ts(
+                    &run_id,
+                    &event,
+                    &last_ts.unwrap_or_default(),
+                )?;
+                writeln!(
+                    index_writer,
+                    "{}",
+                    serde_json::json!({"source_key": ek, "imported_seq": seq})
+                )
+                .map_err(|e| format!("write index: {}", e))?;
+                events_imported += 1;
+            }
         }
+
+        index_writer
+            .flush()
+            .map_err(|e| format!("flush index: {}", e))?;
+
+        // Save meta atomically — only on success.
+        let mut meta = meta;
+        meta.cli_usage_incomplete = if usage_incomplete { Some(true) } else { None };
+        meta.cli_import_watermark = Some(ImportWatermark {
+            offset: file_size,
+            mtime_ns,
+            file_size,
+            last_uuid: None,
+        });
+        crate::storage::runs::save_meta(&meta)?;
+
+        log::debug!(
+            "[migration] import: run {} done in {:?}, events_imported={}, events_skipped={}",
+            run_id,
+            start.elapsed(),
+            events_imported,
+            events_skipped
+        );
+
+        Ok(())
+    })();
+
+    // On failure: clean up the run_dir we just created and propagate.
+    if let Err(e) = pipeline_result {
+        log::error!(
+            "[migration] import: pipeline failed for run {}, cleaning up run_dir: {}",
+            run_id,
+            e
+        );
+        let _ = fs::remove_dir_all(&run_dir);
+        return Err(e);
     }
-
-    index_writer
-        .flush()
-        .map_err(|e| format!("flush index: {}", e))?;
-
-    // Save meta
-    let mut meta = meta;
-    meta.cli_usage_incomplete = if usage_incomplete { Some(true) } else { None };
-    meta.cli_import_watermark = Some(ImportWatermark {
-        offset: file_size,
-        mtime_ns,
-        file_size,
-        last_uuid: None,
-    });
-    crate::storage::runs::save_meta(&meta)?;
-
-    log::debug!(
-        "[migration] import: run {} done in {:?}, events_imported={}, events_skipped={}",
-        run_id,
-        start.elapsed(),
-        events_imported,
-        events_skipped
-    );
 
     Ok(run_id)
 }
@@ -1256,5 +1366,259 @@ mod tests {
         let mut archive = ZipArchive::new(Cursor::new(bytes)).expect("parse in-memory zip");
         let entry = archive.by_index(0).expect("entry");
         assert!(entry.enclosed_name().is_none());
+    }
+
+    // ── P0-I1 — async + AppHandle + ImportProgressEvent ─────────────────
+
+    /// P0-I1: `ImportProgressEvent` serializes to the camelCase payload
+    /// the UI expects, with the field names documented in the frontend
+    /// progress subscription.
+    #[test]
+    fn import_progress_event_serializes_camel_case() {
+        let ev = ImportProgressEvent {
+            done: 3,
+            total: 12,
+            last_session_id: "sess-abc".to_string(),
+            last_status: "imported".to_string(),
+        };
+        let json = serde_json::to_value(&ev).expect("serialize");
+        assert_eq!(json["done"], 3);
+        assert_eq!(json["total"], 12);
+        assert_eq!(json["lastSessionId"], "sess-abc");
+        assert_eq!(json["lastStatus"], "imported");
+    }
+
+    /// P0-I1: Pin the async signature so any future drift becomes a
+    /// compile error in this test. The function must be a free
+    /// function callable as `fn(AppHandle, String) -> Future<...>`.
+    #[test]
+    fn import_command_signature_uses_app_handle_and_async() {
+        let _f: fn(
+            AppHandle,
+            String,
+        ) -> std::pin::Pin<
+            Box<dyn std::future::Future<Output = Result<ImportReport, String>> + Send>,
+        > = |app, path| Box::pin(import_claude_code_history_archive(app, path));
+    }
+
+    // ── P0-I2 — partial-failure cleanup ──────────────────────────────────
+
+    /// P0-I2: when `run_import_pipeline` fails pre-`ensure_dir` (the
+    /// most common failure mode: missing or unreadable source jsonl),
+    /// no `run_dir` is created and the failure propagates cleanly.
+    /// This pins the "no leftover state on failure" invariant.
+    #[test]
+    fn run_import_pipeline_leaves_no_run_dir_on_failure() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let prev_home = std::env::var("HOME").ok();
+        std::env::set_var("HOME", tmp.path());
+
+        // Force a pre-`ensure_dir` failure by making the jsonl path
+        // a directory. `File::open` on a directory fails on every
+        // platform.
+        let bad_jsonl = tmp.path().join("not-a-file");
+        std::fs::create_dir_all(&bad_jsonl).expect("create dir-as-jsonl");
+
+        let writer = Arc::new(EventWriter::new());
+        let result = run_import_pipeline(
+            &bad_jsonl,
+            "sess-fail",
+            "/tmp/no-cwd-yet",
+            "not-a-file",
+            writer,
+        );
+        assert!(result.is_err(), "expected Err for directory-as-jsonl");
+
+        // The `runs_dir` may not even exist (lazy), but if it does it
+        // must not contain any entry for our test session.
+        let runs = crate::storage::runs_dir();
+        let leaked = runs.exists()
+            && std::fs::read_dir(&runs)
+                .map(|rd| {
+                    rd.filter_map(|e| e.ok())
+                        .any(|e| e.file_name().to_string_lossy().contains("sess-fail"))
+                })
+                .unwrap_or(false);
+        assert!(
+            !leaked,
+            "no run_dir should be created when pipeline fails pre-ensure_dir"
+        );
+
+        // Restore HOME
+        match prev_home {
+            Some(v) => std::env::set_var("HOME", v),
+            None => std::env::remove_var("HOME"),
+        }
+    }
+
+    /// P0-I2 (positive case): a successful import keeps the run_dir.
+    /// Pins the invariant that the cleanup branch only fires on
+    /// failure, not on success.
+    #[test]
+    fn run_import_pipeline_succeeds_keeps_run_dir() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let prev_home = std::env::var("HOME").ok();
+        std::env::set_var("HOME", tmp.path());
+
+        // Minimal valid jsonl: a user message, an assistant message
+        // with usage, and a result line.
+        let jsonl = tmp.path().join("happy.jsonl");
+        std::fs::write(
+            &jsonl,
+            br#"{"type":"user","message":{"content":"hi"},"cwd":"/tmp/x","timestamp":"2026-01-01T00:00:00Z","uuid":"u1"}
+{"type":"assistant","message":{"id":"m1","content":[{"type":"text","text":"hello"}],"model":"claude-opus-4-6","usage":{"input_tokens":1,"output_tokens":2}},"timestamp":"2026-01-01T00:00:01Z","uuid":"u2"}
+{"type":"result","subtype":"success","timestamp":"2026-01-01T00:00:02Z","uuid":"u3"}
+"#,
+        )
+        .expect("write jsonl");
+
+        let writer = Arc::new(EventWriter::new());
+        let run_id = run_import_pipeline(
+            &jsonl,
+            "sess-happy",
+            "/tmp/happy-cwd",
+            "happy.jsonl",
+            writer,
+        )
+        .expect("pipeline should succeed");
+
+        let run_path = crate::storage::run_dir(&run_id);
+        assert!(
+            run_path.is_dir(),
+            "successful import must keep run_dir at {}",
+            run_path.display()
+        );
+
+        // Restore HOME
+        match prev_home {
+            Some(v) => std::env::set_var("HOME", v),
+            None => std::env::remove_var("HOME"),
+        }
+
+        // Cleanup
+        let _ = std::fs::remove_dir_all(&run_path);
+    }
+
+    // ── P0-I3 — in-batch dedup ──────────────────────────────────────────
+
+    /// P0-I3: two sessions with the same (session_id, cwd) in the same
+    /// batch must result in 1 imported + 1 duplicate, with the in-batch
+    /// `existing_index` updated after the first successful import.
+    /// Before the fix, both calls returned "imported" and the second
+    /// call created a second run_dir.
+    #[test]
+    fn import_single_session_dedupes_within_batch() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let prev_home = std::env::var("HOME").ok();
+        std::env::set_var("HOME", tmp.path());
+
+        // Build a jsonl file that is valid for `run_import_pipeline`.
+        let jsonl = tmp.path().join("dup.jsonl");
+        std::fs::write(
+            &jsonl,
+            br#"{"type":"user","message":{"content":"hi"},"cwd":"/tmp/dup","timestamp":"2026-01-01T00:00:00Z","uuid":"u1"}
+{"type":"result","subtype":"success","timestamp":"2026-01-01T00:00:02Z","uuid":"u2"}
+"#,
+        )
+        .expect("write jsonl");
+
+        // ManifestSession is private; build it via JSON round-trip.
+        let manifest_json = r#"{
+            "version": "1.0",
+            "createdAt": "2026-01-01T00:00:00Z",
+            "cliVersion": null,
+            "sessions": [
+                {
+                    "sessionId": "sess-dup",
+                    "cwd": "/tmp/dup-cwd",
+                    "relativePath": "dup.jsonl",
+                    "fileSize": 100,
+                    "firstPrompt": null,
+                    "startedAt": "2026-01-01T00:00:00Z",
+                    "lastActivityAt": "2026-01-01T00:00:02Z",
+                    "messageCount": 1,
+                    "model": null
+                }
+            ]
+        }"#;
+        let manifest: ArchiveManifest =
+            serde_json::from_str(manifest_json).expect("parse manifest");
+        let session = manifest.sessions.first().expect("one session");
+
+        let mut index: HashMap<(String, String), String> = HashMap::new();
+        let writer = Arc::new(EventWriter::new());
+
+        let first = import_single_session(session, tmp.path(), &mut index, writer.clone());
+        let second = import_single_session(session, tmp.path(), &mut index, writer.clone());
+
+        // Cleanup any run_dirs we may have created.
+        if let Some(rid) = first.run_id.clone() {
+            let _ = std::fs::remove_dir_all(crate::storage::run_dir(&rid));
+        }
+
+        match prev_home {
+            Some(v) => std::env::set_var("HOME", v),
+            None => std::env::remove_var("HOME"),
+        }
+
+        assert_eq!(first.status, "imported", "first call should import");
+        assert_eq!(second.status, "duplicate", "second call should dedup");
+        assert_eq!(index.len(), 1, "in-batch index should be updated");
+    }
+
+    // ── P0-I4 — missing_cwd emits real status ──────────────────────────
+
+    /// P0-I4: when the manifest entry has an empty cwd,
+    /// `import_single_session` must return `status: "missing_cwd"` so
+    /// the report's `missing_cwd` counter reflects the actual data
+    /// quality issue. Before the fix, this branch never fired because
+    /// the function only ever returned "duplicate" | "imported" |
+    /// "failed".
+    #[test]
+    fn import_single_session_returns_missing_cwd_when_cwd_empty() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let prev_home = std::env::var("HOME").ok();
+        std::env::set_var("HOME", tmp.path());
+
+        let manifest_json = r#"{
+            "version": "1.0",
+            "createdAt": "2026-01-01T00:00:00Z",
+            "cliVersion": null,
+            "sessions": [
+                {
+                    "sessionId": "sess-nocwd",
+                    "cwd": "",
+                    "relativePath": "x.jsonl",
+                    "fileSize": 0,
+                    "firstPrompt": null,
+                    "startedAt": null,
+                    "lastActivityAt": null,
+                    "messageCount": 0,
+                    "model": null
+                }
+            ]
+        }"#;
+        let manifest: ArchiveManifest =
+            serde_json::from_str(manifest_json).expect("parse manifest");
+        let session = manifest.sessions.first().expect("one session");
+
+        let mut index: HashMap<(String, String), String> = HashMap::new();
+        let writer = Arc::new(EventWriter::new());
+
+        let detail = import_single_session(session, tmp.path(), &mut index, writer);
+
+        match prev_home {
+            Some(v) => std::env::set_var("HOME", v),
+            None => std::env::remove_var("HOME"),
+        }
+
+        assert_eq!(detail.status, "missing_cwd");
+        assert!(detail.run_id.is_none());
+        assert!(detail.error.is_some());
+        // The session must NOT have been added to the in-batch index.
+        assert!(
+            index.is_empty(),
+            "missing_cwd session should not enter the dedup index"
+        );
     }
 }

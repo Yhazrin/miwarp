@@ -2,6 +2,7 @@
   import Modal from "./Modal.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { showToast } from "$lib/stores/toast-store.svelte";
+  import { getTransport } from "$lib/transport";
 
   interface Props {
     open?: boolean;
@@ -32,8 +33,7 @@
 
   async function handleOpenDirectory() {
     try {
-      const { open: shellOpen } = await import("@tauri-apps/plugin-shell");
-      await shellOpen(cwd);
+      await getTransport().shellOpen(cwd);
     } catch {
       showToast(
         t("toast_openDirFailed") ?? "Cannot open directory. Please confirm the path still exists.",

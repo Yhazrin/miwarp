@@ -218,8 +218,7 @@
 
   async function browseLocal() {
     try {
-      const { open: openDialog } = await import("@tauri-apps/plugin-dialog");
-      const selected = await openDialog({
+      const selected = await getTransport().openDialog({
         directory: true,
         title: t("layout_selectProjectFolder"),
       });

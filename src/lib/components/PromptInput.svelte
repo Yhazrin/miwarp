@@ -1,5 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { slide } from "svelte/transition";
+  import { untrack } from "svelte";
   import type {
     Attachment,
     AuthOverview,
@@ -286,14 +288,30 @@
 
   /** Single-line capsule strip vs stacked multi-line composer. */
   let capsuleExpanded = $state(false);
+  /**
+   * Current textarea height in px. Bound inline on the single unified
+   * <textarea> below so the CSS `transition-[height]` animates the resize
+   * instead of jumping. Updated by `autoResize()` after measuring scrollHeight.
+   * Seeded to a single-line capsule value so the initial render doesn't
+   * flicker.
+   */
+  let textareaHeightPx = $state(24);
   const CAPSULE_LINE_HEIGHT_PX = 24;
   const CAPSULE_STACK_THRESHOLD_PX = 34;
   const useCapsuleStrip = $derived(!capsuleExpanded && !pendingPermission);
 
   $effect(() => {
+    // Track `useCapsuleStrip` so the textarea re-measures when we flip
+    // capsule ↔ multi-line. But untrack the side-effect call itself —
+    // `autoResize` writes back to `capsuleExpanded` and `textareaHeightPx`,
+    // which Svelte would otherwise flag as "effect writes to its own dep"
+    // and warn, and in pathological cases the rAF round-trip could re-trigger
+    // the effect each frame.
     const _layout = useCapsuleStrip;
     void _layout;
-    if (!isComposing) scheduleAutoResize();
+    untrack(() => {
+      if (!isComposing) scheduleAutoResize();
+    });
   });
 
   // ── v1.0.9: collapse the multi-line composer back to a capsule when the
@@ -303,17 +321,37 @@
   //  programmatic clears (handleSend, /btw, /model) don't fire input events,
   //  so we watch the text length here as a safety net. We compare prev/cur
   //  to avoid collapsing on initial mount or while the user is typing.
+  //  Note: we deliberately do NOT gate on `!isComposing` — IME composition
+  //  ending with an empty buffer (e.g. user backspaces through preedit) should
+  //  still collapse the capsule, and blocking it here caused a stuck-expanded
+  //  state when Send fired while an IME was open.
   let _prevInputLen = 0;
   $effect(() => {
     const len = store.inputText.length;
     const wasNonEmpty = _prevInputLen > 0;
     const isEmpty = len === 0;
     _prevInputLen = len;
-    if (wasNonEmpty && isEmpty && capsuleExpanded && !pendingPermission && !isComposing) {
-      capsuleExpanded = false;
-      scheduleAutoResize();
+    if (wasNonEmpty && isEmpty && capsuleExpanded && !pendingPermission) {
+      untrack(() => {
+        resetCapsuleLayout();
+      });
     }
   });
+
+  /**
+   * Force the multi-line composer back to the single-line capsule shape.
+   *
+   * Called whenever the textarea is programmatically cleared (send, virtual
+   * slash commands, /btw) — `input` events don't fire in those paths so the
+   * text-watcher above can race. Centralising the reset here also ensures the
+   * collapse happens *synchronously* with the clear, not on the next reactive
+   * tick, so the user sees the capsule shrink right as the text disappears.
+   */
+  function resetCapsuleLayout() {
+    if (!capsuleExpanded && !pendingPermission) return;
+    capsuleExpanded = false;
+    scheduleAutoResize();
+  }
 
   // Auto-close BTW mode when agent stops running
   $effect(() => {
@@ -1326,7 +1364,11 @@
     store.pendingPathRefs = [];
     resetHistory(histState);
     if (store.textareaEl) store.textareaEl.style.height = "auto";
-    // capsuleExpanded is collapsed by the inputText-watcher $effect below.
+    // Collapse the composer back to the capsule synchronously with the text
+    // clear so the animation plays as part of the same frame the textarea
+    // empties — relying on the inputText-watcher $effect alone races with
+    // IME composition and pendingPermission state.
+    resetCapsuleLayout();
 
     Promise.resolve()
       .then(() => onSend(text, attachments))
@@ -1348,6 +1390,7 @@
     dbg("prompt", "btwSend", { len: question.length });
     store.inputText = "";
     if (store.textareaEl) store.textareaEl.style.height = "auto";
+    resetCapsuleLayout();
     onBtwSend(question);
   }
 
@@ -1810,37 +1853,33 @@
     const maxHeight = 4 * 24; // ~4 lines
     const hasNewline = store.inputText.includes("\n");
 
-    if (pendingPermission) {
-      capsuleExpanded = true;
-    }
-
+    // Clear inline height so the browser reports the natural scrollHeight
+    // for the current text. We measure, then write the final value into the
+    // reactive `textareaHeightPx` state — the inline style on the <textarea>
+    // re-binds from that state, and the CSS transition on `height` carries
+    // the visual change from one frame to the next.
     el.style.height = "auto";
     const scrollH = el.scrollHeight;
 
-    if (!capsuleExpanded && !pendingPermission) {
-      if (hasNewline || scrollH > CAPSULE_STACK_THRESHOLD_PX) {
-        capsuleExpanded = true;
-      } else {
-        el.style.height = `${CAPSULE_LINE_HEIGHT_PX}px`;
-        el.style.overflowY = "hidden";
-        return;
-      }
-    }
+    // Compute the desired layout state purely from inputs (text, permission,
+    // measured height) — never branch on the current `capsuleExpanded`. The
+    // previous implementation toggled capsuleExpanded inside a cascade of
+    // if-blocks that read it back, which produced a flip-flop loop with the
+    // unified single-textarea layout (one rAF → expand, next rAF → collapse,
+    // next → expand…). This pure-function form is idempotent: calling
+    // autoResize twice with the same inputs produces the same state, so the
+    // effect that schedules us on `useCapsuleStrip` change converges after
+    // at most one extra rAF.
+    const shouldExpand = pendingPermission || hasNewline || scrollH > CAPSULE_STACK_THRESHOLD_PX;
+    const nextHeight = shouldExpand ? Math.min(scrollH, maxHeight) : CAPSULE_LINE_HEIGHT_PX;
 
-    if (
-      capsuleExpanded &&
-      !pendingPermission &&
-      !hasNewline &&
-      scrollH <= CAPSULE_STACK_THRESHOLD_PX
-    ) {
-      capsuleExpanded = false;
-      el.style.height = `${CAPSULE_LINE_HEIGHT_PX}px`;
-      el.style.overflowY = "hidden";
-      return;
+    if (capsuleExpanded !== shouldExpand) {
+      capsuleExpanded = shouldExpand;
     }
-
-    el.style.overflowY = "auto";
-    el.style.height = `${Math.min(scrollH, maxHeight)}px`;
+    if (textareaHeightPx !== nextHeight) {
+      textareaHeightPx = nextHeight;
+    }
+    el.style.overflowY = shouldExpand ? "auto" : "hidden";
   }
 
   // ── Drag-drop state ──
@@ -2337,7 +2376,7 @@
 
   <!-- Unified input container -->
   <div
-    class="prompt-input-shell overflow-hidden border border-primary bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color] duration-200 {useCapsuleStrip
+    class="prompt-input-shell overflow-hidden border border-primary bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color,background-color] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] {useCapsuleStrip
       ? 'rounded-full'
       : 'rounded-[1.75rem]'} {btwMode ? 'border-miwarp-status-info/80' : ''} {pendingPermission
       ? 'motion-attention-pulse'
@@ -2366,34 +2405,28 @@
       </div>
     {/if}
 
-    {#if useCapsuleStrip}
-      <div class="flex min-h-[42px] items-center gap-1 py-1 pl-2.5 pr-1.5">
+    <!-- Unified input row: same textarea + same shell across capsule and
+         multi-line states. The visual difference comes from `flex-direction`
+         (row vs column) and which toolbar children are rendered. Because the
+         textarea is a single DOM element, CSS transitions on its `height` and
+         the parent's `border-radius` actually animate — no DOM swap, no
+         choppy cross-element transition. Toolbars enter/leave via
+         `transition:slide` so the left/right compact → bottom full swap feels
+         continuous instead of jumping. -->
+    <div
+      class="flex w-full transition-[flex-direction,min-height,padding] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] {useCapsuleStrip
+        ? 'flex-row min-h-[42px] items-center gap-1 py-1 pl-2.5 pr-1.5'
+        : 'flex-col px-1 pt-2 pb-1'}"
+    >
+      {#if useCapsuleStrip}
         <div
+          transition:slide={{ duration: 260, axis: "x" }}
           class="no-drag relative z-10 flex max-w-[42%] shrink-0 items-center gap-0.5 overflow-visible pointer-events-auto"
         >
           {@render promptToolbarLeft(true)}
         </div>
-        <textarea
-          bind:this={store.textareaEl}
-          bind:value={store.inputText}
-          onkeydown={handleKeydown}
-          onbeforeinput={handleBeforeInput}
-          oninput={handleInput}
-          onpaste={handlePaste}
-          oncompositionstart={() => (isComposing = true)}
-          oncompositionend={() => (isComposing = false)}
-          placeholder={effectivePlaceholder}
-          rows={1}
-          {disabled}
-          aria-label={t("prompt_chatInput")}
-          class="no-drag min-h-[24px] min-w-0 flex-1 resize-none overflow-x-auto overflow-y-hidden bg-transparent px-2 py-0 text-sm leading-6 text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
-          style="height: {CAPSULE_LINE_HEIGHT_PX}px;"
-        ></textarea>
-        <div class="flex shrink-0 items-center gap-0.5">
-          {@render promptToolbarRight(true)}
-        </div>
-      </div>
-    {:else}
+      {/if}
+
       <textarea
         bind:this={store.textareaEl}
         bind:value={store.inputText}
@@ -2407,19 +2440,33 @@
         rows={1}
         {disabled}
         aria-label={t("prompt_chatInput")}
-        class="no-drag w-full resize-none bg-transparent px-5 pt-3 pb-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
-        style="min-height: 40px;"
+        class="no-drag min-w-0 flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 transition-[height,min-height,padding] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] focus:outline-none disabled:opacity-50 {useCapsuleStrip
+          ? 'overflow-x-auto overflow-y-hidden min-h-[24px] px-2 py-0 leading-6'
+          : 'w-full overflow-y-auto px-4 pt-1 pb-2'}"
+        style:height={`${textareaHeightPx}px`}
       ></textarea>
 
-      <div class="flex items-center justify-between px-4 pb-3.5 pt-0.5">
-        <div class="no-drag relative z-10 flex min-w-0 items-center gap-1 pointer-events-auto">
-          {@render promptToolbarLeft(false)}
+      {#if useCapsuleStrip}
+        <div
+          transition:slide={{ duration: 260, axis: "x" }}
+          class="flex shrink-0 items-center gap-0.5"
+        >
+          {@render promptToolbarRight(true)}
         </div>
-        <div class="flex shrink-0 items-center gap-0.5">
-          {@render promptToolbarRight(false)}
+      {:else}
+        <div
+          transition:slide={{ duration: 260, axis: "y" }}
+          class="flex w-full items-center justify-between px-3 pb-2.5 pt-0.5"
+        >
+          <div class="no-drag relative z-10 flex min-w-0 items-center gap-1 pointer-events-auto">
+            {@render promptToolbarLeft(false)}
+          </div>
+          <div class="flex shrink-0 items-center gap-0.5">
+            {@render promptToolbarRight(false)}
+          </div>
         </div>
-      </div>
-    {/if}
+      {/if}
+    </div>
 
     {#if atMenuOpen}
       <AtMentionMenu

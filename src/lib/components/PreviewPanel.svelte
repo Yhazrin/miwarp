@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
-  import { getTransport } from "$lib/transport";
+  import { getTransport, type TauriWebview } from "$lib/transport";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
   import Icon from "$lib/components/Icon.svelte";
@@ -24,8 +24,6 @@
     requestedUrl?: string | null;
   } = $props();
 
-  type TauriWebview = import("@tauri-apps/api/webview").Webview;
-
   let shellRoot: HTMLDivElement | undefined = $state();
   let viewportEl: HTMLDivElement | undefined = $state();
   let desktopAvailable = $state(false);
@@ -36,9 +34,8 @@
   let hasLoaded = $state(false);
   let syncing = false;
   let resizeObserver: ResizeObserver | null = null;
-  let webviewApi: typeof import("@tauri-apps/api/webview") | null = null;
-  let windowApi: typeof import("@tauri-apps/api/window") | null = null;
-  let dpiApi: typeof import("@tauri-apps/api/dpi") | null = null;
+  let webviewApi: import("$lib/transport").TauriWebviewModule | null = null;
+  let dpiApi: import("$lib/transport").TauriDpiModule | null = null;
   let webview: TauriWebview | null = null;
 
   function loadStoredUrl(): string {
@@ -72,11 +69,11 @@
   }
 
   async function ensureApis() {
-    if (webviewApi && windowApi && dpiApi) return;
-    [webviewApi, windowApi, dpiApi] = await Promise.all([
-      import("@tauri-apps/api/webview"),
-      import("@tauri-apps/api/window"),
-      import("@tauri-apps/api/dpi"),
+    if (webviewApi && dpiApi) return;
+    const transport = getTransport();
+    [webviewApi, dpiApi] = await Promise.all([
+      transport.loadWebviewModule(),
+      transport.loadDpiModule(),
     ]);
   }
 
@@ -187,8 +184,15 @@
       }
       if (!webview) {
         const rect = await waitForStableViewportRect();
-        const currentWindow = windowApi!.getCurrentWindow();
-        const instance = new webviewApi!.Webview(currentWindow, WEBVIEW_LABEL, {
+        // The Tauri `Window` class lives behind the transport boundary; cast
+        // through `unknown` because `Webview`'s constructor accepts a Tauri
+        // `Window`, not our contract-only `DesktopWindowLike` shape.
+        const api = webviewApi!;
+        const currentWindow =
+          (await getTransport().getCurrentWindow()) as unknown as ConstructorParameters<
+            typeof api.Webview
+          >[0];
+        const instance = new api.Webview(currentWindow, WEBVIEW_LABEL, {
           url: normalized,
           x: Math.round(rect.left),
           y: Math.round(rect.top),

@@ -109,8 +109,7 @@
 
   async function getWebview() {
     if (!cachedWebview) {
-      const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
-      cachedWebview = getCurrentWebviewWindow();
+      cachedWebview = await getTransport().getCurrentWebviewWindow();
     }
     return cachedWebview;
   }

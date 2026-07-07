@@ -4,6 +4,7 @@
   import { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
   import { renderMarkdown } from "$lib/utils/markdown";
   import { currentLocale, t } from "$lib/i18n/index.svelte";
+  import { getTransport } from "$lib/transport";
   import MiDialog from "$lib/ui/MiDialog.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
 
@@ -28,8 +29,7 @@
 
   onMount(async () => {
     try {
-      const { getVersion } = await import("@tauri-apps/api/app");
-      appVersion = await getVersion();
+      appVersion = await getTransport().getAppVersion();
     } catch {
       appVersion = "";
     }

@@ -298,9 +298,9 @@ pub async fn read_project_notes(cwd: String) -> Result<ProjectNotes, String> {
             let modified_at = std::fs::metadata(&path)
                 .and_then(|m| m.modified())
                 .ok()
-                .and_then(|t| {
+                .map(|t| {
                     let dt: chrono::DateTime<chrono::Utc> = t.into();
-                    Some(dt.to_rfc3339_opts(chrono::SecondsFormat::Millis, true))
+                    dt.to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
                 });
             Ok(ProjectNotes {
                 content,

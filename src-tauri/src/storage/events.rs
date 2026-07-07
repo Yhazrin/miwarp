@@ -147,6 +147,24 @@ pub fn list_events(run_id: &str, since_seq: u64) -> Vec<RunEvent> {
 
 use std::sync::{Arc, Mutex};
 
+/// `fsync` the parent directory so the appended entry survives power loss
+/// even when events.jsonl was just created. Mirrors `sync_directory` in
+/// `storage/durable_io.rs` but kept inline so this module has no cross-file
+/// dependency on a private helper.
+fn sync_events_dir(path: &std::path::Path) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        std::fs::File::open(path)
+            .and_then(|dir| dir.sync_all())
+            .map_err(|e| format!("sync directory {}: {}", path.display(), e))?;
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+    }
+    Ok(())
+}
+
 /// Atomic seq allocation + file write under per-run locks.
 /// Each run_id gets its own Mutex so different runs never block each other.
 /// The outer Mutex is only held briefly to get/create the per-run Arc.
@@ -213,6 +231,17 @@ impl EventWriter {
         writer
             .flush()
             .map_err(|e| format!("flush {} failed: {}", path.display(), e))?;
+        // Source-of-truth contract: events.jsonl is the replayable audit log.
+        // `BufWriter::flush` only pushes to the kernel page cache — without an
+        // explicit fdatasync + parent-dir fsync the append can be lost on a
+        // crash (kernel buffer never reaches disk). Mirrors `append_json_line`
+        // in `storage/durable_io.rs` so the whole storage layer speaks one
+        // durability dialect.
+        writer
+            .get_ref()
+            .sync_data()
+            .map_err(|e| format!("sync_data {} failed: {}", path.display(), e))?;
+        sync_events_dir(dir.as_path())?;
 
         Ok(())
     }
@@ -267,6 +296,17 @@ impl EventWriter {
         writer
             .flush()
             .map_err(|e| format!("flush {} failed: {}", path.display(), e))?;
+        // Source-of-truth contract: events.jsonl is the replayable audit log.
+        // `BufWriter::flush` only pushes to the kernel page cache — without an
+        // explicit fdatasync + parent-dir fsync the append can be lost on a
+        // crash (kernel buffer never reaches disk). Mirrors `append_json_line`
+        // in `storage/durable_io.rs` so the whole storage layer speaks one
+        // durability dialect.
+        writer
+            .get_ref()
+            .sync_data()
+            .map_err(|e| format!("sync_data {} failed: {}", path.display(), e))?;
+        sync_events_dir(dir.as_path())?;
 
         Ok(current)
     }
@@ -1051,5 +1091,134 @@ mod tests {
         cleanup_run(&run_id);
         let usage = result.expect("usage present");
         assert_eq!(usage.total_cost_usd, 0.0, "全 0 cost 应保持 0");
+    }
+
+    // ── P0-S1 fsync tests ────────────────────────────────────────────
+    //
+    // Verifies that EventWriter::write_bus_event honors the source-of-truth
+    // contract: every append must be reachable on disk after the function
+    // returns, even across a crash. Without an explicit fsync the kernel
+    // page cache could absorb the write and a power loss would silently
+    // drop the record — these tests ensure the contract is upheld.
+
+    fn unique_bus_run_id(label: &str) -> String {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        format!("p0s1_{label}_{nanos}")
+    }
+
+    /// P0-S1: write_bus_event must persist the envelope to events.jsonl
+    /// before returning, with an `_bus:true` JSON line carrying the seq.
+    #[test]
+    fn write_bus_event_persists_envelope_to_disk() {
+        let run_id = unique_bus_run_id("persist");
+        let writer = EventWriter::new();
+        let event = BusEvent::RunState {
+            run_id: run_id.clone(),
+            state: "running".to_string(),
+            exit_code: None,
+            error: None,
+        };
+
+        writer
+            .write_bus_event(&run_id, &event)
+            .expect("write_bus_event should succeed");
+
+        let path = super::events_path(&run_id);
+        assert!(path.exists(), "events.jsonl must exist on disk after write");
+        let raw = std::fs::read_to_string(&path).expect("read events.jsonl");
+        let lines: Vec<&str> = raw.lines().filter(|l| !l.trim().is_empty()).collect();
+        assert_eq!(lines.len(), 1, "exactly one bus envelope expected");
+        let v: serde_json::Value = serde_json::from_str(lines[0]).expect("valid json line");
+        assert_eq!(v.get("_bus").and_then(|b| b.as_bool()), Some(true));
+        assert_eq!(v.get("seq").and_then(|s| s.as_u64()), Some(1));
+        let inner = v.get("event").expect("envelope.event present");
+        assert_eq!(
+            inner.get("type").and_then(|t| t.as_str()),
+            Some("run_state")
+        );
+
+        cleanup_run(&run_id);
+    }
+
+    /// P0-S1: write_bus_event_with_ts returns the assigned seq and writes a
+    /// strictly monotonic envelope per call. Both lines must survive the
+    /// function return (proves the parent dir was fsync'd too).
+    #[test]
+    fn write_bus_event_with_ts_assigns_monotonic_seq() {
+        let run_id = unique_bus_run_id("seq");
+        let writer = EventWriter::new();
+        let ts = "2026-01-01T00:00:00Z";
+
+        let first = writer.write_bus_event_with_ts(
+            &run_id,
+            &BusEvent::RunState {
+                run_id: run_id.clone(),
+                state: "running".to_string(),
+                exit_code: None,
+                error: None,
+            },
+            ts,
+        );
+        let second = writer.write_bus_event_with_ts(
+            &run_id,
+            &BusEvent::RunState {
+                run_id: run_id.clone(),
+                state: "completed".to_string(),
+                exit_code: None,
+                error: None,
+            },
+            ts,
+        );
+
+        let first = first.expect("first seq");
+        let second = second.expect("second seq");
+        assert_eq!(second, first + 1, "seq must be strictly monotonic");
+
+        let path = super::events_path(&run_id);
+        let raw = std::fs::read_to_string(&path).expect("read events.jsonl");
+        let count = raw
+            .lines()
+            .filter(|l| !l.trim().is_empty())
+            .filter(|l| l.contains("\"_bus\":true"))
+            .count();
+        assert_eq!(count, 2, "two envelopes on disk");
+
+        cleanup_run(&run_id);
+    }
+
+    /// P0-S1: write_bus_event must never silently swallow a failure. If
+    /// the target path is blocked by a regular file, the call returns Err
+    /// and the blocking file is left intact — i.e. no partial overwrite
+    /// from a half-finished flush + fsync sequence.
+    #[test]
+    fn write_bus_event_returns_err_on_unwritable_target() {
+        let run_id = unique_bus_run_id("err");
+        let run_dir = super::super::run_dir(&run_id);
+        let _ = std::fs::remove_dir_all(&run_dir);
+        std::fs::write(&run_dir, b"not a directory").expect("block dir with regular file");
+
+        let writer = EventWriter::new();
+        let event = BusEvent::RunState {
+            run_id: run_id.clone(),
+            state: "should_fail".to_string(),
+            exit_code: None,
+            error: None,
+        };
+        let result = writer.write_bus_event(&run_id, &event);
+        assert!(
+            result.is_err(),
+            "writing into a path blocked by a regular file must return Err"
+        );
+
+        let body = std::fs::read(&run_dir).expect("blocking file still readable");
+        assert_eq!(
+            body, b"not a directory",
+            "blocking file must remain untouched"
+        );
+
+        let _ = std::fs::remove_file(&run_dir);
     }
 }

@@ -612,3 +612,41 @@ describe("WsTransport", () => {
     unsub();
   });
 });
+
+describe("WsTransport desktop-only API surface", () => {
+  const make = () =>
+    new WsTransport({ wsFactory: () => new FakeWebSocket("ws://test") as unknown as WebSocket });
+
+  it("returns an empty app version in browser mode", async () => {
+    const t = make();
+    await expect(t.getAppVersion()).resolves.toBe("");
+  });
+
+  it("throws when callers reach for desktop-only window APIs", async () => {
+    const t = make();
+    await expect(t.getCurrentWindow()).rejects.toThrow(/desktop-only/i);
+    await expect(t.getCurrentWebviewWindow()).rejects.toThrow(/desktop-only/i);
+    await expect(t.loadWebviewModule()).rejects.toThrow(/desktop-only/i);
+    await expect(t.loadDpiModule()).rejects.toThrow(/desktop-only/i);
+    await expect(t.openDialog()).rejects.toThrow(/desktop-only/i);
+    await expect(t.saveDialog()).rejects.toThrow(/desktop-only/i);
+  });
+
+  it("falls back to window.open() for shellOpen in browser mode", async () => {
+    const t = make();
+    // jsdom doesn't allow spying on window.open; instead install a stub via
+    // Object.defineProperty and restore afterwards.
+    const original = (window as unknown as { open?: typeof window.open }).open;
+    let calledWith: unknown[] | null = null;
+    (window as unknown as { open: unknown }).open = (...args: unknown[]) => {
+      calledWith = args;
+      return null;
+    };
+    try {
+      await t.shellOpen("https://example.com");
+      expect(calledWith).toEqual(["https://example.com", "_blank", "noopener,noreferrer"]);
+    } finally {
+      (window as unknown as { open: unknown }).open = original as unknown;
+    }
+  });
+});

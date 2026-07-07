@@ -26,9 +26,23 @@ pub const QUARANTINE_DEADLINE: Duration = Duration::from_secs(5);
 
 /// Threshold (per 60s window) for json_parse_fail_count before we declare
 /// the CLI stream desynced and force-fail the run. See session_actor.rs.
-pub const PROTOCOL_DESYNC_THRESHOLD: u32 = 5;
+///
+/// P0-C3: raised from 5 → 25. CLI startup banners / debug / progress
+/// fragments can leak non-JSON lines for the first few seconds. The
+/// previous threshold (5) was too eager — a single noisy banner
+/// killed the run before the stream settled. The noise pre-filter
+/// (see `is_protocol_noise` in session_actor.rs) does the heavy
+/// lifting; this threshold is the backstop for genuine desyncs.
+pub const PROTOCOL_DESYNC_THRESHOLD: u32 = 25;
 /// Sliding window (seconds) for the desync detector.
 pub const PROTOCOL_DESYNC_WINDOW_SECS: u64 = 60;
+
+/// P0-C4: Stop-button escalation. After the user clicks Stop, the
+/// actor drops stdin and waits for stdout EOF. If the CLI is wedged
+/// in a no-output tight loop, EOF never arrives and the only
+/// backstop is the 30-minute hard timeout. This constant kicks off
+/// a hard kill after 5s of grace so a wedged CLI can't trap a stop.
+pub const STOP_ESCALATION_KILL: Duration = Duration::from_secs(5);
 
 /// Tick interval for the independent timeout clock.
 pub const TICK_INTERVAL: Duration = Duration::from_millis(250);
@@ -66,12 +80,36 @@ mod tests {
 
     #[test]
     fn protocol_desync_threshold_and_window_are_consistent() {
-        // 5 failures within 60s → fail-fast. Compiled-out constant asserts
+        // 25 failures within 60s → fail-fast (P0-C3: raised from 5 to
+        // tolerate CLI banner noise). Compiled-out constant asserts
         // (silence clippy::assertions_on_constants while keeping the contract).
         const {
             assert!(PROTOCOL_DESYNC_THRESHOLD >= 1);
             assert!(PROTOCOL_DESYNC_WINDOW_SECS >= 10);
         }
+    }
+
+    #[test]
+    fn protocol_desync_threshold_is_25_per_p0_c3() {
+        // P0-C3 contract: the threshold was raised from 5 → 25 because
+        // CLI startup banners routinely leak 5-10 non-JSON lines for the
+        // first second. Pin the value so a future PR that nudges it
+        // back down fails CI loudly (the actor will then mis-fire on
+        // banner noise again).
+        const {
+            assert!(PROTOCOL_DESYNC_THRESHOLD == 25);
+        }
+    }
+
+    #[test]
+    fn stop_escalation_kill_is_below_hard_timeout() {
+        // P0-C4 contract: escalation must be much shorter than the
+        // 30-minute USER_HARD_TIMEOUT so a wedged CLI cannot trap a
+        // stop, but generous enough that a normally-completing turn
+        // gets a chance to flush EOF naturally.
+        assert!(STOP_ESCALATION_KILL < USER_HARD_TIMEOUT);
+        assert!(STOP_ESCALATION_KILL >= Duration::from_secs(1));
+        assert!(STOP_ESCALATION_KILL <= Duration::from_secs(15));
     }
 
     #[test]

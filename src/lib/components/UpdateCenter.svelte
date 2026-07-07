@@ -8,6 +8,7 @@
   import { getUserSettings, updateUserSettings, type UpdateCliResult } from "$lib/api";
   import { openExternalUpdateUrl } from "$lib/utils/app-updater";
   import { showToast } from "$lib/stores/toast-store.svelte";
+  import { getTransport } from "$lib/transport";
 
   let { open = $bindable(false) }: { open: boolean } = $props();
 
@@ -17,8 +18,7 @@
 
   onMount(async () => {
     try {
-      const { getVersion } = await import("@tauri-apps/api/app");
-      appVersion = await getVersion();
+      appVersion = await getTransport().getAppVersion();
     } catch {
       appVersion = "";
     }

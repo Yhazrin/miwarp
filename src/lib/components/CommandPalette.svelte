@@ -23,6 +23,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
   import { getIcon, commandIconMap } from "$lib/icons";
+  import { getTransport } from "$lib/transport";
   import Icon from "$lib/components/Icon.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
   import MiDialog from "$lib/ui/MiDialog.svelte";
@@ -357,8 +358,7 @@
         if (runId) {
           try {
             const md = await api.exportConversation(runId);
-            const { save } = await import("@tauri-apps/plugin-dialog");
-            const path = await save({
+            const path = await getTransport().saveDialog({
               defaultPath: `conversation-${runId.slice(0, 8)}.md`,
               filters: [{ name: "Markdown", extensions: ["md"] }],
             });

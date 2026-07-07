@@ -4,6 +4,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { fly } from "svelte/transition";
+  import { getTransport } from "$lib/transport";
 
   let {
     elicitations,
@@ -105,8 +106,7 @@
       return;
     }
     try {
-      const { open } = await import("@tauri-apps/plugin-shell");
-      await open(href);
+      await getTransport().shellOpen(href);
     } catch {
       window.open(href, "_blank");
     }

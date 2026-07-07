@@ -15,6 +15,13 @@ import { getInvokeTimeoutMs, type Transport } from "./contract";
 
 export { getInvokeTimeoutMs };
 export type { Transport };
+export type {
+  TauriWebview,
+  TauriWebviewModule,
+  TauriDpiModule,
+  DesktopWindowLike,
+  DesktopWebviewWindowLike,
+} from "./contract";
 
 let _instance: Transport | null = null;
 

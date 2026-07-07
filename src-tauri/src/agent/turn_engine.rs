@@ -1,14 +1,14 @@
-//! Turn Transaction Engine — types, extractors, and gate functions.
+//! Turn Transaction Engine — turn data model and activity-reset helpers.
 //!
-//! Every stdin write belongs to an explicit turn (User or Internal).
-//! The engine provides the data model, the `InternalExtractor` trait for
-//! pluggable extraction during internal turns, and pure gate functions
-//! for auto-context dedup.
+//! Every stdin write belongs to an explicit turn (User or Ralph). The
+//! engine provides the data model and the pure `apply_activity_reset`
+//! helper used by the session actor on CLI activity. The previous
+//! internal-turn / auto-context machinery (ContextExtractor,
+//! InternalJob, should_trigger_auto_context) was removed in P0-C2
+//! because auto-context is disabled.
 
-use crate::models::BusEvent;
 use std::collections::VecDeque;
 use std::time::Instant;
-use tauri::{AppHandle, Emitter};
 
 use super::attachment::AttachmentData;
 
@@ -17,15 +17,14 @@ use super::attachment::AttachmentData;
 #[derive(Debug, Clone, PartialEq)]
 pub enum TurnOrigin {
     User(UserTurnKind),
-    Internal(InternalJobKind),
     /// Ralph loop auto-resend turn. Does not trigger auto-context.
     Ralph,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UserTurnKind {
-    /// Normal message — triggers auto-context. auto_ctx_id is fixed at allocation time.
-    Normal { auto_ctx_id: u32 },
+    /// Normal user message.
+    Normal,
     /// Slash command — does not trigger auto-context.
     Slash { command: String },
 }
@@ -59,95 +58,13 @@ pub struct UserTurnTicket {
     pub client_message_id: Option<String>,
 }
 
-pub struct InternalJob {
-    pub job_seq: u64,
-    pub kind: InternalJobKind,
-    pub for_auto_ctx_id: u32,
-    pub for_turn_index: u32,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum InternalJobKind {
-    AutoContext,
-}
-
-// ── Internal extractor trait ──
-
-pub trait InternalExtractor: Send {
-    fn on_event(&mut self, event: &BusEvent);
-    fn finalize(&mut self, timed_out: bool);
-}
-
-/// Extracts context data from /context command output during internal turns.
-pub struct ContextExtractor {
-    pub app: AppHandle,
-    pub run_id: String,
-    pub for_turn_index: u32,
-    pub captured: bool,
-}
-
-impl InternalExtractor for ContextExtractor {
-    fn on_event(&mut self, event: &BusEvent) {
-        match event {
-            BusEvent::CommandOutput { content, .. } => {
-                log::debug!(
-                    "[autoctx] captured source=command_output turn_index={}",
-                    self.for_turn_index
-                );
-                self.emit_context_snapshot(content);
-                self.captured = true;
-            }
-            BusEvent::MessageComplete { text, .. } if !text.is_empty() && !self.captured => {
-                log::debug!(
-                    "[autoctx] captured source=message_complete turn_index={}",
-                    self.for_turn_index
-                );
-                self.emit_context_snapshot(text);
-                self.captured = true;
-            }
-            _ => {}
-        }
-    }
-
-    fn finalize(&mut self, timed_out: bool) {
-        if timed_out && !self.captured {
-            log::warn!(
-                "[autoctx] timed out without data for turn_index={}",
-                self.for_turn_index
-            );
-        }
-    }
-}
-
-impl ContextExtractor {
-    fn emit_context_snapshot(&self, content: &str) {
-        let _ = self.app.emit(
-            "context-snapshot",
-            serde_json::json!({
-                "runId": self.run_id,
-                "content": content,
-                "turnIndex": self.for_turn_index,
-                "ts": chrono::Utc::now().to_rfc3339(),
-            }),
-        );
-    }
-}
-
-// ── Gate functions ──
-
-/// Check if auto-context should trigger for this auto_ctx_id (dedup).
-pub fn should_trigger_auto_context(auto_ctx_id: u32, last: Option<u32>) -> bool {
-    last != Some(auto_ctx_id)
-}
-
 // ── Default timeouts ──
 // Re-exported from `super::constants` for backward compatibility.
 // New code should import from `crate::agent::constants` directly.
 
 pub use super::constants::{
-    ACCEPTED_CLIENT_MESSAGE_IDS_CAP, INTERNAL_HARD_TIMEOUT, INTERNAL_SOFT_TIMEOUT,
-    PROTOCOL_DESYNC_THRESHOLD, PROTOCOL_DESYNC_WINDOW_SECS, QUARANTINE_DEADLINE, TICK_INTERVAL,
-    USER_HARD_TIMEOUT, USER_SOFT_TIMEOUT,
+    ACCEPTED_CLIENT_MESSAGE_IDS_CAP, PROTOCOL_DESYNC_THRESHOLD, PROTOCOL_DESYNC_WINDOW_SECS,
+    QUARANTINE_DEADLINE, STOP_ESCALATION_KILL, TICK_INTERVAL, USER_HARD_TIMEOUT, USER_SOFT_TIMEOUT,
 };
 
 // ── Accepted client_message_id ledger helpers ──
@@ -198,9 +115,6 @@ pub fn apply_activity_reset(quarantine: bool, active_turn: &mut Option<ActiveTur
     let Some(turn) = active_turn.as_mut() else {
         return false;
     };
-    if matches!(turn.origin, TurnOrigin::Internal(_)) {
-        return false;
-    }
     turn.hard_deadline = Instant::now() + USER_HARD_TIMEOUT;
     true
 }
@@ -211,21 +125,6 @@ pub fn apply_activity_reset(quarantine: bool, active_turn: &mut Option<ActiveTur
 mod tests {
     use super::*;
     use std::time::Duration;
-
-    #[test]
-    fn auto_ctx_skip_duplicate() {
-        assert!(!should_trigger_auto_context(1, Some(1)));
-    }
-
-    #[test]
-    fn auto_ctx_trigger_new() {
-        assert!(should_trigger_auto_context(1, None));
-    }
-
-    #[test]
-    fn auto_ctx_trigger_next() {
-        assert!(should_trigger_auto_context(2, Some(1)));
-    }
 
     // ── Activity reset tests ──
 
@@ -244,9 +143,7 @@ mod tests {
 
     #[test]
     fn activity_reset_user_turn_extends_deadline() {
-        let mut turn = Some(make_turn(TurnOrigin::User(UserTurnKind::Normal {
-            auto_ctx_id: 1,
-        })));
+        let mut turn = Some(make_turn(TurnOrigin::User(UserTurnKind::Normal)));
         let before = turn.as_ref().unwrap().hard_deadline;
         assert!(apply_activity_reset(false, &mut turn));
         assert!(turn.as_ref().unwrap().hard_deadline > before);
@@ -261,20 +158,8 @@ mod tests {
     }
 
     #[test]
-    fn activity_reset_internal_turn_unchanged() {
-        let mut turn = Some(make_turn(TurnOrigin::Internal(
-            InternalJobKind::AutoContext,
-        )));
-        let before = turn.as_ref().unwrap().hard_deadline;
-        assert!(!apply_activity_reset(false, &mut turn));
-        assert_eq!(turn.as_ref().unwrap().hard_deadline, before);
-    }
-
-    #[test]
     fn activity_reset_quarantine_skips() {
-        let mut turn = Some(make_turn(TurnOrigin::User(UserTurnKind::Normal {
-            auto_ctx_id: 1,
-        })));
+        let mut turn = Some(make_turn(TurnOrigin::User(UserTurnKind::Normal)));
         let before = turn.as_ref().unwrap().hard_deadline;
         assert!(!apply_activity_reset(true, &mut turn));
         assert_eq!(turn.as_ref().unwrap().hard_deadline, before);

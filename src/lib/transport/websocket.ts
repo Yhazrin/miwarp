@@ -496,6 +496,52 @@ export class WsTransport implements Transport {
   }
 
   // ---------------------------------------------------------------------------
+  // Desktop-only API surface (browser stub).
+  //
+  // Web mode has no Tauri runtime and no native plugins. The contract requires
+  // these methods so callers can reach them through `getTransport()` without
+  // branching on adapter type — they just gate calls with `isDesktop()`.
+  // `shellOpen` keeps a graceful browser fallback; the rest throw because
+  // there's no sensible web equivalent.
+  // ---------------------------------------------------------------------------
+
+  async getAppVersion(): Promise<string> {
+    return "";
+  }
+
+  async getCurrentWindow(): Promise<never> {
+    throw new Error("getCurrentWindow: desktop-only API not available in browser mode");
+  }
+
+  async getCurrentWebviewWindow(): Promise<never> {
+    throw new Error("getCurrentWebviewWindow: desktop-only API not available in browser mode");
+  }
+
+  async loadWebviewModule(): Promise<never> {
+    throw new Error("loadWebviewModule: desktop-only API not available in browser mode");
+  }
+
+  async loadDpiModule(): Promise<never> {
+    throw new Error("loadDpiModule: desktop-only API not available in browser mode");
+  }
+
+  async openDialog(_options?: Record<string, unknown>): Promise<never> {
+    throw new Error("openDialog: desktop-only API not available in browser mode");
+  }
+
+  async saveDialog(_options?: Record<string, unknown>): Promise<never> {
+    throw new Error("saveDialog: desktop-only API not available in browser mode");
+  }
+
+  async shellOpen(path: string): Promise<void> {
+    // Best-effort browser fallback so callers like ElicitationDialog can
+    // treat `shellOpen` as the universal "open URL" path.
+    if (typeof window !== "undefined" && typeof window.open === "function") {
+      window.open(path, "_blank", "noopener,noreferrer");
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Disposal
   // ---------------------------------------------------------------------------
 

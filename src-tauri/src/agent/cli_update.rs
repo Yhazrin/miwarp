@@ -118,7 +118,7 @@ pub fn detect_ccswitch() -> InstallInfo {
             return info;
         }
         // then Spotlight/manual DMG install. Note: app display name has a space.
-        return detect_macos_app("CC Switch", "CC-Switch");
+        detect_macos_app("CC Switch", "CC-Switch")
     }
     #[cfg(target_os = "linux")]
     {
@@ -154,9 +154,7 @@ pub fn detect_ccswitch() -> InstallInfo {
 /// Requires the cask token (e.g. `cc-switch`) and the binary name (e.g. `CC-Switch`).
 #[cfg(target_os = "macos")]
 pub fn detect_via_brew_cask(cask: &str, binary: &str) -> Option<InstallInfo> {
-    if crate::agent::claude_stream::which_binary("brew").is_none() {
-        return None;
-    }
+    crate::agent::claude_stream::which_binary("brew")?;
     // `brew list --cask <name> --versions` prints the version (or fails with
     // a non-zero exit if the cask isn't installed). Treat non-zero as "not
     // installed via brew" so callers can try the next detection path.
@@ -459,7 +457,7 @@ pub async fn get_github_latest_release(owner: &str, repo: &str) -> Result<GitHub
 /// upstream using our exact arch string. Falls back to `None` if no asset
 /// looks like a match — caller should then surface a "no release for this
 /// platform" error to the user.
-pub fn pick_release_asset<'a>(release: &'a GitHubRelease) -> Option<&'a GitHubAsset> {
+pub fn pick_release_asset(release: &GitHubRelease) -> Option<&GitHubAsset> {
     pick_release_asset_for(release, platform_asset_needle())
 }
 

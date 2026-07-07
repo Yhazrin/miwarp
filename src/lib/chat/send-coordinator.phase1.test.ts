@@ -250,4 +250,106 @@ describe("SendCoordinator (Phase 1 surface)", () => {
     await Promise.resolve();
     expect(coordinator.isSubmitting("run-1")).toBe(false);
   });
+
+  // ── P0-C1: run-switch reconcile contract ──
+  // Mirrors what the run-switch $effect in src/routes/chat/+page.svelte
+  // does for the send coordinator when the user switches runs. Must
+  // drain every pending submit for the previous runId and surface a
+  // stale_identity rejection so the draft can be restored.
+
+  it("run-switch reconcile drains every pending submit for the previous run", async () => {
+    // Simulate the page-level state machine: track the last observed
+    // runId and reconcile on switch.
+    const d1 = deferred<void>();
+    const d2 = deferred<void>();
+    const { promise: p1, clientMessageId: id1 } = submit({
+      clientMessageId: "cmsg-A-1",
+      runId: "run-A",
+      transport: () => d1.promise,
+    });
+    const { promise: p2, clientMessageId: id2 } = submit({
+      clientMessageId: "cmsg-A-2",
+      runId: "run-A",
+      transport: () => d2.promise,
+    });
+    // Attach handlers up-front so cancellation rejection isn't unhandled.
+    const settled1 = p1.then(
+      () => ({ ok: true as const }),
+      (err: unknown) => ({ ok: false as const, err }),
+    );
+    const settled2 = p2.then(
+      () => ({ ok: true as const }),
+      (err: unknown) => ({ ok: false as const, err }),
+    );
+    expect(coordinator.hasPending("run-A")).toBe(true);
+    expect(coordinator.pendingCount).toBeGreaterThanOrEqual(2);
+
+    // Cancel for previous run, then reconcile to new active run.
+    coordinator.cancelForRun("run-A", "Run switched");
+    const dropped = coordinator.reconcileActiveRun("run-B");
+    expect(dropped).toBe(0); // both already cancelled above
+    expect(coordinator.busy).toBe(false);
+    expect(coordinator.hasPending("run-A")).toBe(false);
+    expect(coordinator.hasPending("run-B")).toBe(false);
+
+    d1.resolve();
+    d2.resolve();
+    const [r1, r2] = await Promise.all([settled1, settled2]);
+    expect(r1.ok).toBe(false);
+    expect(r2.ok).toBe(false);
+    if (!r1.ok) expect(r1.err).toBeInstanceOf(SendCoordinatorError);
+    if (!r2.ok) expect(r2.err).toBeInstanceOf(SendCoordinatorError);
+    // Find the latest event for each id (events are emitted in order).
+    const last1 = [...events].reverse().find((e) => e.clientMessageId === id1);
+    const last2 = [...events].reverse().find((e) => e.clientMessageId === id2);
+    expect(last1?.state).toBe("cancelled");
+    expect(last2?.state).toBe("cancelled");
+    expect(last1?.error?.code).toBe("stale_identity");
+    expect(last2?.error?.code).toBe("stale_identity");
+  });
+
+  it("run-switch reconcile leaves the new run's submits intact", async () => {
+    // Two submits for run-A and one for run-B. After switch-to-B, only
+    // the run-A submits should be cancelled.
+    const dA1 = deferred<void>();
+    const dA2 = deferred<void>();
+    const dB = deferred<void>();
+    const { promise: pA1, clientMessageId: idA1 } = submit({
+      clientMessageId: "cmsg-A-1",
+      runId: "run-A",
+      transport: () => dA1.promise,
+    });
+    const { promise: pA2 } = submit({
+      clientMessageId: "cmsg-A-2",
+      runId: "run-A",
+      transport: () => dA2.promise,
+    });
+    const { promise: pB, clientMessageId: idB } = submit({
+      clientMessageId: "cmsg-B-1",
+      runId: "run-B",
+      transport: () => dB.promise,
+    });
+    // Suppress unhandled rejection for the A submits (cancelled below).
+    void pA1.catch(() => undefined);
+    void pA2.catch(() => undefined);
+
+    // Page-level reconcile on switch to run-B
+    coordinator.cancelForRun("run-A", "Run switched");
+    coordinator.reconcileActiveRun("run-B");
+
+    expect(coordinator.hasPending("run-B")).toBe(true);
+    expect(coordinator.hasPending("run-A")).toBe(false);
+    expect(coordinator.busy).toBe(true);
+
+    // Settle all three — only the B submit accepts.
+    dA1.resolve();
+    dA2.resolve();
+    dB.resolve();
+    await Promise.allSettled([pA1, pA2, pB]);
+
+    const lastA = [...events].reverse().find((e) => e.clientMessageId === idA1);
+    const lastB = [...events].reverse().find((e) => e.clientMessageId === idB);
+    expect(lastA?.state).toBe("cancelled");
+    expect(lastB?.state).toBe("accepted");
+  });
 });

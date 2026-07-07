@@ -258,8 +258,7 @@
   async function addWorkspaceFromPicker() {
     let cwd: string | null = null;
     if (getTransport().isDesktop()) {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const result = await open({
+      const result = await getTransport().openDialog({
         directory: true,
         multiple: false,
         title: t("chat_addWorkspaceTitle"),
@@ -734,6 +733,11 @@
    *  re-apply the same restore. */
   let _restoreAppliedFor = "";
 
+  /** Last runId observed by the send coordinator reconcile step.
+   *  Mirrors `permissionCoordinator.lastActiveRunId` so we don't
+   *  reconcile twice on the same navigation. */
+  let sendCoordinatorLastActiveRunId: string | null = null;
+
   function buildDraftFromPrompt(): ContinuityDraft | null {
     const prompt = promptRef;
     if (!prompt || typeof prompt.getInputSnapshot !== "function") return null;
@@ -938,6 +942,23 @@
         permissionCoordinator.reconcileActiveRun(id);
         permissionCoordinator.bumpGeneration();
         permissionCoordinator.lastActiveRunId = id;
+      }
+
+      // ── Send coordinator reconcile ──
+      // Mirror the permission coordinator pattern: when the user switches
+      // runs, any in-flight submit that captured a stale runId must be
+      // cancelled (rejection surfaces a `stale_identity` failure so the
+      // draft can be restored). Without this, the previous run's pending
+      // transport promise could resolve against the new run's UI and
+      // race the next submit. See `SendCoordinator.cancelForRun` and
+      // `SendCoordinator.reconcileActiveRun`.
+      const previousSendRunId = sendCoordinatorLastActiveRunId;
+      if (previousSendRunId !== id) {
+        if (previousSendRunId) {
+          send.coordinator.cancelForRun(previousSendRunId, "Run switched");
+        }
+        send.coordinator.reconcileActiveRun(id);
+        sendCoordinatorLastActiveRunId = id;
       }
 
       // Strongest guard: resume operation in progress — don't interfere.

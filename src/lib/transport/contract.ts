@@ -4,8 +4,34 @@
  * Both `tauri.ts` and `websocket.ts` depend on this contract, while `index.ts`
  * only re-exports it. The contract imports connection-state types directly so
  * implementations never need to depend on the transport barrel.
+ *
+ * Type imports from `@tauri-apps/api/*` are allowed because they are erased at
+ * compile time — runtime imports stay confined to `src/lib/transport/`.
  */
 import type { ConnectionStateListener, ConnectionStateValue } from "./connection-state";
+import type { Webview as TauriWebview } from "@tauri-apps/api/webview";
+import type * as TauriWebviewApi from "@tauri-apps/api/webview";
+import type * as TauriDpiApi from "@tauri-apps/api/dpi";
+
+/** Re-export of the Tauri Webview class so callers can `new` instances. */
+export type { TauriWebview };
+
+/** Shape of the Tauri `webview` module surface that callers consume. */
+export type TauriWebviewModule = typeof TauriWebviewApi;
+
+/** Shape of the Tauri `dpi` module surface that callers consume. */
+export type TauriDpiModule = typeof TauriDpiApi;
+
+/** Minimal surface of a Tauri webview/window used by the renderer. */
+export interface DesktopWebviewWindowLike {
+  setZoom(factor: number): Promise<void>;
+}
+
+/** Minimal surface of a Tauri Window used by renderer code. */
+export interface DesktopWindowLike {
+  // Kept open for future call sites — kept honest by the index signature.
+  [key: string]: unknown;
+}
 
 export interface Transport {
   invoke<T>(
@@ -32,6 +58,30 @@ export interface Transport {
   onConnectionStateChange(listener: ConnectionStateListener): () => void;
   /** Release transport-owned timers, sockets, requests, and subscriptions. */
   dispose?(): void;
+
+  // ---------------------------------------------------------------------------
+  // Desktop-only API surface (lazy-loaded inside the transport).
+  // WebSocket transport throws (or no-ops for `shellOpen`) because the
+  // underlying Tauri runtime / plugins are absent. Callers must gate these
+  // with `isDesktop()` first.
+  // ---------------------------------------------------------------------------
+
+  /** Read the bundled application version (Tauri app metadata). */
+  getAppVersion(): Promise<string>;
+  /** Resolve the current desktop window. */
+  getCurrentWindow(): Promise<DesktopWindowLike>;
+  /** Resolve the current desktop webview window (supports `setZoom`). */
+  getCurrentWebviewWindow(): Promise<DesktopWebviewWindowLike>;
+  /** Load the Tauri `webview` module (needed for `new Webview(...)`). */
+  loadWebviewModule(): Promise<TauriWebviewModule>;
+  /** Load the Tauri `dpi` module (needed for `LogicalSize` / `LogicalPosition`). */
+  loadDpiModule(): Promise<TauriDpiModule>;
+  /** Open a native file/folder picker dialog. */
+  openDialog(options?: Record<string, unknown>): Promise<unknown>;
+  /** Open a native save dialog; returns the chosen path or `null`. */
+  saveDialog(options?: Record<string, unknown>): Promise<string | null>;
+  /** Open a path or URL via the system shell / OS default handler. */
+  shellOpen(path: string): Promise<void>;
 }
 
 /** Default timeout per command category */
