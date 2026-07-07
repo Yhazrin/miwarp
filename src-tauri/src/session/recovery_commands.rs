@@ -58,6 +58,21 @@ pub fn spawn_recovery_watcher(
         .await
         {
             log::warn!("[recovery] respawn failed for run_id={}: {}", run_id, e);
+            // Mark unrecoverable so queued messages are drained and reported as lost.
+            let mut map = registry.lock().await;
+            if let Some(entry) = map.get_mut(&run_id) {
+                if !entry.unrecoverable {
+                    mark_unrecoverable(
+                        entry,
+                        &run_id,
+                        &emitter,
+                        RuntimeError::RecoveryExhausted {
+                            run_id: run_id.clone(),
+                            attempts: entry.recovery_sm.consecutive_failures(),
+                        },
+                    );
+                }
+            }
         }
     });
 }

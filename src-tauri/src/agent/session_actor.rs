@@ -912,9 +912,16 @@ impl SessionActor {
             attachments,
             kind,
             turn_index,
-            reply,
             client_message_id,
         });
+
+        // Reply immediately: the message is accepted into the actor's queue.
+        // The actual CLI dispatch happens asynchronously when try_dispatch()
+        // runs (which may be deferred if a turn is already active). This
+        // prevents false timeouts when a long-running CLI turn (>45s) blocks
+        // dispatch — the IPC returns quickly and the frontend's own transport
+        // timeout is the real guard against hangs.
+        let _ = reply.send(Ok(()));
 
         self.try_dispatch().await;
     }
@@ -1036,7 +1043,9 @@ impl SessionActor {
             Ok(uuid) => uuid,
             Err(e) => {
                 log::warn!("[turn] start_user: stdin write failed: {}", e);
-                let _ = ticket.reply.send(Err(e.clone()));
+                // Note: the caller already received Ok(()) on queue acceptance.
+                // The stdin failure is handled internally — actor will crash and
+                // the frontend will see RunState(stopped) via the event bus.
                 self.crash_reason = Some(CrashReason::StdinWriteFailed);
                 self.recoverable_exit = true;
                 if let Some(ref mut child) = self.child {
@@ -1125,9 +1134,13 @@ impl SessionActor {
         });
 
         if let Some(error) = acceptance_error {
-            let _ = ticket.reply.send(Err(error));
-        } else {
-            let _ = ticket.reply.send(Ok(()));
+            // Caller already received Ok(()) on queue acceptance.
+            // Log the durable acceptance failure for diagnostics.
+            log::warn!(
+                "[turn] durable acceptance ambiguous for turn_index={}: {}",
+                ticket.turn_index,
+                error
+            );
         }
     }
 
@@ -1618,17 +1631,17 @@ impl SessionActor {
         self.emitter.persist_and_emit(&self.run_id, event);
     }
 
-    /// Fail all pending user reply channels. (HC #12)
+    /// Drain all queued user and internal turns. (HC #12)
+    /// Replies were already sent on queue acceptance, so this just clears the
+    /// queues and resets the barrier. Logging retained for diagnostics.
     fn fail_all_pending_replies(&mut self, reason: &str) {
         let count = self.queued_user.len();
-        while let Some(ticket) = self.queued_user.pop_front() {
-            let _ = ticket.reply.send(Err(reason.to_string()));
-        }
+        self.queued_user.clear();
         self.queued_internal.clear();
         self.must_run_internal_for_turn = None;
         if count > 0 {
             log::debug!(
-                "[turn] fail_all_pending_replies: failed {} tickets, reason={}",
+                "[turn] fail_all_pending_replies: drained {} tickets, reason={}",
                 count,
                 reason
             );

@@ -291,6 +291,14 @@ pub fn mark_unrecoverable(
     state.respawn_in_flight = false;
     state.last_error = Some(error);
     let _ = state.recovery_sm.mark_orphaned();
+
+    // Drain queued messages so we can report them as lost.
+    let lost_from_queue = state.recovery_queue.len();
+    let lost_from_pending = state.pending_unaccepted.len();
+    let total_lost = lost_from_queue + lost_from_pending;
+    state.recovery_queue.clear();
+    state.pending_unaccepted.clear();
+
     emit_session_lifecycle(
         emitter,
         run_id,
@@ -308,6 +316,27 @@ pub fn mark_unrecoverable(
             ok: false,
         },
     );
+
+    // Emit a RunState "failed" so the frontend knows queued messages were lost.
+    if total_lost > 0 {
+        log::warn!(
+            "[recovery] run_id={}: {} queued message(s) lost due to unrecoverable crash",
+            run_id,
+            total_lost
+        );
+        emitter.persist_and_emit(
+            run_id,
+            &BusEvent::RunState {
+                run_id: run_id.to_string(),
+                state: "failed".to_string(),
+                exit_code: None,
+                error: Some(format!(
+                    "Session unrecoverable — {} queued message(s) could not be delivered",
+                    total_lost
+                )),
+            },
+        );
+    }
 }
 
 pub async fn ensure_run_registered(
@@ -471,5 +500,15 @@ mod tests {
         assert_eq!(state.connection_generation, 0);
         state.connection_generation += 1;
         assert_eq!(state.connection_generation, 1);
+    }
+
+    #[test]
+    fn enqueue_rejected_after_unrecoverable() {
+        let mut state = RunRecoveryState::new("run-1", None);
+        state.unrecoverable = true;
+        let err = state
+            .enqueue_recovery_send("msg".into(), vec![], Some("cid-1".into()))
+            .unwrap_err();
+        assert!(matches!(err, RuntimeError::RecoveryExhausted { .. }));
     }
 }

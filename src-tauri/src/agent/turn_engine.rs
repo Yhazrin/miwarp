@@ -9,7 +9,6 @@ use crate::models::BusEvent;
 use std::collections::VecDeque;
 use std::time::Instant;
 use tauri::{AppHandle, Emitter};
-use tokio::sync::oneshot;
 
 use super::attachment::AttachmentData;
 
@@ -55,7 +54,6 @@ pub struct UserTurnTicket {
     pub attachments: Vec<AttachmentData>,
     pub kind: UserTurnKind,
     pub turn_index: u32,
-    pub reply: oneshot::Sender<Result<(), String>>,
     /// v1.0.9: optional client-side idempotency token. Used for dedup and
     /// diagnostic breadcrumbs only — never emitted in user-visible content.
     pub client_message_id: Option<String>,
