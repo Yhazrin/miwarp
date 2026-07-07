@@ -169,6 +169,10 @@ extension BusEvent {
         case .protocolDesync: return "protocol_desync"
         case .fullReload: return "full_reload"
         case .raw: return "raw"
+        // v1.1.0
+        case .attentionChanged: return "attention_changed"
+        case .runtimeHealthChanged: return "runtime_health_changed"
+        case .governorBudgetExceeded: return "governor_budget_exceeded"
         }
     }
 }
