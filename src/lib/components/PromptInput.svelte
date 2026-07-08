@@ -297,7 +297,11 @@
    */
   let textareaHeightPx = $state(24);
   const CAPSULE_LINE_HEIGHT_PX = 24;
-  const CAPSULE_STACK_THRESHOLD_PX = 34;
+  /** Hysteresis thresholds: expand at a higher value, collapse at a lower one.
+   *  This prevents the capsule ↔ expanded flip-flop loop when the measured
+   *  scrollHeight oscillates near the boundary during CSS transitions. */
+  const CAPSULE_EXPAND_THRESHOLD_PX = 34;
+  const CAPSULE_COLLAPSE_THRESHOLD_PX = 28;
   const useCapsuleStrip = $derived(!capsuleExpanded && !pendingPermission);
 
   $effect(() => {
@@ -1861,16 +1865,15 @@
     el.style.height = "auto";
     const scrollH = el.scrollHeight;
 
-    // Compute the desired layout state purely from inputs (text, permission,
-    // measured height) — never branch on the current `capsuleExpanded`. The
-    // previous implementation toggled capsuleExpanded inside a cascade of
-    // if-blocks that read it back, which produced a flip-flop loop with the
-    // unified single-textarea layout (one rAF → expand, next rAF → collapse,
-    // next → expand…). This pure-function form is idempotent: calling
-    // autoResize twice with the same inputs produces the same state, so the
-    // effect that schedules us on `useCapsuleStrip` change converges after
-    // at most one extra rAF.
-    const shouldExpand = pendingPermission || hasNewline || scrollH > CAPSULE_STACK_THRESHOLD_PX;
+    // Compute the desired layout state with hysteresis: when currently
+    // collapsed, only expand once the height exceeds the higher threshold;
+    // when currently expanded, only collapse once the height drops below the
+    // lower threshold. The gap between the two thresholds creates a dead
+    // zone that prevents the flip-flop oscillation during CSS transitions
+    // (the previous single-threshold approach toggled every frame while the
+    // measured scrollHeight drifted around 34px).
+    const threshold = capsuleExpanded ? CAPSULE_COLLAPSE_THRESHOLD_PX : CAPSULE_EXPAND_THRESHOLD_PX;
+    const shouldExpand = pendingPermission || hasNewline || scrollH > threshold;
     const nextHeight = shouldExpand ? Math.min(scrollH, maxHeight) : CAPSULE_LINE_HEIGHT_PX;
 
     if (capsuleExpanded !== shouldExpand) {

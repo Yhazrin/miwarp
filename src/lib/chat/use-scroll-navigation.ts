@@ -275,12 +275,23 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
 
   function scrollChatToBottom() {
     const chatArea = getChatAreaRef();
-    if (chatArea) {
-      chatArea.scrollTop = chatArea.scrollHeight;
-      setShowChatScrollHint(false);
-      setIsChatAutoScroll(true);
-      setReadingHistory?.(false);
-    }
+    if (!chatArea) return;
+
+    // Temporarily make all content-visibility:auto elements visible so
+    // scrollHeight includes their full height — without this, the browser
+    // skips layout for off-screen .cv-auto items and scrollTop lands short.
+    const cvEls = Array.from(chatArea.querySelectorAll<HTMLElement>(".cv-auto"));
+    for (const c of cvEls) c.style.contentVisibility = "visible";
+
+    chatArea.scrollTop = chatArea.scrollHeight;
+    setShowChatScrollHint(false);
+    setIsChatAutoScroll(true);
+    setReadingHistory?.(false);
+
+    // Restore content-visibility after the browser has painted the scroll
+    requestAnimationFrame(() => {
+      for (const c of cvEls) c.style.contentVisibility = "";
+    });
   }
 
   async function scrollToTool(toolUseId: string) {
