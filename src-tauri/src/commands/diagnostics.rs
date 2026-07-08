@@ -2183,3 +2183,17 @@ pub fn generate_ssh_key() -> Result<SshKeyInfo, String> {
 pub fn get_data_directory() -> String {
     crate::storage::data_dir().to_string_lossy().into_owned()
 }
+
+/// Forward a debug event from the webview to the Rust stdout/log stream.
+///
+/// Used for real-time debugging of the Svelte input component: the frontend
+/// has no way to surface per-keystroke diagnostic info except by writing
+/// to the browser DevTools console, which the orchestrating Claude session
+/// can't see. This command gives us a one-way pipe: Svelte `__dbg()` →
+/// `invoke("log_debug_event", { tag, payload })` → `log::info!` →
+/// stdout. Filter the running tauri dev output with
+/// `grep '\[prompt-db\]'` to follow along.
+#[tauri::command]
+pub fn log_debug_event(tag: String, payload: String) {
+    log::info!("[prompt-db] {} {}", tag, payload);
+}
