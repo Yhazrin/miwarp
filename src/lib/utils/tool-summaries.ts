@@ -81,6 +81,13 @@ export function getToolSummary(
       const desc = (input.description as string) || "";
       return t("tool_launchedAgent", { desc });
     }
+    case "Workflow": {
+      const name = (input.name as string) || "";
+      const desc = (input.description as string) || "";
+      if (name) return t("tool_workflowNamed", { name });
+      if (desc) return t("tool_workflowNamed", { name: desc.slice(0, 60) });
+      return t("tool_workflowRunning");
+    }
     case "AskUserQuestion": {
       return t("tool_waitingResponse");
     }

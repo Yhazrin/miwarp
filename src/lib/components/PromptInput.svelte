@@ -2290,6 +2290,24 @@
     {:else if !hasRun}
       <div class="w-1"></div>
     {/if}
+    {#if fastModeState === "on"}
+      <button
+        type="button"
+        class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider
+          bg-[hsl(var(--miwarp-status-info)/0.15)] text-miwarp-status-info
+          hover:bg-[hsl(var(--miwarp-status-info)/0.25)] transition-colors
+          animate-pulse"
+        title={t("prompt_fastModeActive")}
+        onclick={() => onFastModeSwitch?.("off")}
+      >
+        <svg class="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+        {#if !compact}
+          <span>fast</span>
+        {/if}
+      </button>
+    {/if}
     {#if showAuthBadge && !hasRun && !compact}
       <AuthSourceBadge
         {authOverview}
@@ -2481,11 +2499,13 @@
 
   <!-- Unified input container -->
   <div
-    class="prompt-input-shell overflow-hidden border border-primary bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color,background-color] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] {useCapsuleStrip
+    class="prompt-input-shell overflow-hidden border border-primary bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color,background-color,box-shadow] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] {useCapsuleStrip
       ? 'rounded-full'
-      : 'rounded-[1.75rem]'} {btwMode ? 'border-miwarp-status-info/80' : ''} {pendingPermission
-      ? 'motion-attention-pulse'
-      : ''}"
+      : 'rounded-[1.75rem]'} {btwMode
+      ? 'border-miwarp-status-info/80'
+      : ''} {fastModeState === 'on'
+      ? 'border-miwarp-status-info/60 shadow-[0_0_12px_-2px_hsl(var(--miwarp-status-info)/0.3)]'
+      : ''} {pendingPermission ? 'motion-attention-pulse' : ''}"
   >
     {#if pendingPermission}
       <div

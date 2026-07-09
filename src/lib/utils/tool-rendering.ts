@@ -148,6 +148,8 @@ const FRIENDLY_TOOL_NAMES: Record<string, string> = {
   WebFetch: "Fetch URLs",
   WebSearch: "Search web",
   Task: "Run sub-agent",
+  Agent: "Spawn agent",
+  Workflow: "Run workflow",
   NotebookEdit: "Edit notebook",
   PowerShell: "Run PowerShell",
   Monitor: "Monitor events",
@@ -225,6 +227,76 @@ export function extractTaskToolMeta(input: unknown): TaskToolMeta | null {
   };
 }
 
+// ── Agent tool metadata extraction (Claude Code 2.0+) ──
+
+export interface AgentToolMeta {
+  /** Agent label for display (name prop or generated from description). */
+  name?: string;
+  /** What the agent is doing. */
+  description?: string;
+  /** Model override for this agent. */
+  model?: string;
+  /** Isolation mode: "worktree" | "remote" | undefined. */
+  isolation?: "worktree" | "remote" | string;
+  /** Permission mode override. */
+  permissionMode?: string;
+  /** Whether the agent runs in background. */
+  runInBackground?: boolean;
+  /** Team name if part of a multi-agent team. */
+  teamName?: string;
+  /** Prompt preview (truncated). */
+  prompt?: string;
+  /** Whether this is an ultracode workflow agent. */
+  isUltracode?: boolean;
+}
+
+/** Extract metadata from an Agent tool's input object. Returns null if not an Agent tool input. */
+export function extractAgentToolMeta(input: unknown): AgentToolMeta | null {
+  if (input == null || typeof input !== "object") return null;
+  const obj = input as Record<string, unknown>;
+  // Agent tool has a "prompt" field (required) — use it as the distinguishing marker
+  if (typeof obj.prompt !== "string") return null;
+  // Must also have subagent_type or description to be an Agent (not just any tool with prompt)
+  const hasAgentMarker =
+    typeof obj.subagent_type === "string" ||
+    typeof obj.description === "string" ||
+    typeof obj.name === "string" ||
+    typeof obj.isolation === "string" ||
+    typeof obj.model === "string" ||
+    typeof obj.run_in_background === "boolean";
+  if (!hasAgentMarker) return null;
+
+  return {
+    name: typeof obj.name === "string" ? obj.name : undefined,
+    description: typeof obj.description === "string" ? obj.description : undefined,
+    model: typeof obj.model === "string" ? obj.model : undefined,
+    isolation: typeof obj.isolation === "string" ? obj.isolation : undefined,
+    permissionMode: typeof obj.mode === "string" ? obj.mode : undefined,
+    runInBackground: typeof obj.run_in_background === "boolean" ? obj.run_in_background : undefined,
+    teamName: typeof obj.team_name === "string" ? obj.team_name : undefined,
+    prompt:
+      typeof obj.prompt === "string"
+        ? obj.prompt.length > 200
+          ? obj.prompt.slice(0, 200) + "…"
+          : obj.prompt
+        : undefined,
+    isUltracode: Boolean(
+      obj.isUltracode === true ||
+        (typeof obj.description === "string" && obj.description.toLowerCase().includes("ultracode")),
+    ),
+  };
+}
+
+/** Unified extraction: returns AgentToolMeta for Agent tools, TaskToolMeta for Task tools, null otherwise. */
+export function extractAgentLikeMeta(
+  toolName: string,
+  input: unknown,
+): AgentToolMeta | TaskToolMeta | null {
+  if (toolName === "Agent") return extractAgentToolMeta(input);
+  if (toolName === "Task") return extractTaskToolMeta(input);
+  return null;
+}
+
 // ── Batch / subagent status helpers ──
 
 import type { BusToolItem } from "$lib/types";
@@ -273,22 +345,24 @@ export function aggregateBatchStatus(tools: BusToolItem[]): {
   return { completed, failed, running, total: tools.length };
 }
 
-/** Detect consecutive runs of Task tools (≥3) in a timeline for batch progress display.
+/** Detect consecutive runs of agent-like tools (Task/Agent, ≥3) in a timeline for batch progress display.
  *  Returns Map<startIndex, BusToolItem[]>. */
 export function detectBatchGroups(
   timeline: Array<{ kind: string; tool?: BusToolItem }>,
 ): Map<number, BusToolItem[]> {
+  const agentTools = new Set(["Task", "Agent"]);
   const groups = new Map<number, BusToolItem[]>();
   let i = 0;
   while (i < timeline.length) {
     const entry = timeline[i];
-    if (entry.kind === "tool" && entry.tool?.tool_name === "Task") {
+    if (entry.kind === "tool" && entry.tool && agentTools.has(entry.tool.tool_name)) {
       const start = i;
       const tools: BusToolItem[] = [];
       while (
         i < timeline.length &&
         timeline[i].kind === "tool" &&
-        timeline[i].tool?.tool_name === "Task"
+        timeline[i].tool &&
+        agentTools.has(timeline[i].tool!.tool_name)
       ) {
         tools.push(timeline[i].tool!);
         i++;
@@ -314,7 +388,7 @@ export interface ToolBurst {
   stats: { completed: number; failed: number; running: number; total: number };
 }
 
-const BURST_EXCLUDE = new Set(["Task", "AskUserQuestion", "ExitPlanMode", "EnterPlanMode"]);
+const BURST_EXCLUDE = new Set(["Task", "Agent", "Workflow", "AskUserQuestion", "ExitPlanMode", "EnterPlanMode"]);
 
 /**
  * Detect "tool burst" segments: consecutive tool entries (regardless of tool_name)

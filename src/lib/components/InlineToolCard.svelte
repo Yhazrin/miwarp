@@ -19,6 +19,7 @@
     planFileName,
     isPlanFilePath,
     extractTaskToolMeta,
+    extractAgentToolMeta,
     shouldShowSubTimeline as _shouldShow,
     getToolRenderLevel,
     getToolDetail,
@@ -107,9 +108,10 @@
     permissionMode?: string;
   } = $props();
 
-  // Look up the task notification for this specific Task tool
+  // Look up the task notification for this specific Task/Agent tool
   let taskNotification = $derived.by(() => {
-    if (tool.tool_name !== "Task" || !taskNotifications) return undefined;
+    if ((tool.tool_name !== "Task" && tool.tool_name !== "Agent") || !taskNotifications)
+      return undefined;
     for (const n of taskNotifications.values()) {
       if (n.tool_use_id === tool.tool_use_id) return n;
     }
@@ -256,6 +258,7 @@
         "ExitPlanMode",
         "Task",
         "Agent",
+        "Workflow",
       ];
       return (
         significantTools.includes(tool.tool_name) ||
@@ -359,7 +362,13 @@
   });
 
   // Task (subagent) meta: extract agent type + model for enhanced header
-  let taskMeta = $derived(tool.tool_name === "Task" ? extractTaskToolMeta(tool.input) : null);
+  let taskMeta = $derived(
+    tool.tool_name === "Task" ? extractTaskToolMeta(tool.input) : null,
+  );
+  // Agent tool meta (Claude Code 2.0+): richer metadata with isolation/permission/background
+  let agentMeta = $derived(
+    tool.tool_name === "Agent" ? extractAgentToolMeta(tool.input) : null,
+  );
 
   // Whether current permission mode already skips permission prompts
   let skipPermissionMode = $derived(
@@ -1027,7 +1036,61 @@
 
         <!-- Tool name + detail + summary -->
         <div class="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-          {#if taskMeta}
+          {#if agentMeta}
+            <!-- Agent tool (Claude Code 2.0+): show name/description + model + isolation + badges -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-xs font-medium text-foreground">
+                {agentMeta.name || agentMeta.description || "Agent"}
+              </span>
+              {#if agentMeta.model}
+                <span
+                  class="text-[10px] px-1 py-0.5 rounded bg-[hsl(var(--miwarp-status-info)/0.15)] text-miwarp-status-info font-medium"
+                  >{agentMeta.model}</span
+                >
+              {/if}
+              {#if agentMeta.isolation === "worktree"}
+                <span
+                  class="text-[10px] px-1 py-0.5 rounded bg-[hsl(var(--miwarp-status-warning)/0.15)] text-miwarp-status-warning font-medium"
+                  >worktree</span
+                >
+              {:else if agentMeta.isolation === "remote"}
+                <span
+                  class="text-[10px] px-1 py-0.5 rounded bg-[hsl(var(--miwarp-status-warning)/0.15)] text-miwarp-status-warning font-medium"
+                  >remote</span
+                >
+              {/if}
+              {#if agentMeta.runInBackground}
+                <span
+                  class="text-[10px] px-1 py-0.5 rounded bg-[hsl(var(--miwarp-status-success)/0.15)] text-miwarp-status-success font-medium"
+                  >background</span
+                >
+              {/if}
+              {#if agentMeta.permissionMode && agentMeta.permissionMode !== "default"}
+                <span
+                  class="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground font-medium"
+                  >{agentMeta.permissionMode}</span
+                >
+              {/if}
+              {#if agentMeta.isUltracode}
+                <span
+                  class="text-[10px] px-1.5 py-0.5 rounded bg-[hsl(var(--miwarp-status-info)/0.2)] text-miwarp-status-info font-semibold tracking-wide uppercase"
+                  >ultracode</span
+                >
+              {/if}
+              {#if agentMeta.description && agentMeta.name}
+                <span class="text-xs text-muted-foreground truncate">{agentMeta.description}</span>
+              {/if}
+              {#if subToolCount > 0}
+                <span class="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground">
+                  {#if tool.status === "running"}
+                    {subToolCompleted}/{subToolCount} tools
+                  {:else}
+                    {t("inline_toolCount", { count: String(subToolCount) })}
+                  {/if}
+                </span>
+              {/if}
+            </div>
+          {:else if taskMeta}
             <!-- Task tool: show agent type + model badge -->
             <div class="flex items-center gap-1.5">
               <span class="text-xs font-medium text-foreground">{taskMeta.subagentType}</span>
