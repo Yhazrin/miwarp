@@ -2290,19 +2290,17 @@
     {:else if !hasRun}
       <div class="w-1"></div>
     {/if}
-    {#if fastModeState === "on"}
+    {#if fastModeState === "on" || fastModeState === "ultracode"}
       <button
         type="button"
         class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider
           bg-[hsl(var(--miwarp-status-info)/0.15)] text-miwarp-status-info
           hover:bg-[hsl(var(--miwarp-status-info)/0.25)] transition-colors
-          animate-pulse"
+          motion-running-pulse"
         title={t("prompt_fastModeActive")}
         onclick={() => onFastModeSwitch?.("off")}
       >
-        <svg class="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-        </svg>
+        <Icon name="zap" size="xs" class="shrink-0" />
         {#if !compact}
           <span>fast</span>
         {/if}
@@ -2503,8 +2501,8 @@
       ? 'rounded-full'
       : 'rounded-[1.75rem]'} {btwMode
       ? 'border-miwarp-status-info/80'
-      : ''} {fastModeState === 'on'
-      ? 'border-miwarp-status-info/60 shadow-[0_0_12px_-2px_hsl(var(--miwarp-status-info)/0.3)]'
+      : ''} {fastModeState === 'on' && !btwMode
+      ? 'border-miwarp-status-info/40 shadow-[0_0_12px_-2px_hsl(var(--miwarp-status-info)/0.25)]'
       : ''} {pendingPermission ? 'motion-attention-pulse' : ''}"
   >
     {#if pendingPermission}
