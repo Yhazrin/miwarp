@@ -104,6 +104,20 @@ export function getToolSummary(
       const fileName = path.split(/[/\\]/).pop() || path;
       return t("tool_editedNotebook", { file: fileName });
     }
+    case "ScheduleWakeup": {
+      const delay = (input.delaySeconds as number) ?? 0;
+      const reason = (input.reason as string) || "";
+      if (input.stop) return t("tool_scheduleStop");
+      return t("tool_scheduleWakeup", { delay: String(delay), reason: reason.slice(0, 40) });
+    }
+    case "ReportFindings": {
+      const count = Array.isArray(input.findings) ? input.findings.length : 0;
+      return t("tool_reportFindings", { count: String(count) });
+    }
+    case "SendMessage": {
+      const to = (input.to as string) || "";
+      return t("tool_sendMessage", { to });
+    }
     default:
       return `${toolName}`;
   }

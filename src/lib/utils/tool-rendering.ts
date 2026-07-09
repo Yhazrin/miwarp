@@ -150,6 +150,12 @@ const FRIENDLY_TOOL_NAMES: Record<string, string> = {
   Task: "Run sub-agent",
   Agent: "Spawn agent",
   Workflow: "Run workflow",
+  ScheduleWakeup: "Schedule wakeup",
+  ReportFindings: "Report findings",
+  SendMessage: "Send message",
+  AskUserQuestion: "Ask user",
+  ExitPlanMode: "Exit plan mode",
+  EnterPlanMode: "Enter plan mode",
   NotebookEdit: "Edit notebook",
   PowerShell: "Run PowerShell",
   Monitor: "Monitor events",
@@ -388,7 +394,17 @@ export interface ToolBurst {
   stats: { completed: number; failed: number; running: number; total: number };
 }
 
-const BURST_EXCLUDE = new Set(["Task", "Agent", "Workflow", "AskUserQuestion", "ExitPlanMode", "EnterPlanMode"]);
+const BURST_EXCLUDE = new Set([
+  "Task",
+  "Agent",
+  "Workflow",
+  "ScheduleWakeup",
+  "ReportFindings",
+  "SendMessage",
+  "AskUserQuestion",
+  "ExitPlanMode",
+  "EnterPlanMode",
+]);
 
 /**
  * Detect "tool burst" segments: consecutive tool entries (regardless of tool_name)
