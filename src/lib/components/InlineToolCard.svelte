@@ -1,6 +1,7 @@
 ﻿<script lang="ts">
   import InlineToolCard from "./InlineToolCard.svelte";
   import AskUserQuestionCard from "./AskUserQuestionCard.svelte";
+  import WorkflowProgress from "./WorkflowProgress.svelte";
   import type { BusToolItem, TimelineEntry, PermissionSuggestion } from "$lib/types";
   import Icon from "$lib/components/Icon.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
@@ -1269,6 +1270,13 @@
               </button>
             {/if}
           {:else}
+            {#if tool.tool_name === "Workflow" && tool.input?.script}
+              <WorkflowProgress
+                script={tool.input.script as string}
+                {subTimeline}
+                status={tool.status}
+              />
+            {/if}
             <ToolDetailView
               tool={enrichedTool}
               {isInputStreaming}

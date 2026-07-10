@@ -19,7 +19,8 @@ import type {
   SessionMode,
   RunSurface,
 } from "$lib/types";
-import { usesStreamSession } from "$lib/runtime";
+import { usesStreamSession, getCliCapabilities } from "$lib/runtime";
+import type { CliCapabilities } from "$lib/runtime";
 import { isKeyOptionalPlatform } from "$lib/utils/platform-presets";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { t } from "$lib/i18n/index.svelte";
@@ -571,6 +572,11 @@ export class SessionStore {
   /** Whether there are any background tasks (active or recently completed). */
   get hasBackgroundTasks(): boolean {
     return this.taskNotifications.size > 0;
+  }
+
+  /** CLI capabilities derived from session_init.claude_code_version. */
+  get cliCapabilities(): CliCapabilities {
+    return getCliCapabilities(this.cliVersion);
   }
 
   get effectiveCwd(): string {
