@@ -1116,12 +1116,15 @@
           : t("common_showAllLines", { count: String(outputLineCount) })}
       </button>
     {/if}
-  {:else if tool.tool_name === "Task"}
-    <!-- Task (subagent): prompt + type + usage stats -->
+  {:else if tool.tool_name === "Task" || tool.tool_name === "Agent"}
+    <!-- Task/Agent (subagent): prompt + type + usage stats -->
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs text-muted-foreground">
         {#if tool.input?.subagent_type}
           <span class="text-miwarp-status-info font-medium">{tool.input.subagent_type}</span>
+        {/if}
+        {#if tool.tool_name === "Agent" && tool.input?.description}
+          <span class="text-miwarp-status-info font-medium">{tool.input.description}</span>
         {/if}
         {#if tool.input?.prompt}
           <span class="ml-1 truncate">{tool.input.prompt}</span>
@@ -1158,6 +1161,41 @@
         {/if}
       </div>
     {/if}
+    {#if outputText}
+      <div
+        class="rounded bg-muted p-2 relative prose-chat {outputExpanded
+          ? ''
+          : 'max-h-96 overflow-hidden'}"
+      >
+        <MarkdownContent text={outputText} />
+        {@render truncateOverlay(needsExpand)}
+      </div>
+      {#if needsExpand}
+        <button
+          type="button"
+          class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
+          onclick={toggleOutputExpand}
+        >
+          {outputExpanded
+            ? t("common_collapse")
+            : t("common_showAllLines", { count: String(outputLineCount) })}
+        </button>
+      {/if}
+    {/if}
+  {:else if tool.tool_name === "Workflow"}
+    <!-- Workflow: show script name/description + phases if available -->
+    <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
+      <div class="text-xs text-muted-foreground">
+        {#if tool.input?.name}
+          <span class="text-miwarp-status-info font-medium">{tool.input.name}</span>
+        {/if}
+        {#if tool.input?.description}
+          <span class="ml-1 truncate">{tool.input.description}</span>
+        {:else if tool.input?.scriptPath}
+          <span class="ml-1 font-mono truncate">{tool.input.scriptPath}</span>
+        {/if}
+      </div>
+    </div>
     {#if outputText}
       <div
         class="rounded bg-muted p-2 relative prose-chat {outputExpanded

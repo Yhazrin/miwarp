@@ -81,6 +81,13 @@ export function getToolSummary(
       const desc = (input.description as string) || "";
       return t("tool_launchedAgent", { desc });
     }
+    case "Workflow": {
+      const name = (input.name as string) || "";
+      const desc = (input.description as string) || "";
+      if (name) return t("tool_workflowNamed", { name });
+      if (desc) return t("tool_workflowNamed", { name: desc.slice(0, 60) });
+      return t("tool_workflowRunning");
+    }
     case "AskUserQuestion": {
       return t("tool_waitingResponse");
     }
@@ -96,6 +103,20 @@ export function getToolSummary(
       const path = (input.notebook_path as string) || "";
       const fileName = path.split(/[/\\]/).pop() || path;
       return t("tool_editedNotebook", { file: fileName });
+    }
+    case "ScheduleWakeup": {
+      const delay = (input.delaySeconds as number) ?? 0;
+      const reason = (input.reason as string) || "";
+      if (input.stop) return t("tool_scheduleStop");
+      return t("tool_scheduleWakeup", { delay: String(delay), reason: reason.slice(0, 40) });
+    }
+    case "ReportFindings": {
+      const count = Array.isArray(input.findings) ? input.findings.length : 0;
+      return t("tool_reportFindings", { count: String(count) });
+    }
+    case "SendMessage": {
+      const to = (input.to as string) || "";
+      return t("tool_sendMessage", { to });
     }
     default:
       return `${toolName}`;
