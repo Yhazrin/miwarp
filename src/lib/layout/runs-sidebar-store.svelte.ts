@@ -86,20 +86,18 @@ export class RunsSidebarStore {
 
   // ── Lifecycle ──────────────────────────────────────────────────────
 
+  /** Guard: prevents concurrent / re-entrant loadRuns calls. */
+  private _loadRunsInFlight = false;
+
   /** Load runs. Cache-first on cold start; incremental after that. */
   async loadRuns(): Promise<void> {
-    console.log(
-      "[loadRuns] start, runsLoadSucceededOnce=",
-      this.runsLoadSucceededOnce,
-      "currentRuns=",
-      this.runs.length,
-    );
+    if (this._loadRunsInFlight) return;
+    this._loadRunsInFlight = true;
     if (!this.runsLoadSucceededOnce) {
       try {
         const cached = await readRunsListCache();
         if (cached.length > 0) {
           this.runs = cached;
-          console.log("[loadRuns] cache-first hit, runs=", cached.length);
           dbg("layout", "loadRuns: cache-first hit", { count: cached.length });
         }
       } catch (e) {
@@ -122,15 +120,7 @@ export class RunsSidebarStore {
           void mergeRunsIntoCache(changed.filter((r) => !r.deleted_at));
         }
       } else {
-        const ipcStart = performance.now();
         const fresh = await listRuns();
-        console.log(
-          "[loadRuns] listRuns IPC returned",
-          fresh.length,
-          "in",
-          (performance.now() - ipcStart).toFixed(1),
-          "ms",
-        );
         this.runs = fresh;
         void writeRunsListCache(fresh);
       }
@@ -143,7 +133,7 @@ export class RunsSidebarStore {
       // (e.g. /workbench awaiting resolveLayoutCachedRuns) don't hang
       // forever waiting for runs that will never arrive.
     } finally {
-      console.log("[loadRuns] signaling ready, runs=", this.runs.length);
+      this._loadRunsInFlight = false;
       this._signalRunsReadyOnce();
     }
   }
