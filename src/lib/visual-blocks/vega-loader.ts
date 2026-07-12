@@ -1,18 +1,30 @@
-import type { Result as VegaEmbedResult } from "vega-embed";
+// vega-embed and vega are optional peer dependencies loaded at runtime via
+// dynamic import().  The specifier goes through a helper that takes a plain
+// string so Vite's static import-analysis cannot resolve it at build time.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function optImport(id: string): Promise<any> {
+  return import(id);
+}
+
+type VegaEmbedResult = Awaited<typeof import("vega-embed")>["default"] extends (
+  ...a: never[]
+) => Promise<infer R>
+  ? R
+  : unknown;
 
 let vegaEmbedModule: typeof import("vega-embed") | null = null;
 let vegaLoaderModule: typeof import("vega") | null = null;
 
 async function getVegaEmbed() {
   if (!vegaEmbedModule) {
-    vegaEmbedModule = await import("vega-embed");
+    vegaEmbedModule = await optImport("vega-embed");
   }
   return vegaEmbedModule.default;
 }
 
 async function createBlockedLoader() {
   if (!vegaLoaderModule) {
-    vegaLoaderModule = await import("vega");
+    vegaLoaderModule = await optImport("vega");
   }
   const createVegaLoader = vegaLoaderModule.loader;
   const base = createVegaLoader({ baseURL: "" });

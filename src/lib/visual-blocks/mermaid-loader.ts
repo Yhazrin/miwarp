@@ -1,10 +1,18 @@
 import { sanitizeMermaidForRender, sanitizeMermaidSvg } from "./security";
 
+// mermaid is an optional dependency loaded at runtime via dynamic import().
+// The specifier goes through a helper that takes a plain string so Vite's
+// static import-analysis cannot resolve it at build time.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function optImport(id: string): Promise<any> {
+  return import(id);
+}
+
 let mermaidModule: typeof import("mermaid") | null = null;
 
 async function getMermaid() {
   if (!mermaidModule) {
-    mermaidModule = await import("mermaid");
+    mermaidModule = await optImport("mermaid");
   }
   return mermaidModule.default;
 }
