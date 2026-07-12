@@ -289,6 +289,13 @@
 
   /** Single-line capsule strip vs stacked multi-line composer. */
   let capsuleExpanded = $state(false);
+  /** Delayed layout flag — lags behind `capsuleExpanded` by one CSS-transition
+   *  duration so the flex-direction flip (row↔column, which is discrete and
+   *  cannot be animated) happens AFTER the height + border-radius morph has
+   *  settled.  This makes the capsule→rectangle expansion feel like a single
+   *  unified animation instead of a two-stage "grow then rearrange". */
+  let layoutExpanded = $state(false);
+  let _layoutTimer: ReturnType<typeof setTimeout> | null = null;
   /**
    * Current textarea height in px. Bound inline on the single unified
    * <textarea> below so the CSS `transition-[height]` animates the resize
@@ -312,7 +319,7 @@
   const STATE_SETTLE_MS = 300;
   /** Timestamp of the last accepted state change, used by the settle window. */
   let _lastStateChangeMs = 0;
-  const useCapsuleStrip = $derived(!capsuleExpanded && !pendingPermission);
+  const useCapsuleStrip = $derived(!layoutExpanded && !pendingPermission);
 
   // ── v1.0.x cycle diagnostics ─────────────────────────────────────────
   // Set `__CYCLE_DEBUG = true` to enable verbose logging. The log line is
@@ -397,6 +404,10 @@
   function resetCapsuleLayout() {
     if (!capsuleExpanded && !pendingPermission) return;
     capsuleExpanded = false;
+    // Cancel any pending layout-delay timer and snap layout to collapsed
+    // immediately — the user expects the pill shape right away on send/clear.
+    if (_layoutTimer) { clearTimeout(_layoutTimer); _layoutTimer = null; }
+    layoutExpanded = false;
     scheduleAutoResize();
   }
 
@@ -1902,22 +1913,23 @@
     const prevCapsuleExpanded = capsuleExpanded;
     const prevHeight = textareaHeightPx;
 
-    // Reset height to 'auto' before reading scrollHeight to get the true
-    // content height.  In capsule mode the textarea has overflow-y:hidden +
-    // explicit style:height (24px); some browsers clamp scrollHeight to the
-    // CSS height in this configuration, preventing the expand-on-wrap
-    // detection from ever triggering.
-    //
-    // The reset + restore is synchronous — the browser will not paint
-    // between these lines, so there is no "huge then shrink" flash.  The
-    // previous approach that DID cause the flash set height: auto in one
-    // frame and applied the new height via Svelte state in the *next*
-    // frame; here we restore the original height immediately, then let
-    // Svelte reconcile the final value in the same microtask.
-    const savedHeight = el.style.height;
-    el.style.height = "auto";
-    const scrollH = el.scrollHeight;
-    el.style.height = savedHeight;
+    // Measure the true content height via a hidden off-screen clone.
+    // In capsule mode the textarea has overflow-y:hidden + explicit
+    // style:height (24px); reading scrollHeight directly on such a
+    // constrained element can return the CSS height rather than the
+    // natural content height in some browsers.  A clone with height:0
+    // + overflow:visible gives an un-constrained scrollHeight while
+    // the original element is never mutated, avoiding layout thrash
+    // and CSS-transition side-effects.
+    const clone = el.cloneNode() as HTMLTextAreaElement;
+    clone.value = el.value;
+    clone.style.cssText =
+      "position:absolute;left:-9999px;top:0;height:0;overflow:visible;" +
+      "min-height:0;max-height:none;transition:none;visibility:hidden;" +
+      "pointer-events:none;z-index:-1";
+    el.parentElement!.appendChild(clone);
+    const scrollH = clone.scrollHeight;
+    clone.remove();
 
     // Compute the **content** height (text only, no padding/border) so the
     // threshold check is independent of which layout state we're in. The
@@ -1990,6 +2002,14 @@
     if (expandedChanged && !inSettleWindow) {
       _lastStateChangeMs = performance.now();
       capsuleExpanded = shouldExpand;
+      // Delay the layout flip (flex-direction row↔column) until the CSS
+      // height + border-radius transition has finished, so the morph
+      // feels like one unified animation rather than "grow then rearrange".
+      if (_layoutTimer) clearTimeout(_layoutTimer);
+      _layoutTimer = setTimeout(() => {
+        layoutExpanded = shouldExpand;
+        _layoutTimer = null;
+      }, 260); // matches the CSS transition duration
     }
     el.style.overflowY = shouldExpand ? "auto" : "hidden";
   }
