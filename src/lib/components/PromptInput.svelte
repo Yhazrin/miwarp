@@ -1913,23 +1913,17 @@
     const prevCapsuleExpanded = capsuleExpanded;
     const prevHeight = textareaHeightPx;
 
-    // Measure the true content height via a hidden off-screen clone.
+    // Temporarily expand the textarea to measure true content height.
     // In capsule mode the textarea has overflow-y:hidden + explicit
-    // style:height (24px); reading scrollHeight directly on such a
-    // constrained element can return the CSS height rather than the
-    // natural content height in some browsers.  A clone with height:0
-    // + overflow:visible gives an un-constrained scrollHeight while
-    // the original element is never mutated, avoiding layout thrash
-    // and CSS-transition side-effects.
-    const clone = el.cloneNode() as HTMLTextAreaElement;
-    clone.value = el.value;
-    clone.style.cssText =
-      "position:absolute;left:-9999px;top:0;height:0;overflow:visible;" +
-      "min-height:0;max-height:none;transition:none;visibility:hidden;" +
-      "pointer-events:none;z-index:-1";
-    el.parentElement!.appendChild(clone);
-    const scrollH = clone.scrollHeight;
-    clone.remove();
+    // style:height (24px); reading scrollHeight on such a constrained
+    // element can return the CSS height rather than the natural content
+    // height.  Setting height to a large value forces the browser to lay
+    // out the full content, then we read scrollHeight and restore — all
+    // synchronous, browser never paints the intermediate state.
+    const savedH = el.style.height;
+    el.style.height = "9999px";
+    const scrollH = el.scrollHeight;
+    el.style.height = savedH;
 
     // Compute the **content** height (text only, no padding/border) so the
     // threshold check is independent of which layout state we're in. The
