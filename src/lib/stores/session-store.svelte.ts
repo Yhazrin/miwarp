@@ -2117,6 +2117,31 @@ export class SessionStore {
         } else {
           this._startResponseTimeout(this.run.id);
         }
+      } else if (this.useStreamSession && !this.sessionAlive) {
+        // Stream session died (e.g. spawn failed, process exited) — re-spawn
+        // the session instead of falling through to the pipe_exec path which
+        // requires execution_path=pipe_exec and would fail for session_actor runs.
+        dbg("store", "sendMessage: stream session dead, re-spawning", { runId: this.run.id });
+        this._setPhase("spawning");
+        const mw = getEventMiddleware();
+        mw.subscribeCurrent(this.run.id, this);
+        this._connection.subscribeFresh(this.run.id);
+        await api.startSession(
+          this.run.id,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          this.platformId || undefined,
+        );
+        // After re-spawn, send the message through the normal stream path
+        await api.sendSessionMessage(
+          this.run.id,
+          text,
+          mapAttachments(attachments) ?? undefined,
+          clientMessageId,
+        );
+        this._startSpawnTimeout(this.run.id);
       } else {
         this._setPhase("running");
         await api.sendChatMessage(

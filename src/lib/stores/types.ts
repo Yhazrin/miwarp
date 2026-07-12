@@ -92,7 +92,7 @@ const VALID_TRANSITIONS: Record<SessionPhase, Set<SessionPhase>> = {
   running: new Set(["idle", "completed", "failed", "stopped", "empty", "loading"]),
   idle: new Set(["running", "spawning", "completed", "failed", "stopped", "empty", "loading"]),
   completed: new Set(["empty", "loading", "spawning", "ready", "cached", "stale_cached"]),
-  failed: new Set(["empty", "loading", "spawning", "ready", "cached", "stale_cached"]),
+  failed: new Set(["empty", "loading", "spawning", "ready", "running", "cached", "stale_cached"]),
   stopped: new Set(["empty", "loading", "spawning", "ready", "cached", "stale_cached"]),
   cached: new Set([
     "empty",
