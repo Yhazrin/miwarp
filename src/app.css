@@ -1218,22 +1218,19 @@ html.miwarp-skip-route-motion .tool-activity-aside * {
   @apply bg-muted-foreground/40;
 }
 
-/* Sidebar session list — scrollbar only visible when the scroll area is hovered/focused */
+/* Sidebar session list — scrollbar track always reserved (scrollbar-gutter:
+   stable + persistent thin width) so appearing/disappearing scrollbar does
+   not shift content.  The thumb is transparent until hover/focus. */
 .sidebar-scroll {
-  scrollbar-width: none;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
   scrollbar-color: transparent transparent;
 }
 .sidebar-scroll:hover,
 .sidebar-scroll:focus-within {
-  scrollbar-width: thin;
   scrollbar-color: hsl(var(--muted-foreground) / 0.25) transparent;
 }
-.sidebar-scroll:not(:hover):not(:focus-within)::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-.sidebar-scroll:hover::-webkit-scrollbar,
-.sidebar-scroll:focus-within::-webkit-scrollbar {
+.sidebar-scroll::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }

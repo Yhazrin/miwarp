@@ -376,7 +376,14 @@ pub(crate) async fn spawn_cli_process(
 
         let mut cmd = tokio::process::Command::new(&claude_bin);
         for arg in &claude_args {
-            cmd.arg(arg);
+            // On Windows, .cmd batch files are spawned via cmd.exe which
+            // interprets \r\n as command separators, causing "batch file
+            // arguments are invalid". Normalize to \n before passing.
+            #[cfg(target_os = "windows")]
+            let sanitized = arg.replace("\r\n", "\n");
+            #[cfg(not(target_os = "windows"))]
+            let sanitized = arg.as_str();
+            cmd.arg(&sanitized);
         }
 
         let path_env = claude_stream::augmented_path();
