@@ -1157,8 +1157,7 @@
       if (isChatAutoScroll && !readingHistory) {
         requestAnimationFrame(() => {
           if (chatAreaRef && isChatAutoScroll && !readingHistory) {
-            markAutoScroll();
-            chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
+            pinChatToBottom();
           }
         });
       } else if (changed) {
@@ -1376,7 +1375,7 @@
     loadRunProgressive,
     handleChatScroll,
     handleChatWheel,
-    markAutoScroll,
+    pinChatToBottom,
     scrollChatToBottom,
     scrollToTool,
     scrollToMessage,

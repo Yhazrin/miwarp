@@ -226,8 +226,7 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
           if (gen !== progressiveGen) return;
           const chatArea = getChatAreaRef();
           if (chatArea) {
-            markAutoScroll();
-            chatArea.scrollTop = chatArea.scrollHeight;
+            pinChatToBottom();
           }
         });
       }
@@ -242,18 +241,40 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
   }
 
   let _scrollRafId = 0;
-  // Timestamp of last programmatic scroll-to-bottom (from auto-scroll effect
-  // or scrollChatToBottom button).  handleChatScroll suppresses its
-  // "not-at-bottom" detection for AUTO_SCROLL_SUPPRESS_MS after this to
-  // prevent a race where the scroll handler fires before layout has settled
-  // and incorrectly disables auto-scroll, causing the button to flicker.
-  let _lastAutoScrollMs = 0;
-  const AUTO_SCROLL_SUPPRESS_MS = 600;
+  // A programmatic bottom-pin can emit scroll events while content-visibility
+  // is being reconciled. Keep that short, bounded sequence separate from user
+  // scroll state; unlike the former time-based guard, a wheel gesture cancels
+  // it immediately and can never be mistaken for automatic scrolling.
+  let _scrollPinActive = false;
+  let _scrollPinGeneration = 0;
 
-  /** Mark that a programmatic auto-scroll just happened. Call this from the
-   *  auto-scroll effect and from scrollChatToBottom(). */
-  function markAutoScroll() {
-    _lastAutoScrollMs = performance.now();
+  function pinElementToBottom(chatArea: HTMLElement) {
+    const generation = ++_scrollPinGeneration;
+    _scrollPinActive = true;
+    setIsChatAutoScroll(true);
+    setReadingHistory?.(false);
+    setShowChatScrollHint(false);
+    chatArea.scrollTop = chatArea.scrollHeight;
+
+    requestAnimationFrame(() => {
+      if (generation !== _scrollPinGeneration || !chatArea.isConnected) return;
+      chatArea.scrollTop = chatArea.scrollHeight;
+      requestAnimationFrame(() => {
+        if (generation !== _scrollPinGeneration || !chatArea.isConnected) return;
+        chatArea.scrollTop = chatArea.scrollHeight;
+        _scrollPinActive = false;
+      });
+    });
+  }
+
+  function pinChatToBottom() {
+    const chatArea = getChatAreaRef();
+    if (chatArea) pinElementToBottom(chatArea);
+  }
+
+  function cancelScrollPin() {
+    _scrollPinGeneration++;
+    _scrollPinActive = false;
   }
 
   function handleChatScroll() {
@@ -262,21 +283,9 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
       _scrollRafId = 0;
       const chatArea = getChatAreaRef();
       if (!chatArea) return;
+      if (_scrollPinActive) return;
       const dist = chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
       const nearBottom = dist < SCROLL_BOTTOM_THRESHOLD;
-
-      // After a programmatic scroll-to-bottom, suppress the distance check
-      // for a short window.  Layout shifts (content-visibility toggling,
-      // streaming text reflow) can make dist > threshold even though we
-      // just scrolled to the bottom.
-      const justAutoScrolled = performance.now() - _lastAutoScrollMs < AUTO_SCROLL_SUPPRESS_MS;
-      if (justAutoScrolled && !nearBottom) {
-        // We're in the suppress window and not at bottom — likely a stale
-        // measurement.  Keep auto-scroll active.
-        setIsChatAutoScroll(true);
-        setReadingHistory?.(false);
-        return;
-      }
 
       setIsChatAutoScroll(nearBottom);
       if (nearBottom) {
@@ -314,15 +323,17 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
     const cvEls = Array.from(chatArea.querySelectorAll<HTMLElement>(".cv-auto"));
     for (const c of cvEls) c.style.contentVisibility = "visible";
 
-    markAutoScroll();
-    chatArea.scrollTop = chatArea.scrollHeight;
-    setShowChatScrollHint(false);
-    setIsChatAutoScroll(true);
-    setReadingHistory?.(false);
+    pinElementToBottom(chatArea);
 
-    // Restore content-visibility after the browser has painted the scroll
+    // Restore content-visibility only after the bounded pin sequence has
+    // settled. Restoring it in the first frame was the source of the jump
+    // away from the actual bottom on long timelines.
     requestAnimationFrame(() => {
-      for (const c of cvEls) c.style.contentVisibility = "";
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          for (const c of cvEls) c.style.contentVisibility = "";
+        });
+      });
     });
   }
 
@@ -408,6 +419,7 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
 
   /** Call before scroll events (wheel up) so auto-scroll does not fight the gesture. */
   function latchReadingHistory() {
+    cancelScrollPin();
     setIsChatAutoScroll(false);
     setReadingHistory?.(true);
     setShowChatScrollHint(false);
@@ -426,7 +438,7 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
     handleChatScroll,
     handleChatWheel,
     latchReadingHistory,
-    markAutoScroll,
+    pinChatToBottom,
     scrollChatToBottom,
     scrollToTool,
     scrollToMessage,

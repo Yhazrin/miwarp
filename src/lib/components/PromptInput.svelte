@@ -1,6 +1,5 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { slide } from "svelte/transition";
   import { untrack } from "svelte";
   import { getTransport } from "$lib/transport";
   import type {
@@ -72,6 +71,7 @@
     hasMultipleVisualLines,
   } from "$lib/utils/input-history";
   import { misencodedNavigationDirection, moveTextareaCaret } from "$lib/utils/prompt-text";
+  import { resolveTextareaLayout } from "$lib/components/prompt/textarea-layout";
   import Icon from "$lib/components/Icon.svelte";
   import PermissionModePicker from "$lib/components/PermissionModePicker.svelte";
 
@@ -289,37 +289,7 @@
 
   /** Single-line capsule strip vs stacked multi-line composer. */
   let capsuleExpanded = $state(false);
-  /** Delayed layout flag — lags behind `capsuleExpanded` by one CSS-transition
-   *  duration so the flex-direction flip (row↔column, which is discrete and
-   *  cannot be animated) happens AFTER the height + border-radius morph has
-   *  settled.  This makes the capsule→rectangle expansion feel like a single
-   *  unified animation instead of a two-stage "grow then rearrange". */
-  let layoutExpanded = $state(false);
-  let _layoutTimer: ReturnType<typeof setTimeout> | null = null;
-  /**
-   * Current textarea height in px. Bound inline on the single unified
-   * <textarea> below so the CSS `transition-[height]` animates the resize
-   * instead of jumping. Updated by `autoResize()` after measuring scrollHeight.
-   * Seeded to a single-line capsule value so the initial render doesn't
-   * flicker.
-   */
-  let textareaHeightPx = $state(24);
-  const CAPSULE_LINE_HEIGHT_PX = 24;
-  /** Hysteresis thresholds: expand at a higher value, collapse at a lower one.
-   *  This prevents the capsule ↔ expanded flip-flop loop when the measured
-   *  scrollHeight oscillates near the boundary during CSS transitions. */
-  const CAPSULE_EXPAND_THRESHOLD_PX = 34;
-  const CAPSULE_COLLAPSE_THRESHOLD_PX = 28;
-  /** Minimum time between consecutive state flips. After a capsule↔multi-line
-   *  change we hold the new state for this long so the next autoResize
-   *  measures against the *settled* width and padding (otherwise the width
-   *  difference between the two states can keep contentH straddling the
-   *  hysteresis band and cause a flip-flop). 300ms > 260ms CSS transition
-   *  to cover the full visual settle. */
-  const STATE_SETTLE_MS = 300;
-  /** Timestamp of the last accepted state change, used by the settle window. */
-  let _lastStateChangeMs = 0;
-  const useCapsuleStrip = $derived(!layoutExpanded && !pendingPermission);
+  const useCapsuleStrip = $derived(!capsuleExpanded && !pendingPermission);
 
   // ── v1.0.x cycle diagnostics ─────────────────────────────────────────
   // Set `__CYCLE_DEBUG = true` to enable verbose logging. The log line is
@@ -335,7 +305,6 @@
     const frame = ++__dbFrame;
     const t = performance.now().toFixed(1);
     const line = `#${frame} t=${t}ms ${JSON.stringify(data)}`;
-    // eslint-disable-next-line no-console
     console.log(`[prompt-db] ${tag} ${line}`);
     // Fire-and-forget forward to Rust stdout. We don't await — the Svelte
     // reactive call stack shouldn't block on IPC for diagnostic-only
@@ -349,12 +318,8 @@
   }
 
   $effect(() => {
-    // Track `useCapsuleStrip` so the textarea re-measures when we flip
-    // capsule ↔ multi-line. But untrack the side-effect call itself —
-    // `autoResize` writes back to `capsuleExpanded` and `textareaHeightPx`,
-    // which Svelte would otherwise flag as "effect writes to its own dep"
-    // and warn, and in pathological cases the rAF round-trip could re-trigger
-    // the effect each frame.
+    // Re-measure after the layout mode changes. The resize writes directly to
+    // the focused DOM node, so it never races Svelte's style reconciliation.
     const _layout = useCapsuleStrip;
     void _layout;
     __dbg("effect:useCapsuleStrip", {
@@ -404,10 +369,6 @@
   function resetCapsuleLayout() {
     if (!capsuleExpanded && !pendingPermission) return;
     capsuleExpanded = false;
-    // Cancel any pending layout-delay timer and snap layout to collapsed
-    // immediately — the user expects the pill shape right away on send/clear.
-    if (_layoutTimer) { clearTimeout(_layoutTimer); _layoutTimer = null; }
-    layoutExpanded = false;
     scheduleAutoResize();
   }
 
@@ -1908,22 +1869,14 @@
   function autoResize() {
     if (!store.textareaEl || isComposing) return;
     const el = store.textareaEl;
-    const maxHeight = 4 * 24; // ~4 lines
     const hasNewline = store.inputText.includes("\n");
     const prevCapsuleExpanded = capsuleExpanded;
-    const prevHeight = textareaHeightPx;
 
-    // Temporarily expand the textarea to measure true content height.
-    // In capsule mode the textarea has overflow-y:hidden + explicit
-    // style:height (24px); reading scrollHeight on such a constrained
-    // element can return the CSS height rather than the natural content
-    // height.  Setting height to a large value forces the browser to lay
-    // out the full content, then we read scrollHeight and restore — all
-    // synchronous, browser never paints the intermediate state.
-    const savedH = el.style.height;
-    el.style.height = "9999px";
+    // Measuring must not animate or otherwise mutate the focused textarea.
+    // A zero-height synchronous pass gives WebKit an unconstrained
+    // scrollHeight without flashing a giant field or perturbing the caret.
+    el.style.height = "0px";
     const scrollH = el.scrollHeight;
-    el.style.height = savedH;
 
     // Compute the **content** height (text only, no padding/border) so the
     // threshold check is independent of which layout state we're in. The
@@ -1940,40 +1893,20 @@
     const verticalChrome = padTop + padBot + borderTop + borderBot;
     const contentH = Math.max(0, scrollH - verticalChrome);
 
-    // Hysteresis: when currently collapsed, only expand once content height
-    // exceeds the higher threshold; when currently expanded, only collapse
-    // once it drops below the lower threshold. The gap between the two
-    // thresholds creates a dead zone that prevents the flip-flop
-    // oscillation during CSS transitions.
-    const threshold = capsuleExpanded ? CAPSULE_COLLAPSE_THRESHOLD_PX : CAPSULE_EXPAND_THRESHOLD_PX;
-    const shouldExpand = pendingPermission || hasNewline || contentH > threshold;
-    const nextHeight = shouldExpand ? Math.min(contentH, maxHeight) : CAPSULE_LINE_HEIGHT_PX;
-
-    const expandedChanged = capsuleExpanded !== shouldExpand;
-    const heightChanged = textareaHeightPx !== nextHeight;
-
-    // ── v1.0.x settle window ───────────────────────────────────────────
-    // The textarea's *width* differs between states (capsule narrows it to
-    // make room for side toolbars, multi-line widens it to `w-full`).
-    // When the user has text that wraps at the capsule width but not at the
-    // multi-line width, the measured contentH oscillates across the
-    // hysteresis band on every flip — even with padding subtracted and
-    // hysteresis in place, the *width* delta alone causes the flip-flop.
-    //
-    // Fix: after a state change, hold the new state for ~300ms (slightly
-    // longer than the 260ms CSS transition) so the next autoResize runs
-    // against the *settled* width/padding values. Height still updates
-    // every call so the visual transition isn't delayed.
-    const sinceLastChange = performance.now() - _lastStateChangeMs;
-    const inSettleWindow = sinceLastChange < STATE_SETTLE_MS;
+    const layout = resolveTextareaLayout({
+      contentHeight: contentH,
+      hasNewline,
+      hasText: store.inputText.length > 0,
+      isExpanded: capsuleExpanded,
+      pendingPermission,
+    });
+    const expandedChanged = capsuleExpanded !== layout.expanded;
 
     __dbg("autoResize", {
       prevCapsuleExpanded,
       capsuleExpanded,
-      nextCapsuleExpanded: shouldExpand,
+      nextCapsuleExpanded: layout.expanded,
       changed: expandedChanged,
-      inSettleWindow,
-      sinceLastChange: Math.round(sinceLastChange),
       "text.len": store.inputText.length,
       hasNewline,
       pendingPermission,
@@ -1984,28 +1917,18 @@
       borderBot,
       verticalChrome,
       contentH,
-      threshold,
-      nextHeight,
-      prevHeight,
-      heightChanged,
+      nextHeight: layout.contentHeight + verticalChrome,
     });
 
-    if (heightChanged) {
-      textareaHeightPx = nextHeight;
-    }
-    if (expandedChanged && !inSettleWindow) {
-      _lastStateChangeMs = performance.now();
-      capsuleExpanded = shouldExpand;
-      // Delay the layout flip (flex-direction row↔column) until the CSS
-      // height + border-radius transition has finished, so the morph
-      // feels like one unified animation rather than "grow then rearrange".
-      if (_layoutTimer) clearTimeout(_layoutTimer);
-      _layoutTimer = setTimeout(() => {
-        layoutExpanded = shouldExpand;
-        _layoutTimer = null;
-      }, 260); // matches the CSS transition duration
-    }
-    el.style.overflowY = shouldExpand ? "auto" : "hidden";
+    // Keep DOM ownership of the live textarea's geometry. CSS height
+    // transitions interpolate the editing area itself, which clips/moves the
+    // caret during a wrap; the shell still morphs its border radius smoothly.
+    // The global reset uses border-box, while the layout policy intentionally
+    // works in content-height units. Put the vertical chrome back before
+    // writing the DOM height so a single expanded line is never clipped.
+    el.style.height = `${layout.contentHeight + verticalChrome}px`;
+    el.style.overflowY = layout.expanded ? "auto" : "hidden";
+    if (expandedChanged) capsuleExpanded = layout.expanded;
   }
 
   // ── Drag-drop state ──
@@ -2520,9 +2443,8 @@
   <div
     class="prompt-input-shell overflow-hidden border border-primary bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color,background-color,box-shadow] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] {useCapsuleStrip
       ? 'rounded-full'
-      : 'rounded-[1.75rem]'} {btwMode
-      ? 'border-miwarp-status-info/80'
-      : ''} {fastModeState === 'on' && !btwMode
+      : 'rounded-[1.75rem]'} {btwMode ? 'border-miwarp-status-info/80' : ''} {fastModeState ===
+      'on' && !btwMode
       ? 'border-miwarp-status-info/40 shadow-[0_0_12px_-2px_hsl(var(--miwarp-status-info)/0.25)]'
       : ''} {pendingPermission ? 'motion-attention-pulse' : ''}"
   >
@@ -2549,20 +2471,9 @@
       </div>
     {/if}
 
-    <!-- Unified input row: same textarea + same shell across capsule and
-         multi-line states. The visual difference comes from `flex-direction`
-         (row vs column) and which toolbar children are rendered. Because the
-         textarea is a single DOM element, CSS transitions on its `height`
-         and the parent's `border-radius` actually animate — no DOM swap, no
-         choppy cross-element transition. Toolbars enter/leave via
-         `transition:slide` so the left/right compact → bottom full swap feels
-         continuous instead of jumping.
-         Note: `flex-direction` itself is a discrete CSS property that
-         cannot be smoothly transitioned — we deliberately do NOT list it in
-         the transition property whitelist. The visual smoothness comes
-         from animating the textarea's height + padding + the toolbar slide
-         together, while the flex direction flips as a coordinated snap on
-         the same frame. -->
+    <!-- The focused textarea remains one DOM node in both layouts. Its editing
+         geometry updates immediately so wrapping never moves or clips the
+         caret; only the shell's non-layout visual properties transition. -->
     <!-- ── Unified input container (Option A: absolute side toolbars) ──
          The two-mode "capsule vs multi-line" layout was suffering a
          flip-flop loop because the side toolbars in capsule mode
@@ -2589,7 +2500,6 @@
              left of the pill — matching user expectation. The toolbars
              stay accessible above the textarea thanks to `z-10`. -->
         <div
-          transition:slide={{ duration: 260, axis: "x" }}
           class="no-drag pointer-events-auto absolute right-0 top-0 z-10 flex h-full max-w-[55%] items-center gap-0.5 overflow-visible pl-1.5 pr-2.5"
         >
           {@render promptToolbarLeft(true)}
@@ -2605,25 +2515,24 @@
         oninput={handleInput}
         onpaste={handlePaste}
         oncompositionstart={() => (isComposing = true)}
-        oncompositionend={() => (isComposing = false)}
+        oncompositionend={() => {
+          isComposing = false;
+          scheduleAutoResize();
+        }}
         placeholder={effectivePlaceholder}
         rows={1}
         {disabled}
         aria-label={t("prompt_chatInput")}
-        class="no-drag min-w-0 w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 transition-[height,min-height,padding] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-[height,padding] focus:outline-none disabled:opacity-50 {useCapsuleStrip
+        class="no-drag min-w-0 w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50 {useCapsuleStrip
           ? 'overflow-x-auto overflow-y-hidden min-h-[24px] py-0 pl-3 pr-[150px] leading-6'
           : 'w-full overflow-y-auto px-4 pt-1 pb-2'}"
-        style:height={`${textareaHeightPx}px`}
       ></textarea>
 
       {#if useCapsuleStrip}
         <!-- right toolbar merged into left toolbar above (single absolute
              right-0 container) -->
       {:else}
-        <div
-          transition:slide={{ duration: 260, axis: "y" }}
-          class="flex w-full items-center justify-between px-3 pb-2.5 pt-0.5"
-        >
+        <div class="flex w-full items-center justify-between px-3 pb-2.5 pt-0.5">
           <div class="no-drag relative z-10 flex min-w-0 items-center gap-1 pointer-events-auto">
             {@render promptToolbarLeft(false)}
           </div>

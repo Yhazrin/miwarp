@@ -319,6 +319,11 @@ export function createSendMessage(ctx: SendMessageContext): SendMessageHandle {
       if (e instanceof SendCoordinatorError) {
         restoreDraft(draft);
       }
+      // PromptInput uses this rejection to restore the exact snapshot it
+      // cleared optimistically. Swallowing the error made a failed new-session
+      // start look accepted to the editor, so its draft/caret recovery path
+      // never ran.
+      throw e;
     }
   }
 
