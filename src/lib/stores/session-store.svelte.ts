@@ -2107,9 +2107,16 @@ export class SessionStore {
             clientMessageId,
           );
         } catch (sendErr) {
-          // Rollback: remove the optimistic message so the user doesn't see
-          // a message that was never actually sent.
           this._removeOptimisticUser(optimisticId);
+          // If the backend reports "Session not found", the session actor
+          // died but the frontend hasn't received the bus event yet.
+          // Mark session as dead so the UI can recover.
+          const msg = String(sendErr);
+          if (msg.includes("not found") || msg.includes("not_found")) {
+            dbg("store", "sendMessage: session actor gone, marking dead", { runId: this.run.id });
+            this._setPhase("failed");
+            throw new Error("session_dead: " + msg);
+          }
           throw sendErr;
         }
         if (this.isKnownSlashCommand(text)) {
@@ -2118,30 +2125,10 @@ export class SessionStore {
           this._startResponseTimeout(this.run.id);
         }
       } else if (this.useStreamSession && !this.sessionAlive) {
-        // Stream session died (e.g. spawn failed, process exited) — re-spawn
-        // the session instead of falling through to the pipe_exec path which
-        // requires execution_path=pipe_exec and would fail for session_actor runs.
-        dbg("store", "sendMessage: stream session dead, re-spawning", { runId: this.run.id });
-        this._setPhase("spawning");
-        const mw = getEventMiddleware();
-        mw.subscribeCurrent(this.run.id, this);
-        this._connection.subscribeFresh(this.run.id);
-        await api.startSession(
-          this.run.id,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          this.platformId || undefined,
-        );
-        // After re-spawn, send the message through the normal stream path
-        await api.sendSessionMessage(
-          this.run.id,
-          text,
-          mapAttachments(attachments) ?? undefined,
-          clientMessageId,
-        );
-        this._startSpawnTimeout(this.run.id);
+        // Stream session died (e.g. spawn failed, process exited).
+        // Cannot reuse the dead session — throw so the send coordinator
+        // can handle it (start a new session or show error).
+        throw new Error("session_dead: stream session is no longer alive — start a new session");
       } else {
         this._setPhase("running");
         await api.sendChatMessage(

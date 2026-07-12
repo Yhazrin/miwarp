@@ -274,6 +274,7 @@ export function createSendMessage(ctx: SendMessageContext): SendMessageHandle {
         }
       } else if (
         store.useStreamSession &&
+        store.phase !== "failed" &&
         (store.phase === "cached" ||
           store.phase === "stale_cached" ||
           (!store.sessionAlive && store.run.session_id))
