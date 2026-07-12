@@ -1902,15 +1902,22 @@
     const prevCapsuleExpanded = capsuleExpanded;
     const prevHeight = textareaHeightPx;
 
-    // Read scrollHeight WITHOUT resetting the element's height to "auto".
-    // scrollHeight on a textarea always reflects the natural content height
-    // regardless of the element's current height (overflow:auto/scroll), so
-    // the reset was both unnecessary and actively harmful: it caused a brief
-    // "auto = natural content" frame (could be 500+ px on a paste of 10
-    // lines) before the new `textareaHeightPx` was applied, producing the
-    // "huge then shrink" visual artifact on every keystroke that crossed a
-    // line boundary.
+    // Reset height to 'auto' before reading scrollHeight to get the true
+    // content height.  In capsule mode the textarea has overflow-y:hidden +
+    // explicit style:height (24px); some browsers clamp scrollHeight to the
+    // CSS height in this configuration, preventing the expand-on-wrap
+    // detection from ever triggering.
+    //
+    // The reset + restore is synchronous — the browser will not paint
+    // between these lines, so there is no "huge then shrink" flash.  The
+    // previous approach that DID cause the flash set height: auto in one
+    // frame and applied the new height via Svelte state in the *next*
+    // frame; here we restore the original height immediately, then let
+    // Svelte reconcile the final value in the same microtask.
+    const savedHeight = el.style.height;
+    el.style.height = "auto";
     const scrollH = el.scrollHeight;
+    el.style.height = savedHeight;
 
     // Compute the **content** height (text only, no padding/border) so the
     // threshold check is independent of which layout state we're in. The

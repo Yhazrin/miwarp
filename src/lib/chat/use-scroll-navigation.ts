@@ -225,7 +225,10 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
         requestAnimationFrame(() => {
           if (gen !== progressiveGen) return;
           const chatArea = getChatAreaRef();
-          if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
+          if (chatArea) {
+            markAutoScroll();
+            chatArea.scrollTop = chatArea.scrollHeight;
+          }
         });
       }
     } finally {
@@ -239,6 +242,20 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
   }
 
   let _scrollRafId = 0;
+  // Timestamp of last programmatic scroll-to-bottom (from auto-scroll effect
+  // or scrollChatToBottom button).  handleChatScroll suppresses its
+  // "not-at-bottom" detection for AUTO_SCROLL_SUPPRESS_MS after this to
+  // prevent a race where the scroll handler fires before layout has settled
+  // and incorrectly disables auto-scroll, causing the button to flicker.
+  let _lastAutoScrollMs = 0;
+  const AUTO_SCROLL_SUPPRESS_MS = 600;
+
+  /** Mark that a programmatic auto-scroll just happened. Call this from the
+   *  auto-scroll effect and from scrollChatToBottom(). */
+  function markAutoScroll() {
+    _lastAutoScrollMs = performance.now();
+  }
+
   function handleChatScroll() {
     if (_scrollRafId) return; // coalesce multiple scroll events per frame
     _scrollRafId = requestAnimationFrame(() => {
@@ -247,6 +264,20 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
       if (!chatArea) return;
       const dist = chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
       const nearBottom = dist < SCROLL_BOTTOM_THRESHOLD;
+
+      // After a programmatic scroll-to-bottom, suppress the distance check
+      // for a short window.  Layout shifts (content-visibility toggling,
+      // streaming text reflow) can make dist > threshold even though we
+      // just scrolled to the bottom.
+      const justAutoScrolled = performance.now() - _lastAutoScrollMs < AUTO_SCROLL_SUPPRESS_MS;
+      if (justAutoScrolled && !nearBottom) {
+        // We're in the suppress window and not at bottom — likely a stale
+        // measurement.  Keep auto-scroll active.
+        setIsChatAutoScroll(true);
+        setReadingHistory?.(false);
+        return;
+      }
+
       setIsChatAutoScroll(nearBottom);
       if (nearBottom) {
         setReadingHistory?.(false);
@@ -283,6 +314,7 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
     const cvEls = Array.from(chatArea.querySelectorAll<HTMLElement>(".cv-auto"));
     for (const c of cvEls) c.style.contentVisibility = "visible";
 
+    markAutoScroll();
     chatArea.scrollTop = chatArea.scrollHeight;
     setShowChatScrollHint(false);
     setIsChatAutoScroll(true);
@@ -394,6 +426,7 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
     handleChatScroll,
     handleChatWheel,
     latchReadingHistory,
+    markAutoScroll,
     scrollChatToBottom,
     scrollToTool,
     scrollToMessage,
