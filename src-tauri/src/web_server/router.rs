@@ -130,6 +130,26 @@ async fn serve_spa(
 
     let path = req.uri().path().trim_start_matches('/');
 
+    // During `tauri dev`, always serve the live Vite tree first. A previous
+    // production build can still exist at `build/`; checking embedded assets
+    // before Vite silently gives browser clients stale JS, even though the
+    // desktop window is hot-reloading from :1420.
+    #[cfg(debug_assertions)]
+    {
+        let uri = req.uri().to_string();
+        let vite_url = format!("http://localhost:1420{}", uri);
+        log::trace!("[router] dev proxy: {} → {}", uri, vite_url);
+        match dev_proxy(&vite_url).await {
+            Ok(resp) => return resp,
+            Err(e) => {
+                log::debug!(
+                    "[router] dev proxy failed, falling back to embedded assets: {}",
+                    e
+                );
+            }
+        }
+    }
+
     // Try to serve the exact file from embedded assets
     if let Some(content) = get_embedded_file(path) {
         let mime = mime_guess::from_path(path)
@@ -163,20 +183,6 @@ async fn serve_spa(
             });
     }
 
-    // No embedded files — dev mode proxy to Vite dev server
-    #[cfg(debug_assertions)]
-    {
-        let uri = req.uri().to_string();
-        let vite_url = format!("http://localhost:1420{}", uri);
-        log::trace!("[router] dev proxy: {} → {}", uri, vite_url);
-        match dev_proxy(&vite_url).await {
-            Ok(resp) => return resp,
-            Err(e) => {
-                log::debug!("[router] dev proxy failed: {}", e);
-            }
-        }
-    }
-
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Body::from(
@@ -198,6 +204,9 @@ async fn dev_proxy(url: &str) -> Result<axum::response::Response, String> {
 
     let resp = reqwest::get(url).await.map_err(|e| e.to_string())?;
     let status = resp.status().as_u16();
+    if status >= 500 {
+        return Err(format!("Vite returned HTTP {status}"));
+    }
     let mut builder = Response::builder().status(status);
     for (key, value) in resp.headers() {
         // Forward content-type and other relevant headers
@@ -231,33 +240,7 @@ fn build_cors_layer(state: AppState, port: u16) -> CorsLayer {
                 Ok(s) => s,
                 Err(_) => return false,
             };
-
-            // No Origin header = non-browser request (curl, wscat) → allow
-            // (Browser always sends Origin on cross-origin requests)
-            if s.is_empty() {
-                return true;
-            }
-
-            let Ok(o) = url::Url::parse(s) else {
-                return false;
-            };
-
-            // 1. Check configured allowed origins (reverse proxy domains)
-            if let Some(ref allowed) = allowed_origins {
-                if allowed.iter().any(|a| origin_matches(s, a)) {
-                    return true;
-                }
-            }
-
-            // 2. Default: allow local origins with matching port
-            let host = o.host_str().unwrap_or("");
-            let host_ok = host == "localhost"
-                || host == "127.0.0.1"
-                || host == "::1"
-                || host == "[::1]"
-                || is_local_ip(host);
-            let port_ok = o.port_or_known_default() == Some(port);
-            host_ok && port_ok
+            is_allowed_cors_origin(s, &allowed_origins, port)
         }))
         .allow_methods([
             Method::GET,
@@ -273,6 +256,61 @@ fn build_cors_layer(state: AppState, port: u16) -> CorsLayer {
             header::COOKIE,
         ])
         .allow_credentials(true)
+}
+
+/// Decide whether a browser origin may access the local web server.
+///
+/// In development, the Tauri window is served by Vite on port 1420 while the
+/// local server commonly runs on 9476. This is intentionally a narrow
+/// exception: arbitrary local ports remain denied, and release builds only
+/// allow the configured origins or the server's own local origin.
+fn is_allowed_cors_origin(
+    origin: &str,
+    allowed_origins: &Option<Vec<String>>,
+    server_port: u16,
+) -> bool {
+    // No Origin header = non-browser request (curl, wscat) → allow.
+    // Browsers always send Origin on cross-origin requests.
+    if origin.is_empty() {
+        return true;
+    }
+
+    let Ok(parsed) = url::Url::parse(origin) else {
+        return false;
+    };
+
+    // 1. Check configured allowed origins (reverse proxy domains).
+    if let Some(allowed) = allowed_origins {
+        if allowed
+            .iter()
+            .any(|candidate| origin_matches(origin, candidate))
+        {
+            return true;
+        }
+    }
+
+    // 2. Tauri dev loads the renderer from Vite, not from the local server.
+    if cfg!(debug_assertions) && is_vite_dev_origin(&parsed) {
+        return true;
+    }
+
+    // 3. Default: allow local origins with the server's own port.
+    let host = parsed.host_str().unwrap_or("");
+    let host_ok = host == "localhost"
+        || host == "127.0.0.1"
+        || host == "::1"
+        || host == "[::1]"
+        || is_local_ip(host);
+    let port_ok = parsed.port_or_known_default() == Some(server_port);
+    host_ok && port_ok
+}
+
+/// Vite's fixed Tauri development origin from `tauri.conf.json`.
+fn is_vite_dev_origin(origin: &url::Url) -> bool {
+    let host = origin.host_str().unwrap_or("");
+    origin.scheme() == "http"
+        && matches!(host, "localhost" | "127.0.0.1" | "::1" | "[::1]")
+        && origin.port_or_known_default() == Some(1420)
 }
 
 /// Compare two origins by (scheme, host, port) triple
@@ -294,5 +332,35 @@ fn is_local_ip(host: &str) -> bool {
     match ip {
         IpAddr::V4(v4) => v4.is_loopback() || v4.is_private() || v4.is_link_local(),
         IpAddr::V6(v6) => v6.is_loopback(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_allowed_cors_origin;
+
+    #[test]
+    fn allows_vite_dev_origin_without_manual_configuration() {
+        assert!(is_allowed_cors_origin("http://localhost:1420", &None, 9476));
+        assert!(is_allowed_cors_origin("http://127.0.0.1:1420", &None, 9476));
+    }
+
+    #[test]
+    fn rejects_unrelated_local_origin() {
+        assert!(!is_allowed_cors_origin(
+            "http://localhost:1421",
+            &None,
+            9476
+        ));
+    }
+
+    #[test]
+    fn allows_the_local_server_origin_and_configured_origins() {
+        assert!(is_allowed_cors_origin("http://127.0.0.1:9476", &None, 9476));
+        assert!(is_allowed_cors_origin(
+            "https://miwarp.example.test",
+            &Some(vec!["https://miwarp.example.test".into()]),
+            9476
+        ));
     }
 }

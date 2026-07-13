@@ -38,6 +38,8 @@
       warning?: string;
     } | null;
     webToken: string | null;
+    webPortInput: string;
+    webBindValue: string;
     webTunnelUrl: string;
     webLinkCopied: boolean;
     webRestarting: boolean;
@@ -48,6 +50,7 @@
     webRestartError: string | null;
     mobileQrDataUrl: string | null;
     mobilePairingLinkCopied: boolean;
+    mobileQrRefreshing: boolean;
     webSelfCheckRunning: boolean;
     webSelfCheckResult: string | null;
     webSelfCheckError: string | null;
@@ -55,6 +58,7 @@
     applyWebServerSettings: () => Promise<void>;
     copyAccessLink: () => Promise<void>;
     copyPairingLink: () => Promise<void>;
+    refreshMobilePairing: () => Promise<void>;
     runWebSelfCheck: () => Promise<void>;
     cliConfig: Record<string, unknown>;
     projectCliConfig: Record<string, unknown>;
@@ -179,16 +183,19 @@
       settings={panelState.settings}
       webStatus={panelState.webStatus}
       webToken={panelState.webToken}
-      webTunnelUrl={panelState.webTunnelUrl}
+      bind:webPortInput={panelState.webPortInput}
+      bind:webBindValue={panelState.webBindValue}
+      bind:webTunnelUrl={panelState.webTunnelUrl}
       webLinkCopied={panelState.webLinkCopied}
       webRestarting={panelState.webRestarting}
       webRestartWarning={panelState.webRestartWarning}
       webLanIp={panelState.webLanIp}
-      webAdvancedOpen={panelState.webAdvancedOpen}
-      webOrigins={panelState.webOrigins}
+      bind:webAdvancedOpen={panelState.webAdvancedOpen}
+      bind:webOrigins={panelState.webOrigins}
       webRestartError={panelState.webRestartError}
       mobileQrDataUrl={panelState.mobileQrDataUrl}
       mobilePairingLinkCopied={panelState.mobilePairingLinkCopied}
+      mobileQrRefreshing={panelState.mobileQrRefreshing}
       webSelfCheckRunning={panelState.webSelfCheckRunning}
       webSelfCheckResult={panelState.webSelfCheckResult}
       webSelfCheckError={panelState.webSelfCheckError}
@@ -196,6 +203,7 @@
       onApplyWebServerSettings={panelState.applyWebServerSettings}
       onCopyAccessLink={panelState.copyAccessLink}
       onCopyPairingLink={panelState.copyPairingLink}
+      onRefreshMobilePairing={panelState.refreshMobilePairing}
       onRunWebSelfCheck={panelState.runWebSelfCheck}
     />
   {:else if tab === "shortcuts"}

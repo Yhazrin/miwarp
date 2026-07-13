@@ -19,14 +19,14 @@ async function getVegaEmbed() {
   if (!vegaEmbedModule) {
     vegaEmbedModule = await optImport("vega-embed");
   }
-  return vegaEmbedModule.default;
+  return vegaEmbedModule!.default;
 }
 
 async function createBlockedLoader() {
   if (!vegaLoaderModule) {
     vegaLoaderModule = await optImport("vega");
   }
-  const createVegaLoader = vegaLoaderModule.loader;
+  const createVegaLoader = vegaLoaderModule!.loader;
   const base = createVegaLoader({ baseURL: "" });
   const rejectExternal = (uri: string) => {
     if (/^https?:\/\//i.test(uri) || /^\/\//.test(uri) || /^file:/i.test(uri)) {

@@ -291,6 +291,55 @@
   let capsuleExpanded = $state(false);
   const useCapsuleStrip = $derived(!capsuleExpanded && !pendingPermission);
 
+  // The textarea owns its height synchronously so an active caret never gets
+  // interpolated, clipped, or moved during a soft wrap. The visual shell gets
+  // a FLIP-style scale animation instead: the border/background morph while
+  // the editable DOM is already at its final geometry.
+  let composerShellEl = $state<HTMLDivElement>();
+  let composerSurfaceEl = $state<HTMLDivElement>();
+  let shellHeightBeforeLayoutChange: number | null = null;
+  let shellSurfaceAnimation: Animation | null = null;
+
+  $effect.pre(() => {
+    const _layout = useCapsuleStrip;
+    void _layout;
+    if (composerShellEl) {
+      shellHeightBeforeLayoutChange = composerShellEl.getBoundingClientRect().height;
+    }
+  });
+
+  $effect(() => {
+    const _layout = useCapsuleStrip;
+    void _layout;
+    const surface = composerSurfaceEl;
+    const shell = composerShellEl;
+    const fromHeight = shellHeightBeforeLayoutChange;
+    shellHeightBeforeLayoutChange = null;
+    if (!surface || !shell || !fromHeight) return;
+
+    const toHeight = shell.getBoundingClientRect().height;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion || toHeight <= 0 || Math.abs(fromHeight - toHeight) < 1) return;
+
+    shellSurfaceAnimation?.cancel();
+    const animation = surface.animate(
+      [{ transform: `scaleY(${fromHeight / toHeight})` }, { transform: "scaleY(1)" }],
+      {
+        duration: 260,
+        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+        fill: "both",
+      },
+    );
+    shellSurfaceAnimation = animation;
+    void animation.finished
+      .catch(() => {
+        // A newer layout change superseded this animation.
+      })
+      .then(() => {
+        if (shellSurfaceAnimation === animation) shellSurfaceAnimation = null;
+      });
+  });
+
   // ── v1.0.x cycle diagnostics ─────────────────────────────────────────
   // Set `__CYCLE_DEBUG = true` to enable verbose logging. The log line is
   // mirrored to the Rust stdout via the `log_debug_event` Tauri command
@@ -2082,7 +2131,7 @@
 <!-- Web drag handlers — only fire when Tauri dragDropEnabled is false (non-Tauri builds).
      When dragDropEnabled: true, Tauri intercepts OS drag events and Web drag events do not fire. -->
 <div
-  class="relative mx-auto w-full px-4 py-0 {useCapsuleStrip ? 'max-w-4xl' : 'max-w-5xl'}"
+  class="relative mx-auto w-full max-w-4xl px-4 py-0"
   ondragenter={handleDragEnter}
   ondragleave={handleDragLeave}
   ondragover={handleDragOver}
@@ -2281,8 +2330,11 @@
   {/snippet}
 
   {#snippet promptSendButton(btw = false)}
-    {@const sendSizeClass = useCapsuleStrip ? "h-7 w-7" : "h-8 w-8"}
-    {@const sendIconSize = useCapsuleStrip ? "sm" : "md"}
+    <!-- Keep the primary action's dimensions stable while the composer grows.
+         Changing the button itself makes the right action rail look as if it
+         jumps, even when its outer edge is anchored. -->
+    {@const sendSizeClass = "h-7 w-7"}
+    {@const sendIconSize = "sm"}
     {@const sendLookClass = canSend
       ? btw
         ? "bg-miwarp-status-info text-miwarp-accent-on-accent hover:opacity-90"
@@ -2441,18 +2493,25 @@
 
   <!-- Unified input container -->
   <div
-    class="prompt-input-shell overflow-hidden border border-primary bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color,background-color,box-shadow] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] {useCapsuleStrip
-      ? 'rounded-full'
-      : 'rounded-[1.75rem]'} {btwMode ? 'border-miwarp-status-info/80' : ''} {fastModeState ===
-      'on' && !btwMode
-      ? 'border-miwarp-status-info/40 shadow-[0_0_12px_-2px_hsl(var(--miwarp-status-info)/0.25)]'
-      : ''} {pendingPermission ? 'motion-attention-pulse' : ''}"
+    bind:this={composerShellEl}
+    class="prompt-input-shell relative isolate w-full overflow-visible"
   >
+    <div
+      bind:this={composerSurfaceEl}
+      aria-hidden="true"
+      class="prompt-input-surface pointer-events-none absolute inset-0 z-0 origin-bottom border border-primary bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color,background-color,box-shadow] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] {useCapsuleStrip
+        ? 'rounded-full'
+        : 'rounded-[1.75rem]'} {btwMode ? 'border-miwarp-status-info/80' : ''} {fastModeState ===
+        'on' && !btwMode
+        ? 'border-miwarp-status-info/40 shadow-[0_0_12px_-2px_hsl(var(--miwarp-status-info)/0.25)]'
+        : ''} {pendingPermission ? 'motion-attention-pulse' : ''}"
+    ></div>
+
     {#if pendingPermission}
       <div
         role="status"
         aria-live="polite"
-        class="flex items-center gap-2 px-5 pt-3 pb-0.5 text-xs text-miwarp-status-warning"
+        class="relative z-10 flex items-center gap-2 px-5 pt-3 pb-0.5 text-xs text-miwarp-status-warning"
       >
         <svg
           class="h-3.5 w-3.5 shrink-0"
@@ -2484,11 +2543,11 @@
 
          Fix: in capsule mode the side toolbars are taken out of the flex
          flow with `position: absolute` and the textarea reserves fixed
-         left/right padding to clear them. The textarea now keeps the same
-         width in both modes → text wraps identically → contentH is
+         left/right padding to clear them. The same horizontal text lane is
+         retained after expansion, so only height changes → text wraps identically → contentH is
          stable → hysteresis behaves as designed. -->
     <div
-      class="relative flex w-full transition-[min-height,padding] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-[min-height,padding] {useCapsuleStrip
+      class="relative z-10 flex w-full transition-[min-height,padding] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-[min-height,padding] {useCapsuleStrip
         ? 'flex-row min-h-[42px] items-center py-1'
         : 'flex-col px-1 pt-2 pb-1'}"
     >
@@ -2523,22 +2582,28 @@
         rows={1}
         {disabled}
         aria-label={t("prompt_chatInput")}
-        class="no-drag min-w-0 w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50 {useCapsuleStrip
-          ? 'overflow-x-auto overflow-y-hidden min-h-[24px] py-0 pl-3 pr-[150px] leading-6'
-          : 'w-full overflow-y-auto px-4 pt-1 pb-2'}"
+        class="no-drag min-w-0 w-full resize-none bg-transparent pl-3 pr-[150px] text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50 {useCapsuleStrip
+          ? 'overflow-x-auto overflow-y-hidden min-h-[24px] py-0 leading-6'
+          : 'w-full overflow-y-auto pt-1 pb-11'}"
       ></textarea>
 
       {#if useCapsuleStrip}
         <!-- right toolbar merged into left toolbar above (single absolute
              right-0 container) -->
       {:else}
-        <div class="flex w-full items-center justify-between px-3 pb-2.5 pt-0.5">
-          <div class="no-drag relative z-10 flex min-w-0 items-center gap-1 pointer-events-auto">
-            {@render promptToolbarLeft(false)}
-          </div>
-          <div class="flex shrink-0 items-center gap-0.5">
-            {@render promptToolbarRight(false)}
-          </div>
+        <!-- Keep the expanded controls in a reserved action rail rather than
+             moving the right actions into the document flow. The chat dock is
+             bottom-anchored, so its right edge and vertical baseline now stay
+             fixed while only the editable region grows upward. -->
+        <div
+          class="no-drag pointer-events-auto absolute bottom-[7px] left-3 z-10 flex min-w-0 max-w-[55%] items-center gap-1"
+        >
+          {@render promptToolbarLeft(false)}
+        </div>
+        <div
+          class="no-drag pointer-events-auto absolute bottom-[7px] right-0 z-10 flex shrink-0 items-center gap-0.5 pr-2.5"
+        >
+          {@render promptToolbarRight(false)}
         </div>
       {/if}
     </div>

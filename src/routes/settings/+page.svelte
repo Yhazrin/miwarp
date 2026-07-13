@@ -83,6 +83,7 @@
   let webTunnelUrl = $state("");
   let mobileQrDataUrl = $state<string | null>(null);
   let mobilePairingLinkCopied = $state(false);
+  let mobileQrRefreshing = $state(false);
   let webSelfCheckRunning = $state(false);
   let webSelfCheckResult = $state<string | null>(null);
   let webSelfCheckError = $state<string | null>(null);
@@ -443,6 +444,17 @@
     setTimeout(() => (mobilePairingLinkCopied = false), 1500);
   }
 
+  async function refreshMobilePairing() {
+    if (!webStatus?.running || !webToken) return;
+    mobileQrRefreshing = true;
+    mobileQrDataUrl = null;
+    try {
+      await generateMobileQr(pageGeneration);
+    } finally {
+      mobileQrRefreshing = false;
+    }
+  }
+
   function buildLocalUrl(path: string): string | null {
     if (!webStatus?.running) return null;
     const bind = webStatus.bind;
@@ -529,7 +541,7 @@
       const dataUrl = await QRCode.toDataURL(link, {
         width: 200,
         margin: 2,
-        color: { dark: "#e6e6e6", light: "#00000000" },
+        color: { dark: "#1f1d24", light: "#ffffff" },
         errorCorrectionLevel: "M",
       });
       if (isAlive(gen)) mobileQrDataUrl = dataUrl;
@@ -697,8 +709,23 @@
     get webToken() {
       return webToken;
     },
+    get webPortInput() {
+      return webPortInput;
+    },
+    set webPortInput(v: string) {
+      webPortInput = v;
+    },
+    get webBindValue() {
+      return webBindValue;
+    },
+    set webBindValue(v: string) {
+      webBindValue = v;
+    },
     get webTunnelUrl() {
       return webTunnelUrl;
+    },
+    set webTunnelUrl(v: string) {
+      webTunnelUrl = v;
     },
     get webLinkCopied() {
       return webLinkCopied;
@@ -721,6 +748,9 @@
     get webOrigins() {
       return webOrigins;
     },
+    set webOrigins(v: string[]) {
+      webOrigins = v;
+    },
     get webRestartError() {
       return webRestartError;
     },
@@ -729,6 +759,9 @@
     },
     get mobilePairingLinkCopied() {
       return mobilePairingLinkCopied;
+    },
+    get mobileQrRefreshing() {
+      return mobileQrRefreshing;
     },
     get webSelfCheckRunning() {
       return webSelfCheckRunning;
@@ -743,6 +776,7 @@
     applyWebServerSettings,
     copyAccessLink,
     copyPairingLink,
+    refreshMobilePairing,
     runWebSelfCheck,
     get cliConfig() {
       return cliConfig;

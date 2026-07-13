@@ -167,12 +167,14 @@
           {@const ps = phaseStatus(phase)}
           {@const width = phases.length > 0 ? `${100 / phases.length}%` : "100%"}
           <div
-            class="h-full transition-colors duration-300 {i > 0 ? 'border-l border-background' : ''}"
+            class="h-full transition-colors duration-300 {i > 0
+              ? 'border-l border-background'
+              : ''}"
             style:width
-            class:bg-miwarp-status-success={ps === 'completed'}
-            class:bg-miwarp-status-info={ps === 'running'}
-            class:bg-miwarp-status-error={ps === 'failed'}
-            class:bg-muted={ps === 'pending'}
+            class:bg-miwarp-status-success={ps === "completed"}
+            class:bg-miwarp-status-info={ps === "running"}
+            class:bg-miwarp-status-error={ps === "failed"}
+            class:bg-muted={ps === "pending"}
           >
             {#if ps === "running" && phase.totalCount > 0}
               <div

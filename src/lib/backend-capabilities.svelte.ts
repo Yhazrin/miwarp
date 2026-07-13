@@ -61,32 +61,28 @@ export function warnListRunsSinceUnsupportedOnce(): void {
 export async function initBackendCapabilities(): Promise<void> {
   if (initialized) return;
 
-  if (!getTransport().isDesktop()) {
-    legacyMode = true;
-    caps = {
-      appVersion: "browser",
-      schemaVersion: 0,
-      supportedCommands: [...LEGACY_COMMANDS],
-    };
-    initialized = true;
-    return;
-  }
-
   try {
-    const [{ getVersion }, backendCaps] = await Promise.all([
-      import("@tauri-apps/api/app"),
-      getBackendCapabilities(),
-    ]);
+    const backendCaps = await getBackendCapabilities();
     caps = backendCaps;
     legacyMode = false;
-    frontendVersion = normalizeVersion(await getVersion());
-    const backendVersion = normalizeVersion(backendCaps.appVersion);
-    versionMismatch = frontendVersion !== backendVersion;
-    if (versionMismatch) {
-      dbgWarn("api", "frontend/backend version mismatch", {
-        frontend: frontendVersion,
-        backend: backendVersion,
-      });
+
+    // Browser clients use the WebSocket command bridge, so capability probing
+    // is both available and essential for incremental synchronization. Only
+    // the desktop shell can read its bundled application version directly.
+    if (getTransport().isDesktop()) {
+      const { getVersion } = await import("@tauri-apps/api/app");
+      frontendVersion = normalizeVersion(await getVersion());
+      const backendVersion = normalizeVersion(backendCaps.appVersion);
+      versionMismatch = frontendVersion !== backendVersion;
+      if (versionMismatch) {
+        dbgWarn("api", "frontend/backend version mismatch", {
+          frontend: frontendVersion,
+          backend: backendVersion,
+        });
+      }
+    } else {
+      frontendVersion = null;
+      versionMismatch = false;
     }
     dbg("api", "backend capabilities", {
       appVersion: backendCaps.appVersion,

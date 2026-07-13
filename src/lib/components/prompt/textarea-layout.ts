@@ -3,9 +3,8 @@
  *
  * The DOM code owns measuring a textarea; this module decides when that
  * measurement changes the composer mode. Keeping the expanded mode until the
- * draft is cleared is intentional: the expanded textarea is wider than the
- * capsule, so immediately re-evaluating the same text against the wider
- * layout would otherwise cause a capsule ↔ composer loop.
+ * draft is cleared avoids distracting collapse/expand churn while a user is
+ * editing a multi-line draft.
  */
 export const CAPSULE_LINE_HEIGHT_PX = 24;
 export const MAX_COMPOSER_CONTENT_HEIGHT_PX = 4 * CAPSULE_LINE_HEIGHT_PX;

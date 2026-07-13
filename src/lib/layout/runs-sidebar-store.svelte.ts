@@ -15,7 +15,7 @@
  *   - gives the workspace sidebar a single import for runs + favorites
  *
  * Behaviour-equivalence contract (refactor — no functional change):
- *   - First load: IDB cache → IPC listRuns → IDB write-back (background)
+ *   - First load: IDB cache → IPC listRunsLite → IDB write-back (background)
  *   - Subsequent loads: incremental listRunsSince, merged in-memory, IDB
  *     merge in background; EVT_RUNS_CHANGED on the window bus still fires
  *     from the layout (we keep that wiring there)
@@ -23,7 +23,7 @@
  *   - Deep search: 300ms debounce, requestId-guarded (stale responses drop)
  */
 import {
-  listRuns,
+  listRunsLite,
   listRunsSince,
   listPromptFavorites,
   searchPrompts,
@@ -120,7 +120,10 @@ export class RunsSidebarStore {
           void mergeRunsIntoCache(changed.filter((r) => !r.deleted_at));
         }
       } else {
-        const fresh = await listRuns();
+        // The sidebar only needs run metadata for its initial projection.
+        // Reading every events.jsonl just to derive previews blocks browser
+        // startup for seconds once a user has a large local history.
+        const fresh = await listRunsLite();
         this.runs = fresh;
         void writeRunsListCache(fresh);
       }

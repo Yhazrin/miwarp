@@ -288,7 +288,7 @@ export function extractAgentToolMeta(input: unknown): AgentToolMeta | null {
         : undefined,
     isUltracode: Boolean(
       obj.isUltracode === true ||
-        (typeof obj.description === "string" && obj.description.toLowerCase().includes("ultracode")),
+      (typeof obj.description === "string" && obj.description.toLowerCase().includes("ultracode")),
     ),
   };
 }

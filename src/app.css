@@ -2059,7 +2059,7 @@ textarea,
 }
 
 /* Chat input — dark mode contrast on opaque main surface. */
-:is(html.dark, html[data-color-scheme="dark"]) .prompt-input-shell {
+:is(html.dark, html[data-color-scheme="dark"]) .prompt-input-surface {
   background: hsl(var(--miwarp-bg-surface) / 0.92) !important;
   border-color: hsl(var(--miwarp-glass-border) / 0.42) !important;
 }

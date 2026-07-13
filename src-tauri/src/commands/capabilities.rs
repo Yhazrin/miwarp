@@ -9,6 +9,7 @@ pub const SCHEMA_VERSION: u32 = 5;
 const SUPPORTED_COMMANDS: &[&str] = &[
     "get_backend_capabilities",
     "list_runs",
+    "list_runs_lite",
     "list_runs_since",
     "get_run",
     "export_claude_code_history_archive",
@@ -84,6 +85,9 @@ mod tests {
         assert!(caps
             .supported_commands
             .contains(&"list_runs_since".to_string()));
+        assert!(caps
+            .supported_commands
+            .contains(&"list_runs_lite".to_string()));
         assert!(caps
             .supported_commands
             .contains(&"get_backend_capabilities".to_string()));

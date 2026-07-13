@@ -26,6 +26,19 @@ pub async fn dispatch_command(
             let runs = crate::commands::runs::list_runs().await?;
             serde_json::to_value(runs).map_err(|e| e.to_string())
         }
+        "list_runs_lite" => {
+            let runs = crate::commands::runs::list_runs_lite().await?;
+            serde_json::to_value(runs).map_err(|e| e.to_string())
+        }
+        "list_runs_since" => {
+            let since = extract_str(&params, "since")?;
+            let runs = crate::commands::runs::list_runs_since(since).await?;
+            serde_json::to_value(runs).map_err(|e| e.to_string())
+        }
+        "get_backend_capabilities" => {
+            let capabilities = crate::commands::capabilities::get_backend_capabilities()?;
+            serde_json::to_value(capabilities).map_err(|e| e.to_string())
+        }
         "get_run" => {
             let id = extract_str(&params, "id")?;
             let run = crate::commands::runs::get_run(id)?;

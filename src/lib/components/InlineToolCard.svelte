@@ -363,13 +363,9 @@
   });
 
   // Task (subagent) meta: extract agent type + model for enhanced header
-  let taskMeta = $derived(
-    tool.tool_name === "Task" ? extractTaskToolMeta(tool.input) : null,
-  );
+  let taskMeta = $derived(tool.tool_name === "Task" ? extractTaskToolMeta(tool.input) : null);
   // Agent tool meta (Claude Code 2.0+): richer metadata with isolation/permission/background
-  let agentMeta = $derived(
-    tool.tool_name === "Agent" ? extractAgentToolMeta(tool.input) : null,
-  );
+  let agentMeta = $derived(tool.tool_name === "Agent" ? extractAgentToolMeta(tool.input) : null);
 
   // Whether current permission mode already skips permission prompts
   let skipPermissionMode = $derived(

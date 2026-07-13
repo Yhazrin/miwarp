@@ -14,7 +14,7 @@ async function getMermaid() {
   if (!mermaidModule) {
     mermaidModule = await optImport("mermaid");
   }
-  return mermaidModule.default;
+  return mermaidModule!.default;
 }
 
 /**

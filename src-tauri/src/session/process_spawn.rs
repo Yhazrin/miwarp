@@ -383,7 +383,7 @@ pub(crate) async fn spawn_cli_process(
             let sanitized = arg.replace("\r\n", "\n");
             #[cfg(not(target_os = "windows"))]
             let sanitized = arg.as_str();
-            cmd.arg(&sanitized);
+            cmd.arg(sanitized);
         }
 
         let path_env = claude_stream::augmented_path();
