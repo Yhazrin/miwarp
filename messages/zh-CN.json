@@ -3299,6 +3299,7 @@
   "send_status_failed_stale": "会话已切换，请打开正确的会话重新发送。",
   "send_status_failed_timeout": "代理未及时确认，点击重试。",
   "send_status_failed_unknown": "发送失败，点击重试。",
+  "send_status_failed_session_dead": "会话已过期，请开始新的对话。",
   "send_retry": "重试",
   "runtime_status_desktop": "桌面应用",
   "runtime_hub_eyebrow": "运行时控制平面",

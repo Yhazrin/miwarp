@@ -3299,6 +3299,7 @@
   "send_status_failed_stale": "Session changed. Open the correct session to resend.",
   "send_status_failed_timeout": "Agent didn't acknowledge in time. Click to retry.",
   "send_status_failed_unknown": "Send failed. Click to retry.",
+  "send_status_failed_session_dead": "Session expired. Please start a new conversation.",
   "send_retry": "Retry",
   "runtime_status_desktop": "Desktop",
   "runtime_hub_eyebrow": "Runtime control plane",

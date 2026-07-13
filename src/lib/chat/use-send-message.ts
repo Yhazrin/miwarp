@@ -319,6 +319,9 @@ export function createSendMessage(ctx: SendMessageContext): SendMessageHandle {
       // store lost it (e.g. legacy callers).
       if (e instanceof SendCoordinatorError) {
         restoreDraft(draft);
+        if (/session_dead/i.test(e.message)) {
+          showToast(t("send_status_failed_session_dead"));
+        }
       }
       // PromptInput uses this rejection to restore the exact snapshot it
       // cleared optimistically. Swallowing the error made a failed new-session

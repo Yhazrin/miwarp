@@ -314,9 +314,11 @@ pub(crate) async fn send_or_queue_recovery(
     client_message_id: Option<String>,
 ) -> Result<bool, String> {
     let mut map = registry.lock().await;
-    let entry = map
-        .get_mut(run_id)
-        .ok_or_else(|| format!("Session {run_id} not found"))?;
+    let Some(entry) = map.get_mut(run_id) else {
+        // Session not in recovery registry — not a crash-recovery scenario.
+        // Fall through to get_cmd_tx which checks the real actor map.
+        return Ok(false);
+    };
     if entry.unrecoverable {
         return Err(RuntimeError::RecoveryExhausted {
             run_id: run_id.to_string(),
