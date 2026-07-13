@@ -67,9 +67,10 @@ jobs:
           key: artifacts-${{ matrix.target }}
 
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         with:
           args: --target ${{ matrix.target }}
+          tauriScript: npm run tauri
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
