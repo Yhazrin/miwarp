@@ -50,7 +50,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          key: ${{ matrix.target }}
+          # Share the dependency cache warmed by Build Artifacts. A universal macOS
+          # build compiles both Apple Silicon and Intel targets, so a cold cache
+          # otherwise adds roughly twenty minutes before bundling even begins.
+          key: artifacts-${{ matrix.target }}
 
       # Set repository secret TAURI_SIGNING_PRIVATE_KEY to the contents of src-tauri/miwarp.key
       # (generate locally: npm run tauri signer generate -- -w src-tauri/miwarp.key -p "")
