@@ -177,6 +177,8 @@ jobs:
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v1
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           args: --target x86_64-pc-windows-msvc
           tauriScript: npm run tauri
@@ -223,6 +225,8 @@ jobs:
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v1
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           args: --target universal-apple-darwin
           tauriScript: npm run tauri
@@ -272,6 +276,8 @@ jobs:
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v1
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           args: --target x86_64-unknown-linux-gnu
           tauriScript: npm run tauri

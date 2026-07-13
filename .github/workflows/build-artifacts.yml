@@ -68,6 +68,8 @@ jobs:
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v1
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           args: --target ${{ matrix.target }}
           tauriScript: npm run tauri
