@@ -90,3 +90,62 @@ jobs:
           uploadUpdaterJson: true
           updaterJsonPreferNsis: true
           args: --target ${{ matrix.target }}
+
+  # tauri-action generates latest.json with GitHub API asset URLs
+  # (https://api.github.com/repos/…/assets/ID) which are subject to
+  # 60 req/h rate-limit for unauthenticated requests → 403 Forbidden
+  # when the in-app updater tries to download.  This job runs after all
+  # platform builds finish and replaces API URLs with direct
+  # browser_download_url links that have no rate-limit.
+  patch-updater-json:
+    name: Patch updater JSON
+    needs: build
+    if: always() && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Replace API URLs with direct download links in latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          OWNER_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Download current latest.json (accumulated by tauri-action across all platforms)
+          curl -fsSL "https://github.com/${OWNER_REPO}/releases/download/${TAG}/latest.json" -o /tmp/latest.json
+
+          # Fetch release assets via API (authenticated → no rate-limit)
+          ASSETS_JSON=$(curl -fsSL \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${OWNER_REPO}/releases/tags/${TAG}")
+
+          # Replace every api.github.com/repos/…/assets/{id} with its browser_download_url
+          node -e '
+            const fs = require("fs");
+            const release = JSON.parse(process.env.ASSETS_JSON);
+            const idToUrl = new Map();
+            for (const a of release.assets || []) {
+              idToUrl.set(String(a.id), a.browser_download_url);
+            }
+            let json = fs.readFileSync("/tmp/latest.json", "utf8");
+            const replaced = [];
+            json = json.replace(
+              /https:\/\/api\.github\.com\/repos\/[^/]+\/[^/]+\/releases\/assets\/(\d+)/g,
+              (match, id) => {
+                const url = idToUrl.get(id);
+                if (url) { replaced.push(id); return url; }
+                return match;
+              }
+            );
+            fs.writeFileSync("/tmp/latest.json", json);
+            console.log("Patched latest.json — replaced", replaced.length, "API URLs with direct links");
+          '
+
+          # Re-upload patched latest.json (overwrites the one tauri-action uploaded)
+          gh release upload "${TAG}" /tmp/latest.json --clobber
+        shell: bash
