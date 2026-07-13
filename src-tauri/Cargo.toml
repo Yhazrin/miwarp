@@ -75,6 +75,8 @@ tauri-build = { version = "2", features = [] }
 [profile.release]
 panic = "abort"
 codegen-units = 1
-lto = true
+# Thin LTO preserves cross-crate optimisation while avoiding the very expensive
+# whole-program link performed twice for the universal macOS bundle.
+lto = "thin"
 opt-level = "s"
 strip = true
