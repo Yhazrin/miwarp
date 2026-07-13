@@ -225,7 +225,9 @@ fn which_binary_inner(name: &str) -> Option<String> {
         let path_str = augmented_path();
         log::debug!("[path] searching PATH for '{name}': {path_str}");
         let path_os = std::ffi::OsString::from(&path_str);
-        let extensions = [".cmd", ".exe", ".bat"];
+        // Prefer .exe over .cmd — .cmd files spawned via CREATE_NO_WINDOW can
+        // fail with "batch file arguments are invalid" on some Windows configs.
+        let extensions = [".exe", ".cmd", ".bat"];
         let mut fallback: Option<String> = None;
         for dir in std::env::split_paths(&path_os) {
             // Try with each preferred extension first
@@ -487,7 +489,9 @@ pub(crate) fn resolve_claude_path() -> String {
             bases.push(h.join(".claude").join("bin"));
             bases.push(h.join(".local").join("bin"));
         }
-        let names = ["claude.cmd", "claude.exe", "claude.bat", "claude"];
+        // Prefer .exe over .cmd — .cmd files spawned via CREATE_NO_WINDOW can
+        // fail with "batch file arguments are invalid" on some Windows configs.
+        let names = ["claude.exe", "claude.cmd", "claude.bat", "claude"];
         let mut cands = Vec::new();
         for base in &bases {
             for name in &names {
