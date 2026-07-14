@@ -71,6 +71,7 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
     getLoadMoreArmed,
     setLoadMoreArmed,
     setIsChatAutoScroll,
+    getIsChatAutoScroll,
     setShowChatScrollHint,
     setScrollToInFlight,
     getSuppressLoadMoreRearm,
@@ -241,6 +242,7 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
   }
 
   let _scrollRafId = 0;
+  let _followBottomRaf: number | null = null;
   // A programmatic bottom-pin can emit scroll events while content-visibility
   // is being reconciled. Keep that short, bounded sequence separate from user
   // scroll state; unlike the former time-based guard, a wheel gesture cancels
@@ -272,9 +274,25 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
     if (chatArea) pinElementToBottom(chatArea);
   }
 
+  /** Coalesced single-frame follow for live streaming — avoids triple-pin layout thrash. */
+  function followChatBottom() {
+    if (_followBottomRaf !== null) return;
+    _followBottomRaf = requestAnimationFrame(() => {
+      _followBottomRaf = null;
+      const chatArea = getChatAreaRef();
+      // Never fight a user who left the bottom — pin/follow must not yank scroll back.
+      if (!chatArea || !getIsChatAutoScroll() || _scrollPinActive) return;
+      chatArea.scrollTop = chatArea.scrollHeight;
+    });
+  }
+
   function cancelScrollPin() {
     _scrollPinGeneration++;
     _scrollPinActive = false;
+    if (_followBottomRaf !== null) {
+      cancelAnimationFrame(_followBottomRaf);
+      _followBottomRaf = null;
+    }
   }
 
   function handleChatScroll() {
@@ -295,6 +313,11 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
         return;
       }
 
+      // Left the bottom — kill any pending follow so streaming cannot yank us back.
+      if (_followBottomRaf !== null) {
+        cancelAnimationFrame(_followBottomRaf);
+        _followBottomRaf = null;
+      }
       setReadingHistory?.(true);
 
       if (
@@ -439,6 +462,7 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
     handleChatWheel,
     latchReadingHistory,
     pinChatToBottom,
+    followChatBottom,
     scrollChatToBottom,
     scrollToTool,
     scrollToMessage,

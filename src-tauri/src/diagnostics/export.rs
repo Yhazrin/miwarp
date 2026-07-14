@@ -525,6 +525,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn validate_export_path_symlink_escape() {
         let dir = tempfile::tempdir().unwrap();
         let outside = tempfile::tempdir().unwrap();

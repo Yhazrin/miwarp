@@ -1,8 +1,7 @@
 <script lang="ts">
   /**
-   * v1.0.6 / 5.8: Shimmer placeholder shown while streaming text is very short (< 100 chars).
-   * Gives visual feedback that "content is coming" without the jarring blank <pre>.
-   * Fades out once real content arrives.
+   * v1.0.6 / 5.8: Shimmer placeholder shown while waiting for the first streaming token.
+   * Single line only — multi-line skeleton caused a visible height jump when text arrived.
    */
 
   let {

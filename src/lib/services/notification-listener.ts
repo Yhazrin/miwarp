@@ -191,6 +191,15 @@ export async function startNotificationListener(): Promise<void> {
         } else {
           showToast(t("protocol_recovered_fail_toast"), "error");
         }
+      } else if (ev.type === "governor_budget_exceeded") {
+        const reason =
+          typeof ev.reason === "string" && ev.reason.trim().length > 0
+            ? ev.reason
+            : t("governor_budget_exceeded_toast", {
+                current: String(ev.current_value),
+                limit: String(ev.limit_value),
+              });
+        showToast(reason, "warning", 6000);
       } else if (ev.type === "task_notification") {
         // v1.0.6 / hardening A4: scheduled tasks (not just run_state) can
         // signal completion or failure — surface both as toasts.

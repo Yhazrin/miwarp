@@ -13,7 +13,7 @@
 
 {#if expanded}
   <div class="w-full" transition:slide={{ duration: 200 }}>
-    <div class="chat-content-width py-1">
+    <div class="w-full pl-[3.75rem] pr-8 py-1">
       <div
         class="max-h-28 overflow-hidden rounded-lg border border-[hsl(var(--miwarp-glass-border)/0.5)] bg-[hsl(var(--miwarp-bg-deep)/0.6)]"
       >
@@ -35,7 +35,7 @@
           <span class="font-medium">{t("chat_thinking")}</span>
           <button
             type="button"
-            class="ml-auto opacity-50 hover:opacity-100 transition-opacity"
+            class="ml-auto opacity-50 transition-opacity hover:opacity-100"
             aria-label="Toggle thinking panel"
             onclick={onToggleExpand}
           >
@@ -53,7 +53,7 @@
           </button>
         </div>
         <div
-          class="border-t border-[hsl(var(--miwarp-glass-border)/0.3)] px-2.5 py-2 overflow-y-auto overscroll-y-contain max-h-[calc(7rem-2.25rem)]"
+          class="max-h-[calc(7rem-2.25rem)] overflow-y-auto overscroll-y-contain border-t border-[hsl(var(--miwarp-glass-border)/0.3)] px-2.5 py-2"
         >
           <pre
             class="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted-foreground/70">{thinkingText.trimEnd()}</pre>
@@ -62,11 +62,11 @@
     </div>
   </div>
 {:else}
-  <div class="w-full animate-fade-in">
-    <div class="chat-content-width py-1">
+  <div class="w-full">
+    <div class="w-full pl-[3.75rem] pr-8 py-1">
       <button
         type="button"
-        class="inline-flex items-center gap-1.5 rounded-full px-2 py-px text-[10px] text-muted-foreground hover:bg-muted/50 transition-all"
+        class="inline-flex items-center gap-1.5 rounded-full px-2 py-px text-[10px] text-muted-foreground transition-all hover:bg-muted/50"
         onclick={onToggleExpand}
       >
         <svg

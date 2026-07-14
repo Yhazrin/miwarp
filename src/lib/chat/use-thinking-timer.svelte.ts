@@ -47,7 +47,7 @@ export function useThinkingTimer(ctx: ThinkingTimerContext): ThinkingTimerHandle
     if (!processingSlashCmd) return;
     if (store.isRunning) slashCmdSeenRunning = true;
     if (
-      store.streamingText ||
+      store.streamingText.trim() ||
       store.thinkingText ||
       store.error ||
       store.phase === "failed" ||
@@ -70,7 +70,7 @@ export function useThinkingTimer(ctx: ThinkingTimerContext): ThinkingTimerHandle
       }
       const showTimer = setTimeout(() => {
         thinkingVisible = true;
-      }, 300);
+      }, 80);
       thinkingElapsed = Math.max(0, Math.floor((Date.now() - base) / 1000));
       const interval = setInterval(() => {
         thinkingElapsed = Math.max(0, Math.floor((Date.now() - base) / 1000));
@@ -92,6 +92,9 @@ export function useThinkingTimer(ctx: ThinkingTimerContext): ThinkingTimerHandle
     },
     get thinkingExpanded() {
       return thinkingExpanded;
+    },
+    set thinkingExpanded(v: boolean) {
+      thinkingExpanded = v;
     },
     setThinkingExpanded: (v: boolean) => {
       thinkingExpanded = v;

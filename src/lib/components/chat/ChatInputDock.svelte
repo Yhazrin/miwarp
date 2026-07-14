@@ -14,6 +14,7 @@
   import ChatRalphLoopBar from "$lib/components/ChatRalphLoopBar.svelte";
   import PromptInput from "$lib/components/PromptInput.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import { createSmoothCssPxVar } from "./smooth-css-px-var";
 
   const t = tFn;
 
@@ -81,27 +82,43 @@
 
   let dockEl = $state<HTMLDivElement | undefined>();
 
-  /** Sync scroll fade / padding with real dock height (fixed 11rem was much taller than the capsule).
-   *  Targets the chat pane (the flex column hosting both conversation + dock) so
-   *  CSS variables inherit through the timeline scroll wrapper regardless of
-   *  which subtree the dock currently lives in (page-level vs split-pane). */
+  /** Sync scroll fade / padding with real dock height.
+   *  Capsule ↔ multi-line flips change height instantly in layout; CSS
+   *  `@property` transitions on `.chat-pane` interpolate the padding so the
+   *  timeline does not jump while PromptInput's scaleY shell morphs (260ms). */
   $effect(() => {
     const dock = dockEl;
     if (!dock) return;
     const stage = dock.closest(".chat-pane, .chat-conversation-stage") as HTMLElement | null;
     if (!stage) return;
 
+    const offsetWriter = createSmoothCssPxVar({
+      getEl: () => stage,
+      varName: "--chat-input-dock-offset",
+      onCommit: (scrollPad, el) => {
+        el.style.setProperty(
+          "--chat-scroll-fade-height",
+          `${Math.min(scrollPad + 36, 200)}px`,
+        );
+      },
+    });
+
     const sync = () => {
       const height = Math.ceil(dock.getBoundingClientRect().height);
-      const scrollPad = height + 12;
-      stage.style.setProperty("--chat-input-dock-offset", `${scrollPad}px`);
-      stage.style.setProperty("--chat-scroll-fade-height", `${Math.min(scrollPad + 36, 200)}px`);
+      offsetWriter.setTarget(height + 12);
     };
 
-    sync();
+    // First paint: set immediately so the first frame is correct before CSS
+    // transition machinery engages on later expands.
+    const height = Math.ceil(dock.getBoundingClientRect().height);
+    offsetWriter.setImmediate(height + 12);
+
     const ro = new ResizeObserver(sync);
     ro.observe(dock);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      offsetWriter.destroy();
+    };
   });
 </script>
 

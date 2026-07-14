@@ -374,16 +374,12 @@ pub(crate) async fn spawn_cli_process(
         let claude_bin = claude_stream::resolve_claude_path();
         log::debug!("[session] resolved binary: {}", claude_bin);
 
+        // resolve_claude_path() unwraps Windows npm `.cmd` shims to the real
+        // `.exe`. Spawning `.cmd` with CREATE_NO_WINDOW fails whenever any argv
+        // contains a newline — `\r\n`→`\n` sanitization does NOT help.
         let mut cmd = tokio::process::Command::new(&claude_bin);
         for arg in &claude_args {
-            // On Windows, .cmd batch files are spawned via cmd.exe which
-            // interprets \r\n as command separators, causing "batch file
-            // arguments are invalid". Normalize to \n before passing.
-            #[cfg(target_os = "windows")]
-            let sanitized = arg.replace("\r\n", "\n");
-            #[cfg(not(target_os = "windows"))]
-            let sanitized = arg.as_str();
-            cmd.arg(sanitized);
+            cmd.arg(arg);
         }
 
         let path_env = claude_stream::augmented_path();

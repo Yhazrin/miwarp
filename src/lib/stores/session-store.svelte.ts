@@ -482,12 +482,27 @@ export class SessionStore {
     return this._getPermissionScan().pendingTools;
   }
 
+  /** Whether the latest user turn is still waiting for an assistant reply in timeline. */
+  private _awaitingAssistantResponse(): boolean {
+    let lastUserIdx = -1;
+    let lastAssistantIdx = -1;
+    for (let i = this.timeline.length - 1; i >= 0; i--) {
+      const entry = this.timeline[i];
+      if (entry.kind === "user" && lastUserIdx < 0) lastUserIdx = i;
+      if (entry.kind === "assistant" && lastAssistantIdx < 0) lastAssistantIdx = i;
+      if (lastUserIdx >= 0 && lastAssistantIdx >= 0) break;
+    }
+    if (lastUserIdx < 0) return false;
+    return lastAssistantIdx < lastUserIdx;
+  }
+
   get isThinking(): boolean {
-    if (!this.isRunning || this.streamingText) return false;
+    if (!this.isRunning || this.streamingText.trim()) return false;
     // During loadRun replay, phase is set to "running" before events are loaded.
     // Without this guard, isThinking flashes true on session switch (especially on
     // Windows where replay is slower). Suppress during the loading window.
     if (this._isLoadingReplay) return false;
+    if (!this._awaitingAssistantResponse()) return false;
     return !this.hasPendingPermission && !this.hasElicitation;
   }
 
@@ -940,6 +955,19 @@ export class SessionStore {
     return entry.content;
   }
 
+  /** Drop in-flight stream/thinking buffers (live turn shell or orphan recovery). */
+  private _clearStreamingState(ctx: ReduceCtx | null): void {
+    if (ctx) {
+      ctx.streamText = "";
+      ctx.thinkingText = "";
+    } else {
+      this.streamingText = "";
+      this.thinkingText = "";
+    }
+    this.thinkingStartMs = 0;
+    this.thinkingEndMs = 0;
+  }
+
   private _patchAssistantContentIfEmpty(
     ctx: ReduceCtx | null,
     messageId: string,
@@ -973,11 +1001,25 @@ export class SessionStore {
   ): void {
     if (replayOnly) return;
     const streamText = ctx ? ctx.streamText : this.streamingText;
-    if (!streamText.trim()) return;
+    const trimmed = streamText.trim();
+    if (!trimmed) return;
+
+    const lastAssistant = [...getTl()]
+      .reverse()
+      .find((e): e is Extract<TimelineEntry, { kind: "assistant" }> => e.kind === "assistant");
+    if (lastAssistant && lastAssistant.content.trim() === trimmed) {
+      dbg("store", "orphan streamingText dropped — already materialized in timeline", {
+        runId: ev.run_id,
+        len: streamText.length,
+        messageId: lastAssistant.id,
+      });
+      this._clearStreamingState(ctx);
+      return;
+    }
+
     const id = `synthetic_assistant_${ev.run_id}_${this._lastProcessedSeq}`;
     if (getTl().some((e) => e.kind === "assistant" && e.id === id)) {
-      if (ctx) ctx.streamText = "";
-      else this.streamingText = "";
+      this._clearStreamingState(ctx);
       return;
     }
     dbgWarn("store", "orphan streamingText materialized on idle", {
@@ -993,8 +1035,7 @@ export class SessionStore {
       ts: eventTs(ev),
     };
     this._pushTimeline(ctx, entry);
-    if (ctx) ctx.streamText = "";
-    else this.streamingText = "";
+    this._clearStreamingState(ctx);
   }
 
   private _runIdleHealthCheckIfNeeded(): void {
@@ -1524,6 +1565,11 @@ export class SessionStore {
 
   // ── Actions ──
 
+  /** Clear in-flight turn streaming state before a new user message. */
+  private _clearLiveTurnState(): void {
+    this._clearStreamingState(null);
+  }
+
   /** Clear all content/display state fields. Does not touch phase, run, or agent. */
   private _clearContentState(): void {
     this.timeline = [];
@@ -1768,6 +1814,9 @@ export class SessionStore {
         }
       } else if (st === "completed" || st === "failed" || st === "stopped") {
         this._setPhase(st as SessionPhase);
+      } else if (st === "idle") {
+        // Keep "loading" until the snapshot path chooses cached / idle — avoid
+        // ready → cached which used to race and get blocked by the state machine.
       } else {
         this._setPhase("ready");
       }
@@ -1887,6 +1936,11 @@ export class SessionStore {
         }
 
         this._isLoadingReplay = false;
+        // Idle load with no snapshot / no run_state in the log can leave phase
+        // stuck on "loading" — settle to cached (desktop lazy) or idle.
+        if (this.phase === "loading" && this.run?.status === "idle") {
+          this._setPhase(getTransport().isDesktop() ? "cached" : "idle");
+        }
         dbg("store", "loadRun", {
           total: Math.round(performance.now() - loadStart),
           snapshotHit,
@@ -2090,6 +2144,7 @@ export class SessionStore {
   ): Promise<void> {
     if (!this.run) throw new Error("No active run — message cannot be sent");
     this.error = "";
+    this._clearLiveTurnState();
     // Invalidate idle snapshot — user is sending a new message
     snapshotCache.deleteSnapshot(this.run.id).catch((e) => dbgWarn("snapshot", "delete failed", e));
 
@@ -2782,6 +2837,7 @@ export class SessionStore {
           this._patchAssistantContentIfEmpty(ctx, ev.message_id, finalText);
           if (ev.parent_tool_use_id)
             this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
+          if (!ev.parent_tool_use_id) this._clearStreamingState(ctx);
           return true;
         }
         const existingAssistant = getTl().find(
@@ -2792,6 +2848,7 @@ export class SessionStore {
           if (ev.parent_tool_use_id)
             this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
           getSeenMsg().add(ev.message_id);
+          if (!ev.parent_tool_use_id) this._clearStreamingState(ctx);
           return true;
         }
         getSeenMsg().add(ev.message_id);
@@ -2818,15 +2875,7 @@ export class SessionStore {
           return true;
         }
         const savedThinking = ctx ? ctx.thinkingText : this.thinkingText;
-        if (ctx) {
-          ctx.streamText = "";
-          ctx.thinkingText = "";
-        } else {
-          this.streamingText = "";
-          this.thinkingText = "";
-        }
-        this.thinkingStartMs = 0;
-        this.thinkingEndMs = 0;
+        this._clearStreamingState(ctx);
         const entry: TimelineEntry = {
           kind: "assistant",
           id: ev.message_id,
@@ -3183,7 +3232,11 @@ export class SessionStore {
             ctx,
           );
           this._materializeOrphanStreamingOnIdle(ctx, ev, replayOnly, getTl);
-          if (!replayOnly) this._needsIdleHealthCheck = true;
+          if (!replayOnly) {
+            // Belt-and-suspenders: live idle must never leave orphan streamingText behind.
+            this._clearStreamingState(ctx);
+            this._needsIdleHealthCheck = true;
+          }
           dbg("store", "run_state idle", {
             runId: ev.run_id,
             streamingTextLen: ctx ? ctx.streamText.length : this.streamingText.length,
@@ -3367,6 +3420,7 @@ export class SessionStore {
       case "session_recovering":
       case "session_recovered":
       case "protocol_desync":
+      case "governor_budget_exceeded":
         // Lifecycle signals — UI handled via middleware notice + notification listener.
         break;
 

@@ -2742,6 +2742,19 @@ impl SessionActor {
 
     // ── RunState emission (migrated from state.rs) ──
 
+    /// True when this actor is still the registered owner in the session map.
+    /// After `stop_actor` removes us for replacement or user stop, we must not
+    /// emit further RunState events — the IPC layer owns the terminal transition.
+    fn is_still_registered(&self) -> bool {
+        let Ok(map) = self.sessions.try_lock() else {
+            // Mailbox is contended; prefer emitting so a live actor is not silenced.
+            return true;
+        };
+        map.get(&self.run_id)
+            .map(|handle| std::sync::Arc::ptr_eq(&self.tag, &handle.tag))
+            .unwrap_or(false)
+    }
+
     /// Emit a RunState event with identity dedup. Single entry point.
     fn emit_state(
         &mut self,
@@ -2750,6 +2763,14 @@ impl SessionActor {
         error: Option<String>,
         update_meta: bool,
     ) {
+        if !self.is_still_registered() {
+            log::debug!(
+                "[actor] skip emit_state: run={} -> {} (no longer registered)",
+                self.run_id,
+                new_state
+            );
+            return;
+        }
         // 1. Identity dedup
         if self.state == new_state {
             log::debug!(

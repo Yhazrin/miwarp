@@ -2184,7 +2184,13 @@ describe("SessionStore reducer", () => {
     it("isThinking returns false when elicitation pending", () => {
       store.run = makeRun("run-1");
       store.phase = "running";
-      // Without elicitation: isThinking should be true (running, no streaming text)
+      store.applyEvent({
+        type: "user_message",
+        run_id: "run-1",
+        text: "hello",
+        message_id: "user-1",
+      } as BusEvent);
+      // Without elicitation: isThinking should be true (running, awaiting assistant)
       expect(store.isThinking).toBe(true);
 
       store.applyEvent({
@@ -5167,6 +5173,58 @@ describe("SessionStore reducer", () => {
         text: "final text",
       });
       expect((store.timeline[0] as { content: string }).content).toBe("final text");
+    });
+
+    it("clears orphan streamingText when duplicate message_complete arrives after deltas", () => {
+      store.applyEventBatch([
+        { type: "message_delta", run_id: "run-recover", text: "streamed answer" },
+        {
+          type: "message_complete",
+          run_id: "run-recover",
+          message_id: "m-dup-stream",
+          text: "streamed answer",
+        },
+      ] as BusEvent[]);
+      expect(store.streamingText).toBe("");
+
+      store.applyEvent({
+        type: "message_delta",
+        run_id: "run-recover",
+        text: "late delta",
+      });
+      expect(store.streamingText).toBe("late delta");
+
+      store.applyEvent({
+        type: "message_complete",
+        run_id: "run-recover",
+        message_id: "m-dup-stream",
+        text: "streamed answer",
+      });
+      expect(store.streamingText).toBe("");
+    });
+
+    it("drops orphan streamingText on idle when timeline already has the same assistant content", () => {
+      store.applyEventBatch([
+        { type: "message_delta", run_id: "run-recover", text: "same body" },
+        {
+          type: "message_complete",
+          run_id: "run-recover",
+          message_id: "m-same",
+          text: "same body",
+        },
+      ] as BusEvent[]);
+      store.streamingText = "same body";
+
+      store.applyEvent({
+        type: "run_state",
+        run_id: "run-recover",
+        state: "idle",
+      });
+
+      expect(store.streamingText).toBe("");
+      const assistants = store.timeline.filter((e) => e.kind === "assistant");
+      expect(assistants).toHaveLength(1);
+      expect((assistants[0] as { content: string }).content).toBe("same body");
     });
 
     it("subagent message_complete with empty text uses synthetic stream content", () => {

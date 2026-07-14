@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { renderMarkdown } from "$lib/utils/markdown";
+  import { renderMarkdown, stabilizeStreamingMarkdown } from "$lib/utils/markdown";
   import { readFileBase64 } from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { mountVisualBlocks } from "$lib/visual-blocks";
@@ -109,20 +109,24 @@
     return () => obs.disconnect();
   });
 
-  // ── Streaming display: rAF-coalesced raw <pre>; non-streaming: full markdown render ──
-  // Streaming mode shows raw text in a <pre> (zero parse cost). DOM writes are coalesced
-  // to one per animation frame so high-frequency token deltas don't thrash text nodes.
-  // On streaming → false, $derived recomputes html once and the {#if/:else} branch swaps.
-  // Init to empty — `$state(text)` would only capture text's value at component creation,
-  // and Svelte 5 warns about that pattern. The effect below runs on mount and seeds
-  // displayText from current `text` (either via the !streaming branch or firstSyncDone).
+  // ── Streaming: rAF text coalesce + throttled markdown snapshot ──
+  // Height stability: no trailing plain append, slower throttle, fence stabilize,
+  // and a min-height ratchet so reparse never shrinks the bubble mid-stream.
   let displayText = $state("");
+  let markdownSnapshot = $state("");
+  let streamMinHeightPx = $state(0);
   let rafId: number | null = null;
-  // Non-reactive flag: set/read here doesn't trigger Svelte effect tracking.
-  // We use this instead of reading `displayText` inside the effect — reading $state
-  // would make the rAF callback's `displayText = text` trigger an effect rerun,
-  // wasting one no-op frame per real text change.
-  let firstSyncDone = false;
+  let streamMdTimer: ReturnType<typeof setTimeout> | null = null;
+  let heightRatchetRaf: number | null = null;
+  let streamPending = "";
+  /** Non-reactive: first-paint gate (avoid reading markdownSnapshot inside the text effect). */
+  let hasStreamMdSnapshot = false;
+
+  function streamMarkdownIntervalMs(len: number): number {
+    if (len < 2_000) return 90;
+    if (len < 8_000) return 140;
+    return 200;
+  }
 
   function cancelPendingFrame() {
     if (rafId !== null) {
@@ -131,41 +135,115 @@
     }
   }
 
+  function clearStreamMarkdownTimer() {
+    if (streamMdTimer !== null) {
+      clearTimeout(streamMdTimer);
+      streamMdTimer = null;
+    }
+  }
+
+  function clearHeightRatchetRaf() {
+    if (heightRatchetRaf !== null) {
+      cancelAnimationFrame(heightRatchetRaf);
+      heightRatchetRaf = null;
+    }
+  }
+
+  function scheduleStreamingFlush() {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      displayText = streamPending;
+      if (displayText !== streamPending) {
+        scheduleStreamingFlush();
+      }
+    });
+  }
+
+  function flushMarkdownSnapshot(next: string) {
+    clearStreamMarkdownTimer();
+    markdownSnapshot = next;
+    hasStreamMdSnapshot = next.length > 0;
+  }
+
+  function scheduleMarkdownSnapshot(next: string) {
+    if (!next) {
+      flushMarkdownSnapshot("");
+      return;
+    }
+    if (!hasStreamMdSnapshot) {
+      flushMarkdownSnapshot(next);
+      return;
+    }
+    if (streamMdTimer !== null) return;
+    const atBlockBoundary = /\n\n[\s\S]{0,24}$/.test(next) || next.endsWith("\n```");
+    const delay = atBlockBoundary
+      ? Math.min(48, streamMarkdownIntervalMs(next.length))
+      : streamMarkdownIntervalMs(next.length);
+    streamMdTimer = setTimeout(() => {
+      streamMdTimer = null;
+      const latest = streamPending || displayText;
+      if (latest !== markdownSnapshot) {
+        markdownSnapshot = latest;
+      }
+    }, delay);
+  }
+
   $effect(() => {
     if (!streaming) {
-      // Leaving streaming: cancel any pending rAF, sync immediately.
       cancelPendingFrame();
+      clearStreamMarkdownTimer();
+      clearHeightRatchetRaf();
+      streamPending = "";
+      hasStreamMdSnapshot = false;
+      streamMinHeightPx = 0;
       displayText = text;
-      firstSyncDone = false; // reset for next streaming session
+      markdownSnapshot = text;
       return;
     }
-    // First frame on (re)entering streaming with content: sync immediately to avoid
-    // visible "first character delay one frame".
-    if (!firstSyncDone && text !== "") {
-      displayText = text;
-      firstSyncDone = true;
-      return;
+
+    streamPending = text;
+
+    if (displayText === "" && streamPending !== "") {
+      displayText = streamPending;
     }
-    // Streaming: at most one rAF-pending update; high-frequency tokens coalesce.
-    // ⚠️ Do NOT cancel rAF in $effect cleanup — Svelte runs cleanup before each rerun, so
-    //    if text ticks faster than vsync we'd repeatedly cancel→reschedule and starve the flush.
-    if (rafId === null) {
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        displayText = text;
-      });
-    }
+    scheduleStreamingFlush();
+    scheduleMarkdownSnapshot(streamPending);
   });
 
-  // Cancel pending rAF on unmount only (not on every effect rerun).
-  onDestroy(cancelPendingFrame);
+  onDestroy(() => {
+    cancelPendingFrame();
+    clearStreamMarkdownTimer();
+    clearHeightRatchetRaf();
+  });
 
-  // Markdown rendering gate: skip when streaming OR not yet visible (lazy).
-  let renderMarkdownNow = $derived(!streaming && visibleOnce);
-  let html = $derived(renderMarkdownNow && displayText ? cachedRenderMarkdown(displayText) : "");
+  // Lazy history stays gated; live streaming always renders when visible / forced.
+  let renderMarkdownNow = $derived(streaming || visibleOnce);
+  let html = $derived(
+    renderMarkdownNow && markdownSnapshot
+      ? cachedRenderMarkdown(
+          streaming ? stabilizeStreamingMarkdown(markdownSnapshot) : markdownSnapshot,
+        )
+      : "",
+  );
+
+  // Ratchet min-height upward after each streaming paint.
+  $effect(() => {
+    if (!streaming || !container || !html) return;
+    clearHeightRatchetRaf();
+    heightRatchetRaf = requestAnimationFrame(() => {
+      heightRatchetRaf = null;
+      if (!container) return;
+      const h = container.offsetHeight;
+      if (h > streamMinHeightPx) streamMinHeightPx = h;
+    });
+    return () => clearHeightRatchetRaf();
+  });
 
   $effect(() => {
-    if (!container || !html || !renderMarkdownNow) return;
+    // Skip visual-block remount while streaming — {@html} replaces often enough
+    // that remounting mermaid/vega each tick is too expensive.
+    if (!container || !html || !renderMarkdownNow || streaming) return;
     let unmountVisual: (() => void) | undefined;
     try {
       unmountVisual = mountVisualBlocks(container, { tone });
@@ -176,7 +254,7 @@
   });
 
   $effect(() => {
-    if (!container || !html) return;
+    if (!container || !html || streaming) return;
 
     const buttons = container.querySelectorAll<HTMLButtonElement>("[data-code-copy]");
     const cleanups: Array<() => void> = [];
@@ -278,7 +356,7 @@
   }
 
   $effect(() => {
-    if (!container || !html) return;
+    if (!container || !html || streaming) return;
     // Use rAF to let the DOM settle after {@html} injection
     const raf = requestAnimationFrame(() => {
       applyCollapsibleBlocks();
@@ -288,7 +366,7 @@
 
   // Resolve relative image paths against basePath (for Explorer file preview)
   $effect(() => {
-    if (!container || !html || !basePath) return;
+    if (!container || !html || !basePath || streaming) return;
 
     const imgs = container.querySelectorAll<HTMLImageElement>("img");
     for (const img of imgs) {
@@ -314,12 +392,41 @@
 </script>
 
 {#if !renderMarkdownNow}
-  <!-- Streaming: render completed visual fences immediately; rest stays safe plain text. -->
-  <div bind:this={lazyEl} class="min-h-[3em]">
+  <!-- Off-screen / pre-visible: plain streaming fallback (no markdown parse). -->
+  <div bind:this={lazyEl}>
+    <StreamingVisualContent text={displayText} {tone} class={className} />
+  </div>
+{:else if streaming && !html}
+  <div bind:this={lazyEl}>
     <StreamingVisualContent text={displayText} {tone} class={className} />
   </div>
 {:else}
-  <div bind:this={container} class="{proseClasses} {className}">
+  <div
+    bind:this={container}
+    class="streaming-md-root {proseClasses} {className}"
+    class:streaming-md-live={streaming}
+    style:min-height={streaming && streamMinHeightPx > 0 ? `${streamMinHeightPx}px` : undefined}
+  >
     {@html html}
   </div>
 {/if}
+
+<style>
+  /* Keep streaming layout from oscillating when {@html} swaps mid-token. */
+  .streaming-md-live {
+    contain: layout style;
+  }
+
+  .streaming-md-live :global(p) {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+  }
+
+  .streaming-md-live :global(p:first-child) {
+    margin-top: 0;
+  }
+
+  .streaming-md-live :global(p:last-child) {
+    margin-bottom: 0;
+  }
+</style>

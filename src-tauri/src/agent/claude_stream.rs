@@ -79,6 +79,9 @@ fn extra_path_dirs() -> Vec<PathBuf> {
             }
         }
         dirs.extend([
+            // Custom npm prefixes (`npm config set prefix …`) commonly land here.
+            home.join("npm-global"),
+            home.join(".npm-global"),
             home.join(".npm-global").join("bin"),
             home.join(".claude").join("bin"),
             home.join(".local").join("bin"),
@@ -225,8 +228,8 @@ fn which_binary_inner(name: &str) -> Option<String> {
         let path_str = augmented_path();
         log::debug!("[path] searching PATH for '{name}': {path_str}");
         let path_os = std::ffi::OsString::from(&path_str);
-        // Prefer .exe over .cmd — .cmd files spawned via CREATE_NO_WINDOW can
-        // fail with "batch file arguments are invalid" on some Windows configs.
+        // Prefer .exe over .cmd — .cmd files spawned via CREATE_NO_WINDOW fail with
+        // "batch file arguments are invalid" when any argv contains a newline.
         let extensions = [".exe", ".cmd", ".bat"];
         let mut fallback: Option<String> = None;
         for dir in std::env::split_paths(&path_os) {
@@ -234,7 +237,8 @@ fn which_binary_inner(name: &str) -> Option<String> {
             for ext in &extensions {
                 let candidate = dir.join(format!("{}{}", name, ext));
                 if candidate.is_file() {
-                    return Some(candidate.to_string_lossy().into_owned());
+                    let raw = candidate.to_string_lossy().into_owned();
+                    return Some(unwrap_windows_cli_shim(&raw));
                 }
             }
             // Bare name as fallback
@@ -243,7 +247,7 @@ fn which_binary_inner(name: &str) -> Option<String> {
                 fallback = Some(candidate.to_string_lossy().into_owned());
             }
         }
-        fallback
+        fallback.map(|p| unwrap_windows_cli_shim(&p))
     }
     #[cfg(not(windows))]
     {
@@ -460,6 +464,120 @@ pub async fn fork_oneshot(
 /// Shared cache for the resolved claude binary path.
 static CLAUDE_PATH_CACHE: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
 
+/// If `path` is a Windows `.cmd`/`.bat` shim that forwards to a real `.exe`,
+/// return that `.exe`. Otherwise return `path` unchanged.
+///
+/// Why: spawning `.cmd` with `CREATE_NO_WINDOW` fails with
+/// `batch file arguments are invalid` whenever **any** argv contains a newline
+/// (`\n` / `\r` / `\r\n`). Claude CLI regularly receives newlines via
+/// `--system-prompt`, `--append-system-prompt`, and `--agents`. Preferring
+/// `.exe` over `.cmd` in the same directory is not enough — npm global shims
+/// live next to `claude.cmd` while the real binary is under
+/// `node_modules/@anthropic-ai/claude-code/bin/claude.exe`.
+pub(crate) fn unwrap_windows_cli_shim(path: &str) -> String {
+    #[cfg(not(windows))]
+    {
+        path.to_string()
+    }
+    #[cfg(windows)]
+    {
+        unwrap_windows_cli_shim_inner(path)
+    }
+}
+
+/// Parse a single npm-style batch line for `"%dp0%\…\foo.exe"`.
+/// Pure string logic — unit-tested on all platforms.
+fn dp0_exe_from_batch_line(line: &str, dp0: &std::path::Path) -> Option<PathBuf> {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    // Skip batch directives; only the launch line embeds the target exe.
+    if lower.starts_with('@')
+        || lower.starts_with(':')
+        || lower.starts_with("set ")
+        || lower.starts_with("setlocal")
+        || lower.starts_with("endlocal")
+        || lower.starts_with("goto ")
+        || lower.starts_with("call ")
+        || lower.starts_with("exit")
+        || lower.starts_with("if ")
+        || lower.starts_with("rem ")
+    {
+        return None;
+    }
+    let dp0_idx = lower.find("%dp0%")?;
+    let after = &trimmed[dp0_idx + "%dp0%".len()..];
+    let after = after.trim_start_matches(['\\', '/', '"']);
+    let after_lower = after.to_ascii_lowercase();
+    let exe_rel_end = after_lower.find(".exe").map(|i| i + 4)?;
+    let rel = after[..exe_rel_end].trim_matches(|c| c == '"' || c == '\'');
+    if rel.is_empty() {
+        return None;
+    }
+    Some(dp0.join(rel))
+}
+
+/// Known Claude Code npm layout relative to the shim directory.
+fn known_claude_exe_beside_shim(shim_dir: &std::path::Path) -> PathBuf {
+    shim_dir
+        .join("node_modules")
+        .join("@anthropic-ai")
+        .join("claude-code")
+        .join("bin")
+        .join("claude.exe")
+}
+
+#[cfg(windows)]
+fn unwrap_windows_cli_shim_inner(path: &str) -> String {
+    let p = PathBuf::from(path);
+    let is_batch = p
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("cmd") || e.eq_ignore_ascii_case("bat"));
+    if !is_batch {
+        return path.to_string();
+    }
+    let Some(dir) = p.parent() else {
+        return path.to_string();
+    };
+
+    let known = known_claude_exe_beside_shim(dir);
+    if known.is_file() {
+        let unwrapped = known.to_string_lossy().into_owned();
+        log::info!(
+            "[claude_stream] unwrapped batch shim {} → {}",
+            path,
+            unwrapped
+        );
+        return unwrapped;
+    }
+
+    if let Ok(content) = std::fs::read_to_string(&p) {
+        for line in content.lines() {
+            if let Some(exe) = dp0_exe_from_batch_line(line, dir) {
+                if exe.is_file() {
+                    let unwrapped = exe.to_string_lossy().into_owned();
+                    log::info!(
+                        "[claude_stream] unwrapped batch shim {} → {} (parsed)",
+                        path,
+                        unwrapped
+                    );
+                    return unwrapped;
+                }
+            }
+        }
+    }
+
+    log::warn!(
+        "[claude_stream] batch shim {} could not be unwrapped to .exe; \
+         spawn may fail when args contain newlines",
+        path
+    );
+    path.to_string()
+}
+
 /// Resolve the full path to the claude binary.
 /// Cached after first resolution. Use `invalidate_claude_path_cache()` to clear
 /// (e.g. after installing the CLI) so the next call re-scans.
@@ -486,14 +604,40 @@ pub(crate) fn resolve_claude_path() -> String {
             }
         }
         if let Some(ref h) = home {
+            // Custom npm prefix (e.g. %USERPROFILE%\npm-global)
+            bases.push(h.join("npm-global"));
+            bases.push(h.join(".npm-global"));
+            bases.push(h.join(".npm-global").join("bin"));
             bases.push(h.join(".claude").join("bin"));
             bases.push(h.join(".local").join("bin"));
+            // Nested real binary (skip the .cmd shim entirely when present)
+            bases.push(
+                h.join("npm-global")
+                    .join("node_modules")
+                    .join("@anthropic-ai")
+                    .join("claude-code")
+                    .join("bin"),
+            );
         }
-        // Prefer .exe over .cmd — .cmd files spawned via CREATE_NO_WINDOW can
-        // fail with "batch file arguments are invalid" on some Windows configs.
+        if let Ok(d) = std::env::var("APPDATA") {
+            if !d.is_empty() {
+                bases.push(
+                    PathBuf::from(&d)
+                        .join("npm")
+                        .join("node_modules")
+                        .join("@anthropic-ai")
+                        .join("claude-code")
+                        .join("bin"),
+                );
+            }
+        }
+        // Prefer .exe over .cmd — see unwrap_windows_cli_shim docs.
         let names = ["claude.exe", "claude.cmd", "claude.bat", "claude"];
         let mut cands = Vec::new();
         for base in &bases {
+            if base.as_os_str().is_empty() {
+                continue;
+            }
             for name in &names {
                 cands.push(base.join(name));
             }
@@ -513,7 +657,7 @@ pub(crate) fn resolve_claude_path() -> String {
 
     for c in &candidates {
         if c.exists() {
-            let path_str = c.to_string_lossy().to_string();
+            let path_str = unwrap_windows_cli_shim(&c.to_string_lossy());
             log::debug!(
                 "[claude_stream] resolved claude binary (cached): {}",
                 path_str
@@ -526,6 +670,7 @@ pub(crate) fn resolve_claude_path() -> String {
         "[claude_stream] claude binary not found in candidates, falling back to PATH lookup"
     );
     // Use which_binary to search augmented PATH for absolute path
+    // (which_binary already unwraps Windows .cmd shims).
     let fallback = which_binary("claude").unwrap_or_else(|| "claude".to_string());
     *cached = Some(fallback.clone());
     fallback
@@ -535,4 +680,60 @@ pub(crate) fn resolve_claude_path() -> String {
 pub fn invalidate_claude_path_cache() {
     *CLAUDE_PATH_CACHE.lock().unwrap_or_else(|e| e.into_inner()) = None;
     log::debug!("[claude_stream] claude path cache invalidated");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn dp0_exe_parses_npm_claude_shim_line() {
+        let line = r#""%dp0%\node_modules\@anthropic-ai\claude-code\bin\claude.exe"   %*"#;
+        let dp0 = Path::new(r"C:\Users\test\npm-global");
+        let exe = dp0_exe_from_batch_line(line, dp0).expect("parse");
+        assert_eq!(
+            exe,
+            dp0.join("node_modules")
+                .join("@anthropic-ai")
+                .join("claude-code")
+                .join("bin")
+                .join("claude.exe")
+        );
+    }
+
+    #[test]
+    fn dp0_exe_ignores_batch_directives() {
+        let dp0 = Path::new(r"C:\shim");
+        assert!(dp0_exe_from_batch_line("@ECHO off", dp0).is_none());
+        assert!(dp0_exe_from_batch_line("SETLOCAL", dp0).is_none());
+        assert!(dp0_exe_from_batch_line("CALL :find_dp0", dp0).is_none());
+    }
+
+    #[test]
+    fn dp0_exe_handles_forward_slashes() {
+        let line = r#""%dp0%/node_modules/@anthropic-ai/claude-code/bin/claude.exe" %*"#;
+        let dp0 = Path::new("/tmp/npm-global");
+        let exe = dp0_exe_from_batch_line(line, dp0).expect("parse");
+        assert!(exe.ends_with("claude.exe"));
+    }
+
+    #[test]
+    fn known_claude_exe_path_layout() {
+        let dir = Path::new(r"C:\Users\test\npm-global");
+        assert_eq!(
+            known_claude_exe_beside_shim(dir),
+            dir.join("node_modules")
+                .join("@anthropic-ai")
+                .join("claude-code")
+                .join("bin")
+                .join("claude.exe")
+        );
+    }
+
+    #[test]
+    fn unwrap_non_batch_is_identity() {
+        let p = "/usr/local/bin/claude";
+        assert_eq!(unwrap_windows_cli_shim(p), p);
+    }
 }

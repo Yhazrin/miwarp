@@ -201,7 +201,9 @@
               agent={store.agent}
               model={store.run?.model ?? store.model}
               platformId={store.platformId ?? undefined}
-              animated={!isFrozenEntry(i) && i === lastAssistantIdx && store.isRunning}
+              animated={!isFrozenEntry(i) &&
+                i === lastAssistantIdx &&
+                !!(store.streamingText.trim() || store.thinkingText)}
               debugRunId={store.run?.id}
               debugSessionId={store.run?.session_id ?? undefined}
               lastToolId=""

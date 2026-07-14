@@ -200,22 +200,49 @@ impl ResourceGovernor {
     /// Check whether a new run may be admitted. Does NOT register the run —
     /// callers that decide to proceed must follow up with `register_run`.
     pub async fn try_admit(&self) -> Admission {
+        self.try_admit_for_run("").await
+    }
+
+    /// Like [`try_admit`], but allows replacing an already-tracked `run_id`
+    /// without consuming an additional concurrent slot (resume / respawn).
+    pub async fn try_admit_for_run(&self, run_id: &str) -> Admission {
         let guard = self.inner.read().await;
         let limit = guard.config.max_concurrent_runs;
         if limit > 0 {
-            let current = guard.active.len() as u32;
-            if current >= limit {
-                return Admission::Deny {
-                    kind: BudgetKind::ConcurrentRuns,
-                    current: current as u64,
-                    limit: limit as u64,
-                    reason: format!(
-                        "并发运行数已达上限 ({current}/{limit}); 请等待当前任务完成后再启动新的会话"
-                    ),
-                };
+            let replacing = !run_id.is_empty() && guard.active.contains(run_id);
+            if !replacing {
+                let current = guard.active.len() as u32;
+                if current >= limit {
+                    return Admission::Deny {
+                        kind: BudgetKind::ConcurrentRuns,
+                        current: current as u64,
+                        limit: limit as u64,
+                        reason: format!(
+                            "并发运行数已达上限 ({current}/{limit}); 请等待当前任务完成后再启动新的会话"
+                        ),
+                    };
+                }
             }
         }
         Admission::Allow
+    }
+
+    /// Drop governor slots for runs that no longer have a live SessionActor.
+    /// Repairs leaked slots when an actor exited without `release_run`.
+    pub async fn reconcile_live_sessions(&self, live_run_ids: &[String]) {
+        let live: HashSet<String> = live_run_ids.iter().cloned().collect();
+        let mut guard = self.inner.write().await;
+        let orphans: Vec<String> = guard
+            .active
+            .iter()
+            .filter(|id| !live.contains(*id))
+            .cloned()
+            .collect();
+        for id in orphans {
+            log::info!("[governor] reconciled stale slot for run_id={id}");
+            guard.active.remove(&id);
+            guard.runs.remove(&id);
+        }
     }
 
     /// Register a run as active. Caller is expected to call `release_run`
@@ -610,6 +637,33 @@ mod tests {
         let g = test_governor();
         let verdict = g.record_memory("nonexistent", 999).await;
         assert!(verdict.is_allowed());
+    }
+
+    #[tokio::test]
+    async fn admit_allows_replacing_existing_run_at_limit() {
+        let g = test_governor();
+        g.update_config(GovernorConfigUpdate {
+            max_concurrent_runs: Some(2),
+            max_memory_bytes: None,
+            probe_interval_secs: None,
+        })
+        .await;
+        g.register_run("r1", None).await;
+        g.register_run("r2", None).await;
+        assert!(!g.try_admit().await.is_allowed());
+        assert!(g.try_admit_for_run("r1").await.is_allowed());
+    }
+
+    #[tokio::test]
+    async fn reconcile_drops_orphan_slots() {
+        let g = test_governor();
+        g.register_run("live", None).await;
+        g.register_run("zombie", None).await;
+        g.reconcile_live_sessions(&["live".to_string()]).await;
+        assert!(g.try_admit().await.is_allowed());
+        let snap = g.snapshot().await;
+        assert_eq!(snap.active_runs.len(), 1);
+        assert_eq!(snap.active_runs[0].run_id, "live");
     }
 
     #[tokio::test]

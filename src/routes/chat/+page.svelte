@@ -1064,8 +1064,8 @@
       });
 
       // If store already holds an active session for this run, skip redundant loadRun
-      if (store.run?.id === id && store.sessionAlive) {
-        dbg("effect", "skip loadRun — session already alive for", id);
+      if (store.run?.id === id && (store.sessionAlive || store.resumeInFlight)) {
+        dbg("effect", "skip loadRun — session already alive or resume in flight for", id);
         const scrollTo = $page.url.searchParams.get("scrollTo");
         if (scrollTo) {
           const clean = new URL($page.url);
@@ -1151,16 +1151,23 @@
       const tl = store.timeline.length;
       const st = store.streamingText.length;
       const _rid = store.run?.id;
-      const changed = tl !== prevTl || st !== prevSt;
+      const tlChanged = tl !== prevTl;
+      const stChanged = st !== prevSt;
       prevTl = tl;
       prevSt = st;
+      if (!tlChanged && !stChanged) return;
+
       if (isChatAutoScroll && !readingHistory) {
-        requestAnimationFrame(() => {
-          if (chatAreaRef && isChatAutoScroll && !readingHistory) {
-            pinChatToBottom();
-          }
-        });
-      } else if (changed) {
+        if (tlChanged) {
+          requestAnimationFrame(() => {
+            if (chatAreaRef && isChatAutoScroll && !readingHistory) {
+              pinChatToBottom();
+            }
+          });
+        } else if (stChanged) {
+          followChatBottom();
+        }
+      } else {
         showChatScrollHint = true;
       }
     }
@@ -1376,6 +1383,7 @@
     handleChatScroll,
     handleChatWheel,
     pinChatToBottom,
+    followChatBottom,
     scrollChatToBottom,
     scrollToTool,
     scrollToMessage,

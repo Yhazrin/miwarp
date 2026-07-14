@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import AgentIdentity from "$lib/components/AgentIdentity.svelte";
   import { formatElapsed } from "$lib/chat/utils/format";
 
   interface Props {
@@ -10,67 +11,70 @@
     approving: boolean;
     sending: boolean;
     spinnerVerb: string;
+    agent: string;
+    platformId?: string;
+    model: string;
   }
 
-  let { elapsed, activeToolName, thinkingDurationSec, approving, sending, spinnerVerb }: Props =
-    $props();
+  let {
+    elapsed,
+    activeToolName,
+    thinkingDurationSec,
+    approving,
+    sending,
+    spinnerVerb,
+    agent,
+    platformId,
+    model,
+  }: Props = $props();
 </script>
 
-<div class="w-full animate-fade-in" data-export-exclude>
-  <div class="chat-content-width py-4">
+<div class="w-full" data-export-exclude>
+  <div class="w-full pl-[3.75rem] pr-8 py-4">
     <div class="mb-1.5 flex items-center gap-2">
-      <div
-        class="flex h-5 w-5 items-center justify-center rounded-sm bg-[hsl(var(--miwarp-status-warning)/0.1)] text-miwarp-status-warning"
-      >
-        <svg
-          class="h-3 w-3"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path
-            d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"
-          />
-        </svg>
-      </div>
-      <span class="text-sm font-semibold text-foreground">{t("chat_claude")}</span>
+      <AgentIdentity
+        {agent}
+        {platformId}
+        {model}
+        size="md"
+        animated={true}
+        showName={true}
+        showModel={false}
+      />
       {#if elapsed > 0}
         <span class="ml-auto text-[10px] tabular-nums text-muted-foreground"
           >{formatElapsed(elapsed)}</span
         >
       {/if}
     </div>
-    <div class="pl-7">
+    <div class="max-w-64rem min-w-0 text-sm leading-relaxed text-foreground">
       {#if activeToolName}
-        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+        <div class="flex items-center gap-2 text-muted-foreground">
           <Spinner size="sm" class="border-border border-t-muted-foreground" />
           <span
             >{t("chat_usingTool")}
-            <span class="text-foreground font-medium">{activeToolName}</span></span
+            <span class="font-medium text-foreground">{activeToolName}</span></span
           >
           {#if thinkingDurationSec && thinkingDurationSec > 0}
             <span class="text-xs tabular-nums">· thought for {thinkingDurationSec}s</span>
           {/if}
         </div>
       {:else if approving}
-        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+        <div class="flex items-center gap-2 text-muted-foreground">
           <Spinner size="sm" class="border-border border-t-muted-foreground" />
           <span>{t("chat_restartingApproved")}</span>
         </div>
       {:else if sending}
-        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+        <div class="flex items-center gap-2 text-muted-foreground">
           <Spinner size="sm" class="border-border border-t-muted-foreground" />
           <span>{t("chat_startingSession")}</span>
         </div>
       {:else}
-        <div class="flex items-center gap-2 text-sm">
+        <div class="flex items-center gap-2">
           <span class="spinner-star">✦</span>
           <span class="spinner-shimmer">{spinnerVerb}…</span>
           {#if thinkingDurationSec && thinkingDurationSec > 0}
-            <span class="text-muted-foreground text-xs tabular-nums"
+            <span class="text-xs tabular-nums text-muted-foreground"
               >· thought for {thinkingDurationSec}s</span
             >
           {/if}

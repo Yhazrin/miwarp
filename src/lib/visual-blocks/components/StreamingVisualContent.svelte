@@ -21,13 +21,12 @@
   // MarkdownContent already coalesces token deltas to one update per animation frame.
   // Parse that stable snapshot directly so visual fences do not incur a second frame of latency.
   let segments = $derived(extractCompletedVisualFences(text));
-
-  const showSkeleton = $derived(text.length < 100);
 </script>
 
-<div class="streaming-visual-content min-h-[3em] {className}">
-  {#if showSkeleton && text.length === 0}
-    <StreamingSkeleton class="mt-2" />
+<div class="streaming-visual-content {className}">
+  {#if text.length === 0}
+    <!-- Single-line placeholder — avoids multi-line skeleton height that collapses on first token. -->
+    <StreamingSkeleton lines={1} class="mt-2" />
   {:else}
     {#each segments as segment (segment.key)}
       {#if segment.type === "text"}
@@ -43,8 +42,5 @@
         />
       {/if}
     {/each}
-    {#if showSkeleton}
-      <StreamingSkeleton class="mt-2" />
-    {/if}
   {/if}
 </div>

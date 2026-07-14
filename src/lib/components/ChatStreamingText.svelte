@@ -12,8 +12,9 @@
   let { text, agent, platformId, model }: Props = $props();
 </script>
 
-<div class="w-full animate-fade-in">
-  <div class="chat-content-width py-4">
+<!-- Match ChatMessage assistant shell so live streaming does not jump on complete. -->
+<div class="w-full">
+  <div class="w-full pl-[3.75rem] pr-8 py-4">
     <div class="mb-1.5 flex items-center gap-2">
       <AgentIdentity
         {agent}
@@ -25,8 +26,10 @@
         showModel={false}
       />
     </div>
-    <div class="pl-7 prose-chat">
-      <MarkdownContent {text} streaming={true} />
+    <div class="max-w-64rem min-w-0 text-sm leading-relaxed text-foreground">
+      <div class="prose-chat">
+        <MarkdownContent {text} streaming={true} lazy={false} />
+      </div>
     </div>
   </div>
 </div>

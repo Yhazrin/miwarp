@@ -58,7 +58,7 @@ export function createForkLifecycle(ctx: ForkLifecycleContext) {
     initialAttachments?: Attachment[],
   ) {
     const targetRunId = overrideRunId ?? store.run?.id;
-    if (!targetRunId || getResuming()) return;
+    if (!targetRunId || getResuming() || store.resumeInFlight) return;
     setResuming(true);
 
     if (mode === "fork") {

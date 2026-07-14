@@ -97,3 +97,22 @@ export function renderMarkdown(text: string): string {
     { chars: text.length, codeFenceCount: text.match(/```/g)?.length ?? 0 },
   );
 }
+
+/**
+ * Close unbalanced fenced code blocks so a mid-stream ``` doesn't swallow the
+ * rest of the document (which collapses/expands layout on every throttle tick).
+ */
+export function stabilizeStreamingMarkdown(text: string): string {
+  if (!text) return text;
+  let fenceOpens = 0;
+  let i = 0;
+  while (i < text.length) {
+    const tick = text.indexOf("```", i);
+    if (tick === -1) break;
+    const atLineStart = tick === 0 || text[tick - 1] === "\n" || text[tick - 1] === "\r";
+    if (atLineStart) fenceOpens++;
+    i = tick + 3;
+  }
+  if (fenceOpens % 2 === 0) return text;
+  return text.endsWith("\n") ? `${text}\`\`\`` : `${text}\n\`\`\``;
+}

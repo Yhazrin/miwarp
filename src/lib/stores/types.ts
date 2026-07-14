@@ -87,13 +87,33 @@ const VALID_TRANSITIONS: Record<SessionPhase, Set<SessionPhase>> = {
     "cached",
     "stale_cached",
   ]),
-  ready: new Set(["spawning", "running", "empty", "loading", "idle"]),
+  ready: new Set([
+    "spawning",
+    "running",
+    "empty",
+    "loading",
+    "idle",
+    // loadRun may briefly land on ready before an idle snapshot promotes to cached
+    "cached",
+    "stale_cached",
+  ]),
   spawning: new Set(["running", "failed", "stopped", "idle", "empty", "loading"]),
   running: new Set(["idle", "completed", "failed", "stopped", "empty", "loading"]),
   idle: new Set(["running", "spawning", "completed", "failed", "stopped", "empty", "loading"]),
   completed: new Set(["empty", "loading", "spawning", "ready", "cached", "stale_cached"]),
   failed: new Set(["empty", "loading", "spawning", "ready", "running", "cached", "stale_cached"]),
-  stopped: new Set(["empty", "loading", "spawning", "ready", "cached", "stale_cached"]),
+  // Allow running/idle after stopped when a replacement actor resumes the same run
+  // (old actor teardown may emit stopped just before spawning on the wire).
+  stopped: new Set([
+    "empty",
+    "loading",
+    "spawning",
+    "ready",
+    "running",
+    "idle",
+    "cached",
+    "stale_cached",
+  ]),
   cached: new Set([
     "empty",
     "loading",

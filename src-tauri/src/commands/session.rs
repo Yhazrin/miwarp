@@ -328,6 +328,7 @@ pub async fn retry_session_recovery(
     spawn_locks: tauri::State<'_, crate::agent::spawn_locks::SpawnLocks>,
     cancel_token: tauri::State<'_, tokio_util::sync::CancellationToken>,
     recovery_registry: tauri::State<'_, crate::agent::runtime_recovery::RecoveryRegistry>,
+    governor: tauri::State<'_, crate::governor::ResourceGovernor>,
     run_id: String,
 ) -> Result<(), String> {
     {
@@ -347,6 +348,7 @@ pub async fn retry_session_recovery(
         cancel_token.inner(),
         recovery_registry.inner(),
         &run_id,
+        governor.inner().clone(),
     )
     .await
 }

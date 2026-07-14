@@ -158,15 +158,42 @@ pub(crate) async fn start_session_impl(
         exec_path
     );
 
+    // 1a. Reconcile governor slots with live actors — actors that exited
+    //     without an explicit stop_session can otherwise leak slots until
+    //     the app restarts.
+    {
+        let live: Vec<String> = sessions.lock().await.keys().cloned().collect();
+        governor.reconcile_live_sessions(&live).await;
+    }
+
     // 1b. Resource Governor admission check (110-S5) — refuse to spawn
     //     when the concurrent-run budget is exhausted. Emit a typed
     //     BusEvent so the frontend can surface the reason in a toast.
-    let admission = governor.try_admit().await;
+    //     Replacing an already-tracked run_id (resume) does not need a
+    //     new slot.
+    let admission = governor.try_admit_for_run(&run_id).await;
     if let Admission::Deny { .. } = &admission {
         governor.emit_budget_exceeded(&run_id, &admission);
         return Err(admission
             .deny_reason()
             .unwrap_or_else(|| "budget exceeded".into()));
+    }
+
+    // 1c. Idempotent continue/resume without a new message: duplicate
+    // start_session calls (URL resume racing loadRun, or double handleResume)
+    // must not kill a live actor and respawn.
+    if initial_message.is_none()
+        && matches!(session_mode, SessionMode::Continue | SessionMode::Resume)
+    {
+        let already_live = sessions.lock().await.contains_key(&run_id);
+        if already_live {
+            log::debug!(
+                "[session] start_session noop: actor already alive for run_id={}, mode={:?}",
+                run_id,
+                session_mode
+            );
+            return Ok(());
+        }
     }
 
     // 2. Read settings and build unified adapter settings
@@ -281,7 +308,21 @@ pub(crate) async fn start_session_impl(
         }
     }
 
-    // 4. Emit RunState(spawning) — UserMessage now handled by actor
+    // 4. Stop any existing actor BEFORE emitting spawning — the old actor's
+    // terminal RunState("stopped") must not arrive after spawning and pin the
+    // frontend phase machine at "stopped" while the replacement actor runs.
+    let had_session = stop_actor(sessions, &run_id).await?;
+    if had_session {
+        log::debug!(
+            "[session] old actor teardown complete for run_id={}",
+            run_id
+        );
+        // Free the slot synchronously before re-registering — the async
+        // recovery watcher may fire later and must not drop the new slot.
+        governor.release_run(&run_id).await;
+    }
+
+    // 5. Emit RunState(spawning) — UserMessage now handled by actor
     let spawning_event = BusEvent::RunState {
         run_id: run_id.clone(),
         state: "spawning".to_string(),
@@ -290,15 +331,6 @@ pub(crate) async fn start_session_impl(
     };
     emitter.persist_and_emit(&run_id, &spawning_event);
     storage::runs::update_status(&run_id, RunStatus::Running, None, None).ok();
-
-    // 5. Stop any existing actor for this run_id
-    let had_session = stop_actor(sessions, &run_id).await?;
-    if had_session {
-        log::debug!(
-            "[session] old actor teardown complete for run_id={}",
-            run_id
-        );
-    }
 
     // 6. Spawn CLI process (no initial stdin write — actor handles it)
     let effective_cwd = meta.remote_cwd.as_deref().unwrap_or(&meta.cwd);
@@ -411,6 +443,7 @@ pub(crate) async fn start_session_impl(
         Arc::clone(emitter),
         cancel_token.clone(),
         spawn_locks.clone(),
+        governor.clone(),
     );
 
     // 9. Send initial message through actor (unified entry point for Turn Engine)

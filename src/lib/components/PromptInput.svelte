@@ -1,7 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { untrack } from "svelte";
-  import { getTransport } from "$lib/transport";
   import type {
     Attachment,
     AuthOverview,
@@ -293,8 +292,11 @@
 
   // The textarea owns its height synchronously so an active caret never gets
   // interpolated, clipped, or moved during a soft wrap. The visual shell gets
-  // a FLIP-style scale animation instead: the border/background morph while
-  // the editable DOM is already at its final geometry.
+  // a FLIP-style scaleY animation instead: the border/background morph while
+  // the editable DOM is already at its final geometry. Duration/easing must
+  // match `.chat-pane` `--chat-input-dock-offset` transition (260ms).
+  const COMPOSER_LAYOUT_MS = 260;
+  const COMPOSER_LAYOUT_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
   let composerShellEl = $state<HTMLDivElement>();
   let composerSurfaceEl = $state<HTMLDivElement>();
   let shellHeightBeforeLayoutChange: number | null = null;
@@ -317,66 +319,55 @@
     shellHeightBeforeLayoutChange = null;
     if (!surface || !shell || !fromHeight) return;
 
-    const toHeight = shell.getBoundingClientRect().height;
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reducedMotion || toHeight <= 0 || Math.abs(fromHeight - toHeight) < 1) return;
+    // Wait one frame so expanded/collapsed chrome (pb-11 rail, padding) has
+    // committed — measuring in the same tick as the class swap under-reads.
+    const frame = requestAnimationFrame(() => {
+      const toHeight = shell.getBoundingClientRect().height;
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reducedMotion || toHeight <= 0 || Math.abs(fromHeight - toHeight) < 1) return;
 
-    shellSurfaceAnimation?.cancel();
-    const animation = surface.animate(
-      [{ transform: `scaleY(${fromHeight / toHeight})` }, { transform: "scaleY(1)" }],
-      {
-        duration: 260,
-        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-        fill: "both",
-      },
-    );
-    shellSurfaceAnimation = animation;
-    void animation.finished
-      .catch(() => {
-        // A newer layout change superseded this animation.
-      })
-      .then(() => {
-        if (shellSurfaceAnimation === animation) shellSurfaceAnimation = null;
-      });
+      shellSurfaceAnimation?.cancel();
+      const animation = surface.animate(
+        [
+          { transform: `scaleY(${fromHeight / toHeight})`, opacity: 0.92 },
+          { transform: "scaleY(1)", opacity: 1 },
+        ],
+        {
+          duration: COMPOSER_LAYOUT_MS,
+          easing: COMPOSER_LAYOUT_EASE,
+          fill: "both",
+        },
+      );
+      shellSurfaceAnimation = animation;
+      void animation.finished
+        .catch(() => {
+          // A newer layout change superseded this animation.
+        })
+        .then(() => {
+          if (shellSurfaceAnimation === animation) {
+            shellSurfaceAnimation = null;
+            // Clear fill:both residual so later transforms aren't sticky.
+            try {
+              animation.cancel();
+            } catch {
+              /* already finished */
+            }
+            surface.style.transform = "";
+            surface.style.opacity = "";
+          }
+        });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      shellSurfaceAnimation?.cancel();
+    };
   });
-
-  // ── v1.0.x cycle diagnostics ─────────────────────────────────────────
-  // Set `__CYCLE_DEBUG = true` to enable verbose logging. The log line is
-  // mirrored to the Rust stdout via the `log_debug_event` Tauri command
-  // (so the orchestrating Claude session can tail it) AND echoed to the
-  // browser DevTools console (for human inspection). Filter the tauri dev
-  // output with `grep '\[prompt-db\]'` to follow along. **Disable before
-  // committing** — this fires on every keypress and rAF tick.
-  const __CYCLE_DEBUG = false;
-  let __dbFrame = 0;
-  function __dbg(tag: string, data: Record<string, unknown>) {
-    if (!__CYCLE_DEBUG) return;
-    const frame = ++__dbFrame;
-    const t = performance.now().toFixed(1);
-    const line = `#${frame} t=${t}ms ${JSON.stringify(data)}`;
-    console.log(`[prompt-db] ${tag} ${line}`);
-    // Fire-and-forget forward to Rust stdout. We don't await — the Svelte
-    // reactive call stack shouldn't block on IPC for diagnostic-only
-    // telemetry. The Rust side uses `log::info!` which is non-blocking.
-    void getTransport()
-      .invoke("log_debug_event", { tag, payload: line })
-      .catch(() => {
-        // swallow — the IPC pipe is best-effort; the browser console still
-        // has the line.
-      });
-  }
 
   $effect(() => {
     // Re-measure after the layout mode changes. The resize writes directly to
     // the focused DOM node, so it never races Svelte's style reconciliation.
     const _layout = useCapsuleStrip;
     void _layout;
-    __dbg("effect:useCapsuleStrip", {
-      capsuleExpanded,
-      pendingPermission,
-      useCapsuleStrip,
-      text: store.inputText.length,
-    });
     untrack(() => {
       if (!isComposing) scheduleAutoResize();
     });
@@ -1919,7 +1910,6 @@
     if (!store.textareaEl || isComposing) return;
     const el = store.textareaEl;
     const hasNewline = store.inputText.includes("\n");
-    const prevCapsuleExpanded = capsuleExpanded;
 
     // Measuring must not animate or otherwise mutate the focused textarea.
     // A zero-height synchronous pass gives WebKit an unconstrained
@@ -1950,24 +1940,6 @@
       pendingPermission,
     });
     const expandedChanged = capsuleExpanded !== layout.expanded;
-
-    __dbg("autoResize", {
-      prevCapsuleExpanded,
-      capsuleExpanded,
-      nextCapsuleExpanded: layout.expanded,
-      changed: expandedChanged,
-      "text.len": store.inputText.length,
-      hasNewline,
-      pendingPermission,
-      scrollH,
-      padTop,
-      padBot,
-      borderTop,
-      borderBot,
-      verticalChrome,
-      contentH,
-      nextHeight: layout.contentHeight + verticalChrome,
-    });
 
     // Keep DOM ownership of the live textarea's geometry. CSS height
     // transitions interpolate the editing area itself, which clips/moves the
@@ -2499,7 +2471,7 @@
     <div
       bind:this={composerSurfaceEl}
       aria-hidden="true"
-      class="prompt-input-surface pointer-events-none absolute inset-0 z-0 origin-bottom border border-primary bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color,background-color,box-shadow] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] {useCapsuleStrip
+      class="prompt-input-surface pointer-events-none absolute inset-0 z-0 origin-bottom border border-primary bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color,background-color,box-shadow] duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] {useCapsuleStrip
         ? 'rounded-full'
         : 'rounded-[1.75rem]'} {btwMode ? 'border-miwarp-status-info/80' : ''} {fastModeState ===
         'on' && !btwMode
@@ -2533,38 +2505,25 @@
     <!-- The focused textarea remains one DOM node in both layouts. Its editing
          geometry updates immediately so wrapping never moves or clips the
          caret; only the shell's non-layout visual properties transition. -->
-    <!-- ── Unified input container (Option A: absolute side toolbars) ──
-         The two-mode "capsule vs multi-line" layout was suffering a
-         flip-flop loop because the side toolbars in capsule mode
-         (`max-w-[42%]` + `shrink-0`) squeezed the textarea's flex space,
-         collapsing the wrap from 1 line in multi-line to 10+ lines in
-         capsule for the same text. The contentH then alternated between
-         <28 and >34, tripping the hysteresis on every settle expiry.
-
-         Fix: in capsule mode the side toolbars are taken out of the flex
-         flow with `position: absolute` and the textarea reserves fixed
-         left/right padding to clear them. The same horizontal text lane is
-         retained after expansion, so only height changes → text wraps identically → contentH is
-         stable → hysteresis behaves as designed. -->
+    <!-- ── Unified right action rail (both modes) ──
+         Capsule and multi-line MUST share the same horizontal text lane
+         (`COMPOSER_TEXTAREA_INSET_X`). Previously expanded mode moved the
+         permission picker to bottom-left, which freed the right overlay and
+         made soft-wrap width jump wider on the first newline. Keep settings +
+         send on the right in both modes; only height / bottom padding change. -->
     <div
-      class="relative z-10 flex w-full transition-[min-height,padding] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-[min-height,padding] {useCapsuleStrip
+      class="relative z-10 flex w-full {useCapsuleStrip
         ? 'flex-row min-h-[42px] items-center py-1'
-        : 'flex-col px-1 pt-2 pb-1'}"
+        : 'flex-col pt-2 pb-1'}"
     >
-      {#if useCapsuleStrip}
-        <!-- In capsule, BOTH toolbars (left: agent selector + permission mode,
-             right: send) are stacked on the RIGHT side via `absolute right-0`.
-             This frees the left edge of the textarea so the placeholder
-             (and the first character of typed text) sits at the natural
-             left of the pill — matching user expectation. The toolbars
-             stay accessible above the textarea thanks to `z-10`. -->
-        <div
-          class="no-drag pointer-events-auto absolute right-0 top-0 z-10 flex h-full max-w-[55%] items-center gap-0.5 overflow-visible pl-1.5 pr-2.5"
-        >
-          {@render promptToolbarLeft(true)}
-          {@render promptToolbarRight(true)}
-        </div>
-      {/if}
+      <div
+        class="no-drag pointer-events-auto absolute right-0 z-10 flex max-w-[55%] items-center gap-0.5 overflow-visible pl-1.5 pr-2.5 {useCapsuleStrip
+          ? 'top-0 h-full'
+          : 'bottom-[7px]'}"
+      >
+        {@render promptToolbarLeft(true)}
+        {@render promptToolbarRight(useCapsuleStrip)}
+      </div>
 
       <textarea
         bind:this={store.textareaEl}
@@ -2582,30 +2541,10 @@
         rows={1}
         {disabled}
         aria-label={t("prompt_chatInput")}
-        class="no-drag min-w-0 w-full resize-none bg-transparent pl-3 pr-[150px] text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50 {useCapsuleStrip
+        class="no-drag min-w-0 w-full resize-none bg-transparent pl-3 pr-[11.5rem] text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50 {useCapsuleStrip
           ? 'overflow-x-auto overflow-y-hidden min-h-[24px] py-0 leading-6'
-          : 'w-full overflow-y-auto pt-1 pb-11'}"
+          : 'overflow-y-auto pt-1 pb-11'}"
       ></textarea>
-
-      {#if useCapsuleStrip}
-        <!-- right toolbar merged into left toolbar above (single absolute
-             right-0 container) -->
-      {:else}
-        <!-- Keep the expanded controls in a reserved action rail rather than
-             moving the right actions into the document flow. The chat dock is
-             bottom-anchored, so its right edge and vertical baseline now stay
-             fixed while only the editable region grows upward. -->
-        <div
-          class="no-drag pointer-events-auto absolute bottom-[7px] left-3 z-10 flex min-w-0 max-w-[55%] items-center gap-1"
-        >
-          {@render promptToolbarLeft(false)}
-        </div>
-        <div
-          class="no-drag pointer-events-auto absolute bottom-[7px] right-0 z-10 flex shrink-0 items-center gap-0.5 pr-2.5"
-        >
-          {@render promptToolbarRight(false)}
-        </div>
-      {/if}
     </div>
 
     {#if atMenuOpen}

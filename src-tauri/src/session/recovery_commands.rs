@@ -11,6 +11,7 @@ use crate::agent::runtime_recovery::{
 };
 use crate::agent::session_actor::{self, ActorCommand};
 use crate::agent::spawn_locks::SpawnLocks;
+use crate::governor::ResourceGovernor;
 use crate::models::BusEvent;
 use crate::storage;
 use crate::web_server::broadcaster::BroadcastEmitter;
@@ -33,6 +34,7 @@ pub fn spawn_recovery_watcher(
     emitter: Arc<BroadcastEmitter>,
     cancel_token: CancellationToken,
     spawn_locks: SpawnLocks,
+    governor: ResourceGovernor,
 ) {
     tokio::spawn(async move {
         if shutdown_rx.await.is_err() {
@@ -44,37 +46,52 @@ pub fn spawn_recovery_watcher(
                 .map(|e| !e.unrecoverable && e.last_crash_reason.is_some())
                 .unwrap_or(false)
         };
-        if !should_respawn {
+        if should_respawn {
+            if let Err(e) = respawn_session_actor(
+                &emitter,
+                &sessions,
+                &spawn_locks,
+                &cancel_token,
+                &registry,
+                &run_id,
+                governor.clone(),
+            )
+            .await
+            {
+                log::warn!("[recovery] respawn failed for run_id={}: {}", run_id, e);
+                // Mark unrecoverable so queued messages are drained and reported as lost.
+                let mut map = registry.lock().await;
+                if let Some(entry) = map.get_mut(&run_id) {
+                    if !entry.unrecoverable {
+                        mark_unrecoverable(
+                            entry,
+                            &run_id,
+                            &emitter,
+                            RuntimeError::RecoveryExhausted {
+                                run_id: run_id.clone(),
+                                attempts: entry.recovery_sm.consecutive_failures(),
+                            },
+                        );
+                    }
+                }
+                release_governor_if_actor_gone(&governor, &sessions, &run_id).await;
+            }
             return;
         }
-        if let Err(e) = respawn_session_actor(
-            &emitter,
-            &sessions,
-            &spawn_locks,
-            &cancel_token,
-            &registry,
-            &run_id,
-        )
-        .await
-        {
-            log::warn!("[recovery] respawn failed for run_id={}: {}", run_id, e);
-            // Mark unrecoverable so queued messages are drained and reported as lost.
-            let mut map = registry.lock().await;
-            if let Some(entry) = map.get_mut(&run_id) {
-                if !entry.unrecoverable {
-                    mark_unrecoverable(
-                        entry,
-                        &run_id,
-                        &emitter,
-                        RuntimeError::RecoveryExhausted {
-                            run_id: run_id.clone(),
-                            attempts: entry.recovery_sm.consecutive_failures(),
-                        },
-                    );
-                }
-            }
-        }
+        release_governor_if_actor_gone(&governor, &sessions, &run_id).await;
     });
+}
+
+async fn release_governor_if_actor_gone(
+    governor: &ResourceGovernor,
+    sessions: &crate::agent::adapter::ActorSessionMap,
+    run_id: &str,
+) {
+    let still_live = sessions.lock().await.contains_key(run_id);
+    if !still_live {
+        governor.release_run(run_id).await;
+        log::debug!("[governor] released slot after actor shutdown: run_id={run_id}");
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -85,6 +102,7 @@ pub(crate) async fn respawn_session_actor(
     cancel_token: &CancellationToken,
     registry: &crate::agent::runtime_recovery::RecoveryRegistry,
     run_id: &str,
+    governor: ResourceGovernor,
 ) -> Result<(), String> {
     let _guard = spawn_locks.acquire(run_id).await;
 
@@ -300,6 +318,7 @@ pub(crate) async fn respawn_session_actor(
         Arc::clone(emitter),
         cancel_token.clone(),
         spawn_locks.clone(),
+        governor,
     );
 
     log::info!("[recovery] respawn complete for run_id={}", run_id);

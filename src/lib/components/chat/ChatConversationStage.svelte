@@ -21,9 +21,7 @@
   import ChatUsageAnnotation from "$lib/components/ChatUsageAnnotation.svelte";
   import TeamRunCard from "$lib/components/TeamRunCard.svelte";
   import HookReviewCard from "$lib/components/HookReviewCard.svelte";
-  import ChatThinkingPanel from "$lib/components/ChatThinkingPanel.svelte";
-  import ChatStreamingText from "$lib/components/ChatStreamingText.svelte";
-  import ChatThinkingIndicator from "$lib/components/ChatThinkingIndicator.svelte";
+  import ChatAssistantLiveTurn from "$lib/components/chat/ChatAssistantLiveTurn.svelte";
   import ChatForkOverlay from "$lib/components/ChatForkOverlay.svelte";
   import RecoveringBanner from "$lib/components/RecoveringBanner.svelte";
   import ElicitationDialog from "$lib/components/ElicitationDialog.svelte";
@@ -160,6 +158,22 @@
 
   const { thinkingElapsed, thinkingVisible, spinnerVerb, processingSlashCmd, approving, sending } =
     $derived(thinkingVm);
+
+  /** Live assistant content stream (thinking panel may still show above). */
+  const liveStreamingVisible = $derived(store.streamingText.trim().length > 0);
+
+  /** Single live-turn shell: avatar stays mounted for the whole in-flight turn. */
+  const liveTurnVisible = $derived(
+    store.isActivelyRunning &&
+      (store.isThinking ||
+        liveStreamingVisible ||
+        !!store.thinkingText ||
+        !!processingSlashCmd),
+  );
+
+  const liveTurnWaiting = $derived(
+    thinkingVisible && !store.thinkingText && !liveStreamingVisible && !processingSlashCmd,
+  );
 
   const { forkOverlay, forkElapsed, resuming } = $derived(forkVm);
 
@@ -500,44 +514,27 @@
                   </div>
                 {/if}
 
-                {#if store.thinkingText}
-                  <ChatThinkingPanel
-                    thinkingText={store.thinkingText}
-                    expanded={thinkingExpanded}
-                    onToggleExpand={() => (thinkingExpanded = !thinkingExpanded)}
-                  />
-                {/if}
-
-                {#if store.streamingText}
-                  <ChatStreamingText
-                    text={store.streamingText}
+                {#if liveTurnVisible}
+                  <ChatAssistantLiveTurn
                     agent={store.agent}
                     platformId={store.platformId ?? undefined}
                     model={store.run?.model ?? store.model}
-                  />
-                {/if}
-
-                {#if processingSlashCmd && !thinkingVisible && !store.streamingText && !store.thinkingText}
-                  <div class="w-full animate-fade-in" data-export-exclude>
-                    <div class="chat-content-width py-2">
-                      <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Spinner size="sm" class="border-border border-t-muted-foreground" />
-                        <span>{t("chat_processingCommand", { command: processingSlashCmd })}</span>
-                      </div>
-                    </div>
-                  </div>
-                {/if}
-
-                {#if thinkingVisible && !store.thinkingText}
-                  <ChatThinkingIndicator
                     elapsed={thinkingElapsed}
                     activeToolName={store.activeToolName}
                     thinkingDurationSec={store.thinkingEndMs ? store.thinkingDurationSec : null}
                     {approving}
                     {sending}
                     {spinnerVerb}
+                    {processingSlashCmd}
+                    thinkingText={store.thinkingText}
+                    thinkingExpanded={thinkingExpanded}
+                    onToggleThinkingExpand={() => (thinkingExpanded = !thinkingExpanded)}
+                    streamingText={store.streamingText}
+                    showStreaming={liveStreamingVisible}
+                    showWaiting={liveTurnWaiting}
                   />
                 {/if}
+                <div class="chat-scroll-anchor h-px w-full shrink-0" aria-hidden="true"></div>
               </div>
             {/if}
           {/key}
@@ -547,7 +544,7 @@
         <button
           type="button"
           transition:fade={{ duration: 150 }}
-          class="absolute bottom-[calc(var(--chat-input-dock-offset,13rem)+0.75rem)] left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-lg transition-all duration-200 hover:bg-primary/90"
+          class="absolute bottom-[calc(var(--chat-input-dock-offset,6.5rem)+0.75rem)] left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-lg transition-all duration-200 hover:bg-primary/90"
           onclick={scrollChatToBottom}
         >
           {t("chat_newMessages")}
@@ -625,3 +622,9 @@
 
   <div class="chat-scroll-fade" aria-hidden="true"></div>
 </div>
+
+<style>
+  .chat-scroll-anchor {
+    overflow-anchor: auto;
+  }
+</style>

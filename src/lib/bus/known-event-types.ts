@@ -27,6 +27,7 @@ export const KNOWN_BUS_EVENT_TYPES = new Set<string>([
   "raw",
   "run_state",
   "session_init",
+  "session_lifecycle",
   "session_recovered",
   "session_recovering",
   "system_status",

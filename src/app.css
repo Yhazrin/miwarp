@@ -2025,6 +2025,21 @@ textarea,
   /* Overwritten at runtime by ChatInputDock ResizeObserver; fallback ≈ capsule + bottom gap */
   --chat-input-dock-offset: 6.5rem;
   --chat-scroll-fade-height: 9rem;
+  /* Do NOT transition these vars — animating padding-bottom while the user
+     scrolls makes scrollTop fight the layout and "snap back". Composer shell
+     morph (scaleY) already covers the expand/collapse visual. */
+}
+
+@property --chat-input-dock-offset {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 6.5rem;
+}
+
+@property --chat-scroll-fade-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 9rem;
 }
 
 .chat-messages-scroll {
