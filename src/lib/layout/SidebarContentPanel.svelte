@@ -28,7 +28,6 @@
     isExplorerPage: boolean;
     isTeamsPage: boolean;
     isScheduledTasksPage: boolean;
-    isWorkbenchPage: boolean;
     isSettingsPage: boolean;
     pluginActiveSection: string;
     pluginSections: PluginSection[];
@@ -72,7 +71,6 @@
     isExplorerPage,
     isTeamsPage,
     isScheduledTasksPage,
-    isWorkbenchPage,
     isSettingsPage,
     pluginActiveSection,
     pluginSections,
@@ -112,7 +110,6 @@
     | "teams"
     | "settings"
     | "scheduled-tasks"
-    | "workbench"
     | "plugins";
 
   const BODY_LOADERS: Record<SidebarBodyId, () => Promise<{ default: SidebarBodyComponent }>> = {
@@ -121,7 +118,6 @@
     teams: () => import("$lib/layout/sidebar-bodies/TeamsSidebarBody.svelte"),
     settings: () => import("$lib/layout/sidebar-bodies/SettingsSidebarBody.svelte"),
     "scheduled-tasks": () => import("$lib/layout/sidebar-bodies/ScheduledTasksSidebarBody.svelte"),
-    workbench: () => import("$lib/layout/sidebar-bodies/WorkbenchSidebarBody.svelte"),
     plugins: () => import("$lib/layout/sidebar-bodies/PluginsSidebarBody.svelte"),
   };
 
@@ -131,7 +127,6 @@
     if (isTeamsPage) return "teams";
     if (isSettingsPage) return "settings";
     if (isScheduledTasksPage) return "scheduled-tasks";
-    if (isWorkbenchPage) return "workbench";
     if (isPluginsPage) return "plugins";
     return null;
   });
@@ -245,8 +240,6 @@
         <C {explorerEmptyAction} />
       {:else if activeBodyId === "teams"}
         <C {filteredTeams} />
-      {:else if activeBodyId === "workbench"}
-        <C {onPickFolder} />
       {:else if activeBodyId === "plugins"}
         <C {pluginActiveSection} {pluginSections} {onPluginSectionChange} />
       {:else}

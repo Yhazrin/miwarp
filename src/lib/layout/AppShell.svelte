@@ -231,7 +231,6 @@
     isExplorerPage,
     isTeamsPage,
     isScheduledTasksPage,
-    isWorkbenchPage,
     isSettingsPage,
     needsLayoutContentPanel,
     selectedScheduledTaskId,
@@ -314,7 +313,7 @@
   }
   setContext("toggleSidebar", toggleSidebar);
 
-  // layout chrome context (consumed by /chat /workbench etc.)
+  // layout chrome context (consumed by /chat etc.)
   let layoutChromeState = $state({ sidebarOpen: true });
   $effect(() => {
     layoutChromeState.sidebarOpen = sidebarOpen && needsLayoutContentPanel;
@@ -962,7 +961,6 @@
         {isExplorerPage}
         {isTeamsPage}
         {isScheduledTasksPage}
-        {isWorkbenchPage}
         {isSettingsPage}
         {pluginActiveSection}
         {pluginSections}

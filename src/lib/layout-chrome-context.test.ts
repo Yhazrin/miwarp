@@ -17,10 +17,10 @@ describe("routeNeedsLayoutContentPanel", () => {
     expect(routeNeedsLayoutContentPanel("/teams")).toBe(true);
     expect(routeNeedsLayoutContentPanel("/settings")).toBe(true);
     expect(routeNeedsLayoutContentPanel("/scheduled-tasks")).toBe(true);
-    expect(routeNeedsLayoutContentPanel("/workbench")).toBe(true);
   });
 
   it("returns false for routes without a layout sidebar content panel", () => {
+    expect(routeNeedsLayoutContentPanel("/workbench")).toBe(false);
     expect(routeNeedsLayoutContentPanel("/usage")).toBe(false);
     expect(routeNeedsLayoutContentPanel("/personal")).toBe(false);
     expect(routeNeedsLayoutContentPanel("/history")).toBe(false);

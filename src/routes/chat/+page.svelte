@@ -89,6 +89,7 @@
   import ChatDragOverlay from "$lib/components/ChatDragOverlay.svelte";
   import ChatConversationStage from "$lib/components/chat/ChatConversationStage.svelte";
   import ChatInputDock from "$lib/components/chat/ChatInputDock.svelte";
+  import WorkspaceOverview from "$lib/components/chat/WorkspaceOverview.svelte";
   import ChatHeroMeta from "$lib/components/ChatHeroMeta.svelte";
   import SplitWorkspace from "$lib/components/split/SplitWorkspace.svelte";
   import SplitSidebarPlaceholder from "$lib/components/split/SplitSidebarPlaceholder.svelte";
@@ -658,6 +659,12 @@
       !store.streamingText &&
       !store.run &&
       store.phase !== "loading",
+  );
+
+  /** Effective cwd for the workspace overview panel: shows when the welcome
+   *  screen is visible and a workspace folder has been selected. */
+  let workspaceOverviewCwd = $derived(
+    welcomeVisible ? (folderCwdOverride || store.sessionCwd || "") : "",
   );
 
   // Consume ?folder= and/or ?host= params: switch target/folder, then clean URL.
@@ -2072,6 +2079,13 @@
         {/snippet}
       </SplitWorkspace>
     {:else}
+      <!-- Workspace overview: replaces welcome screen when a project folder is selected but no session is active -->
+      {#if workspaceOverviewCwd}
+        <div class="flex flex-1 min-h-0 flex-col overflow-y-auto">
+          <WorkspaceOverview cwd={workspaceOverviewCwd} onAddWorkspace={addWorkspaceFromPicker} />
+        </div>
+      {/if}
+      <div class="flex flex-1 min-h-0 flex-col" class:hidden={!!workspaceOverviewCwd}>
       <ChatConversationStage
         {store}
         {settings}
@@ -2190,6 +2204,7 @@
         {/snippet}
       </ChatConversationStage>
       {@render chatInputDock()}
+      </div>
     {/if}
 
     {#if showScrollButton}

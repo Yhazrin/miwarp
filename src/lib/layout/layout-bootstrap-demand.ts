@@ -19,7 +19,6 @@ export function routeNeedsRunsBootstrap(pathname: string): boolean {
     pathname === "/" ||
     pathname === "/chat" ||
     pathname.startsWith("/explorer") ||
-    pathname.startsWith("/workbench") ||
     pathname.startsWith("/scheduled-tasks")
   );
 }
@@ -29,7 +28,7 @@ export function routeNeedsTeamsBootstrap(pathname: string): boolean {
 }
 
 export function routeNeedsAttentionBootstrap(pathname: string): boolean {
-  return pathname.startsWith("/workbench");
+  return pathname === "/" || pathname === "/chat";
 }
 
 export type BootstrapDemandDeps = {

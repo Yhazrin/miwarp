@@ -23,10 +23,9 @@ const { createTeamSubscription } = await import("./team-subscription.svelte");
 const { attentionQueueStore } = await import("$lib/stores/attention-queue-store.svelte");
 
 describe("layout-bootstrap-demand route predicates", () => {
-  it("runs bootstrap only for chat/explorer/workbench/scheduled routes", () => {
+  it("runs bootstrap only for chat/explorer/scheduled routes", () => {
     expect(routeNeedsRunsBootstrap("/chat")).toBe(true);
     expect(routeNeedsRunsBootstrap("/explorer")).toBe(true);
-    expect(routeNeedsRunsBootstrap("/workbench")).toBe(true);
     expect(routeNeedsRunsBootstrap("/scheduled-tasks/abc")).toBe(true);
     expect(routeNeedsRunsBootstrap("/settings")).toBe(false);
     expect(routeNeedsRunsBootstrap("/personal")).toBe(false);
@@ -37,9 +36,10 @@ describe("layout-bootstrap-demand route predicates", () => {
     expect(routeNeedsTeamsBootstrap("/chat")).toBe(false);
   });
 
-  it("attention bootstrap only on /workbench", () => {
-    expect(routeNeedsAttentionBootstrap("/workbench")).toBe(true);
-    expect(routeNeedsAttentionBootstrap("/chat")).toBe(false);
+  it("attention bootstrap on /chat and /", () => {
+    expect(routeNeedsAttentionBootstrap("/chat")).toBe(true);
+    expect(routeNeedsAttentionBootstrap("/")).toBe(true);
+    expect(routeNeedsAttentionBootstrap("/settings")).toBe(false);
   });
 });
 
@@ -82,9 +82,9 @@ describe("createBootstrapDemandController", () => {
     ctl.dispose();
   });
 
-  it("reconciles attention queue on /workbench", async () => {
+  it("reconciles attention queue on /chat", async () => {
     const ctl = createBootstrapDemandController({ teamStore, runsStore, sessionFolderStore });
-    ctl.ensureForRoute("/workbench");
+    ctl.ensureForRoute("/chat");
     await Promise.resolve();
     await Promise.resolve();
     expect(attentionQueueStore.reconcile).toHaveBeenCalledTimes(1);

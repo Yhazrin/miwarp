@@ -50,7 +50,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: "core",
   },
   // Project tools (single-user, per-cwd)
-  { path: "/workbench", label: () => t("nav_workbench"), icon: "layout", group: "workspace" },
   { path: "/explorer", label: () => t("nav_explorer"), icon: "folder", group: "workspace" },
   { path: "/history", label: () => t("nav_history"), icon: "clock", group: "workspace" },
   { path: "/personal", label: () => t("nav_personal"), icon: "circle-user", group: "workspace" },
@@ -90,7 +89,6 @@ export interface PageKinds {
   readonly isExplorerPage: boolean;
   readonly isTeamsPage: boolean;
   readonly isScheduledTasksPage: boolean;
-  readonly isWorkbenchPage: boolean;
   readonly isSettingsPage: boolean;
   readonly needsLayoutContentPanel: boolean;
   /** Match-and-capture the scheduled-task hub id from the URL (empty when not on /scheduled-tasks/:id). */
@@ -106,7 +104,6 @@ export function describeCurrentPage(currentPath: string): PageKinds {
     isExplorerPage: currentPath.startsWith("/explorer"),
     isTeamsPage: currentPath.startsWith("/teams"),
     isScheduledTasksPage: currentPath.startsWith("/scheduled-tasks"),
-    isWorkbenchPage: currentPath.startsWith("/workbench"),
     isSettingsPage: pathIsSettings(currentPath),
     needsLayoutContentPanel: routeNeedsLayoutContentPanel(currentPath),
     selectedScheduledTaskId: hubMatch ? (hubMatch[1] ?? "") : "",

@@ -20,11 +20,7 @@ export function routeNeedsLayoutContentPanel(pathname: string): boolean {
     pathname.startsWith("/explorer") ||
     pathname.startsWith("/teams") ||
     pathname.startsWith("/settings") ||
-    pathname.startsWith("/scheduled-tasks") ||
-    // P0-4: cold-start /workbench must mount its project sidebar; without
-    // this match the layout treats the route as "no content panel" and the
-    // WorkbenchSidebar never renders, hiding every project from the user.
-    pathname.startsWith("/workbench")
+    pathname.startsWith("/scheduled-tasks")
   );
 }
 
@@ -52,7 +48,7 @@ export async function resolveLayoutCachedSettings(
 }
 
 /** v1.0.10 perf: exposes the layout's already-loaded runs list so child pages
- *  (e.g. /workbench) can skip a redundant list_runs / list_runs_lite IPC at
+ *  can skip a redundant list_runs / list_runs_lite IPC at
  *  mount time. The runs may still be a cache-first hydration when layout
  *  used readRunsListCache(); consumers should treat them as "best effort,
  *  eventually consistent" — the layout itself reconciles in the background. */
@@ -86,7 +82,7 @@ export async function resolveLayoutCachedRuns(
   }
   // Defense-in-depth: race the gate against a timeout so a stuck backend
   // (e.g. listRuns() throws and the gate never fires) doesn't hang
-  // /workbench forever. The consumer falls back to its own IPC when we
+  // the consumer forever. The consumer falls back to its own IPC when we
   // return null.
   const timeoutMs = opts.timeoutMs ?? 8_000;
   console.log("[resolveLayoutCachedRuns] awaiting gate with timeoutMs=", timeoutMs);
