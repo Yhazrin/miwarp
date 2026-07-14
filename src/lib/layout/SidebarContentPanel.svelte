@@ -235,7 +235,7 @@
           {onRequestRemoveProject}
           {onNewChatInFolder}
           {onNewChatInSubFolder}
-          {onSelectWorkspace}
+          onSelectWorkspace={onSelectWorkspace}
           {onBatchDeleteConfirm}
           {onClearBatchSelection}
         />
