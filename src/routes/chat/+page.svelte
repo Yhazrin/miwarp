@@ -315,6 +315,12 @@
 
   // Load presets on mount
   onMount(() => {
+    // Register workspace selection callback so sidebar folder expansion
+    // triggers the workspace overview in the chat page.
+    layoutChrome.onSelectWorkspaceChange?.((cwd: string) => {
+      selectedWorkspaceCwd = cwd;
+    });
+
     getPresets()
       .then((p) => team.setTeamPresets(p))
       .catch((e) => dbgWarn("chat", "getPresets failed:", e));
@@ -352,6 +358,7 @@
     );
     window.addEventListener(api.USER_SETTINGS_CHANGED_EVENT, onUserSettingsChanged);
     return () => {
+      layoutChrome.onSelectWorkspaceChange?.(null);
       setSplitWorkspaceXtermRef(null);
       registerSessionIslandNotify(null);
       registerToastListener(null);
@@ -662,10 +669,20 @@
   );
 
   /** Effective cwd for the workspace overview panel: shows when the welcome
-   *  screen is visible and a workspace folder has been selected. */
+   *  screen is visible and a workspace folder has been selected via sidebar
+   *  folder expansion or URL folder param. */
+  let selectedWorkspaceCwd = $state("");
   let workspaceOverviewCwd = $derived(
-    welcomeVisible ? (folderCwdOverride || store.sessionCwd || "") : "",
+    welcomeVisible ? (selectedWorkspaceCwd || folderCwdOverride || "") : "",
   );
+
+  // Clear sidebar-selected workspace when a session becomes active so the
+  // overview doesn't reappear on navigation back to the welcome screen.
+  $effect(() => {
+    if (!welcomeVisible && selectedWorkspaceCwd) {
+      selectedWorkspaceCwd = "";
+    }
+  });
 
   // Consume ?folder= and/or ?host= params: switch target/folder, then clean URL.
   $effect(() => {
@@ -704,6 +721,7 @@
           window.dispatchEvent(new Event("ocv:cwd-changed"));
         }
         folderCwdOverride = normalizedFolder;
+        selectedWorkspaceCwd = normalizedFolder;
         store.sessionCwd = normalizedFolder;
         chatViewCache.lastRunId = "";
         store.loadRun("", xtermRef);

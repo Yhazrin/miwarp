@@ -98,6 +98,9 @@
   let commandPaletteOpen = $state(false);
   let showSetupWizard = $state(false);
   let showAbout = $state(false);
+  /** Mutable callback set by the chat page on mount. Called when the sidebar
+   *  expands a workspace folder so the chat page can show the workspace overview. */
+  let selectWorkspaceCallback: ((cwd: string) => void) | null = $state(null);
   let showCliBrowser = $state(false);
   let permissionsModalOpen = $state(false);
   let updateCenterOpen = $state(false);
@@ -330,6 +333,12 @@
     openSettings: () => {
       beginRouteTransition();
       void goto("/settings").finally(endRouteTransition);
+    },
+    selectWorkspace: (cwd: string) => {
+      selectWorkspaceCallback?.(cwd);
+    },
+    onSelectWorkspaceChange: (cb) => {
+      selectWorkspaceCallback = cb;
     },
   });
 
@@ -993,6 +1002,7 @@
         onRequestRemoveProject={requestRemoveProject}
         onNewChatInFolder={newChatInFolder}
         onNewChatInSubFolder={newChatInSubFolder}
+        onSelectWorkspace={(cwd) => selectWorkspaceCallback?.(cwd)}
         onBatchDeleteConfirm={() => (batchDeleteConfirmOpen = true)}
         onClearBatchSelection={clearBatchSelection}
       />

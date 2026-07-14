@@ -60,6 +60,7 @@
     onRequestRemoveProject: (cwd: string) => void;
     onNewChatInFolder: (cwd: string) => void;
     onNewChatInSubFolder: (parentCwd: string, subFolderId: string) => void;
+    onSelectWorkspace: (cwd: string) => void;
     onBatchDeleteConfirm: () => void;
     onClearBatchSelection: () => void;
   }
@@ -100,6 +101,7 @@
     onRequestRemoveProject,
     onNewChatInFolder,
     onNewChatInSubFolder,
+    onSelectWorkspace,
     onBatchDeleteConfirm,
     onClearBatchSelection,
   }: Props = $props();
@@ -233,6 +235,7 @@
           {onRequestRemoveProject}
           {onNewChatInFolder}
           {onNewChatInSubFolder}
+          {onSelectWorkspace}
           {onBatchDeleteConfirm}
           {onClearBatchSelection}
         />

@@ -53,6 +53,7 @@
     onRequestRemoveProject: (cwd: string) => void;
     onNewChatInFolder: (cwd: string) => void;
     onNewChatInSubFolder: (parentCwd: string, subFolderId: string) => void;
+    onSelectWorkspace: (cwd: string) => void;
     onBatchDeleteConfirm: () => void;
     onClearBatchSelection: () => void;
   }
@@ -80,6 +81,7 @@
     onRequestRemoveProject,
     onNewChatInFolder,
     onNewChatInSubFolder,
+    onSelectWorkspace,
     onBatchDeleteConfirm,
     onClearBatchSelection,
   }: Props = $props();
@@ -143,7 +145,15 @@
         label={folder.isUncategorized ? t("sidebar_uncategorized") : cwdDisplayLabel(folder.cwd)}
         expanded={pss.expandedProjects.has(folder.folderKey)}
         {selectedRunId}
-        onToggle={() => onToggleProject(folder.folderKey)}
+        onToggle={() => {
+          const wasExpanded = pss.expandedProjects.has(folder.folderKey);
+          onToggleProject(folder.folderKey);
+          // When expanding a workspace folder, notify the chat page so it can
+          // show the workspace overview in the main area.
+          if (!wasExpanded && !folder.isUncategorized && folder.cwd) {
+            onSelectWorkspace(folder.cwd);
+          }
+        }}
         onSelectConversation={onNavigateToChatRun}
         onDelete={onRequestDeleteConversation}
         onMoveToFolder={(runIds, folderId) => sfs.requestMove(runIds, folderId)}

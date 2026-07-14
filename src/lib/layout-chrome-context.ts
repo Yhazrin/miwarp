@@ -7,6 +7,12 @@ export type LayoutChromeContext = {
   newChat: () => void;
   openCliBrowser: () => void;
   openSettings: () => void;
+  /** Called when a workspace folder is expanded in the sidebar. The chat page
+   *  uses this to show the workspace overview for the selected project. */
+  selectWorkspace: (cwd: string) => void;
+  /** Register a callback for workspace selection events. Called by the chat
+   *  page on mount; cleared on unmount. */
+  onSelectWorkspaceChange: (cb: ((cwd: string) => void) | null) => void;
 };
 
 export const LAYOUT_CHROME_CONTEXT_KEY = "layoutChrome";
