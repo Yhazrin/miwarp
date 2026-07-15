@@ -18,7 +18,8 @@ use crate::agent::runtime_recovery::{
 use crate::agent::turn_engine::{
     apply_activity_reset, ActiveTurn, TurnOrigin, TurnPhase, UserTurnKind, UserTurnTicket,
     ACCEPTED_CLIENT_MESSAGE_IDS_CAP, PROTOCOL_DESYNC_THRESHOLD, PROTOCOL_DESYNC_WINDOW_SECS,
-    QUARANTINE_DEADLINE, STOP_ESCALATION_KILL, TICK_INTERVAL, USER_HARD_TIMEOUT, USER_SOFT_TIMEOUT,
+    QUARANTINE_DEADLINE, QUEUED_USER_CAP, STOP_ESCALATION_KILL, TICK_INTERVAL, USER_HARD_TIMEOUT,
+    USER_SOFT_TIMEOUT,
 };
 use crate::models::{
     max_attachment_size, now_iso, AgentRuntimeKind, BusEvent, RalphCompleteReason, RunStatus,
@@ -1057,6 +1058,19 @@ impl SessionActor {
             seq,
             client_message_id,
         );
+
+        // Guard against unbounded queue growth under IPC abuse.
+        if self.queued_user.len() >= QUEUED_USER_CAP {
+            log::warn!(
+                "[turn] queued_user full ({}), rejecting message",
+                self.queued_user.len()
+            );
+            let _ = reply.send(Err(format!(
+                "Queue full: {} messages pending. Wait for the current turn to finish.",
+                self.queued_user.len()
+            )));
+            return;
+        }
 
         self.queued_user.push_back(UserTurnTicket {
             ticket_seq: seq,

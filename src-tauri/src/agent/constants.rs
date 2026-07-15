@@ -56,6 +56,11 @@ pub const TICK_INTERVAL: Duration = Duration::from_millis(250);
 /// bounded in memory under abuse.
 pub const ACCEPTED_CLIENT_MESSAGE_IDS_CAP: usize = 1024;
 
+/// Maximum number of user messages that can be queued in `queued_user` before
+/// the actor starts rejecting new ones. Prevents unbounded memory growth if a
+/// script hammers the IPC with messages faster than the CLI can process them.
+pub const QUEUED_USER_CAP: usize = 64;
+
 #[cfg(test)]
 mod tests {
     use super::*;
