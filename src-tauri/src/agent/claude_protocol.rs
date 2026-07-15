@@ -908,8 +908,13 @@ impl ProtocolState {
             }
 
             "content_block_stop" => {
-                // Content block finished — if it was a tool_use, we can now parse accumulated input
-                // The full input will come with the `assistant` message, so no action needed here
+                // Content block finished — clean up the accumulated partial JSON
+                // for the tool that just completed. The full input is available in
+                // the subsequent `assistant` message, so the accumulator is no longer
+                // needed. Keeping it would leak memory proportional to tool input size.
+                if let Some(ref tool_id) = self.last_tool_use_id {
+                    self.input_json_accum.remove(tool_id);
+                }
             }
 
             "message_stop" => {
@@ -1123,11 +1128,11 @@ impl ProtocolState {
                                 .unwrap_or("")
                                 .to_string();
 
-                            // Look up tool_name from id→name map
+                            // Look up tool_name from id→name map, then evict —
+                            // after ToolEnd the entry is dead and would leak forever.
                             let tool_name = self
                                 .emitted_tool_ids
-                                .get(&tool_use_id)
-                                .cloned()
+                                .remove(&tool_use_id)
                                 .unwrap_or_default();
                             let output = block.get("content").cloned().unwrap_or(Value::Null);
                             let is_error = block
@@ -1158,6 +1163,11 @@ impl ProtocolState {
             // ── result (turn complete) ──
             "result" => {
                 self.flush_pending_message_complete(run_id, &parent_tool_use_id, &mut events);
+                // Turn boundary — evict dedup sets that are only valid within a single turn.
+                // Next turn gets fresh message_ids and tool_ids from the CLI.
+                self.emitted_message_ids.clear();
+                self.emitted_tool_ids.clear();
+                self.input_json_accum.clear();
                 let subtype = str_field(raw, "subtype");
 
                 // Extract usage
