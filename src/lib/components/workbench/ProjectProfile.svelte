@@ -110,24 +110,24 @@
       {/if}
     {/each}
 
-    {#if profile.claude_md.exists}
+    {#if profile.claude_md?.exists}
       <div class="mt-3">
         <h4 class="mb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           {t("workbench_profile_claudeMd")}
         </h4>
         <p class="line-clamp-3 whitespace-pre-wrap break-words text-[11px] text-foreground/80">
-          {profile.claude_md.excerpt.slice(0, 200)}
+          {profile.claude_md.excerpt?.slice(0, 200) ?? ""}
         </p>
       </div>
     {/if}
 
-    {#if profile.readme.exists}
+    {#if profile.readme?.exists}
       <div class="mt-3">
         <h4 class="mb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           {t("workbench_profile_readme")}
         </h4>
         <p class="line-clamp-3 whitespace-pre-wrap break-words text-[11px] text-foreground/80">
-          {profile.readme.excerpt.slice(0, 200)}
+          {profile.readme.excerpt?.slice(0, 200) ?? ""}
         </p>
       </div>
     {/if}
