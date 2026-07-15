@@ -108,24 +108,8 @@ jobs:
           fi
           node scripts/architecture/file-budget-diff.mjs "$BASE"
 
-      # ── Standard frontend gates (subset of ci.yml) ──
-      - name: Lint
-        run: npm run lint
-
-      - name: Format check
-        run: npm run format:check
-
-      - name: i18n check
-        run: npm run i18n:check
-
-      - name: Vitest
-        run: npm test
-
-      - name: Build (smoke)
-        # We don't need a full prod build for the contract gate,
-        # but the svelte-kit sync + vite build is required so
-        # that downstream cargo clippy can find the build dir.
-        run: npm run build
+      # Standard frontend gates (lint, format, i18n, test, build) are
+      # covered by ci.yml which runs on every PR. No need to duplicate here.
 
   # ── Rust fault-injection harness ──
   rust-fault-injection:
