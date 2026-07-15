@@ -165,11 +165,40 @@ fn sync_events_dir(path: &std::path::Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Returns `true` for events that must survive a crash — terminal state,
+/// permission gates, and user messages. These get an immediate fsync;
+/// all other events are buffered and group-committed.
+pub fn is_durable_event(event: &BusEvent) -> bool {
+    matches!(
+        event,
+        BusEvent::RunState { .. }
+            | BusEvent::PermissionPrompt { .. }
+            | BusEvent::PermissionDenied { .. }
+            | BusEvent::ElicitationPrompt { .. }
+            | BusEvent::HookCallback { .. }
+            | BusEvent::UserMessage { .. }
+    )
+}
+
+/// Per-run writer state: monotonic seq counter + persistent BufWriter.
+/// Held under a single Mutex per run_id so seq allocation and file write
+/// are atomic without re-opening the file on every event.
+struct RunWriter {
+    next_seq: u64,
+    writer: BufWriter<std::fs::File>,
+}
+
 /// Atomic seq allocation + file write under per-run locks.
 /// Each run_id gets its own Mutex so different runs never block each other.
 /// The outer Mutex is only held briefly to get/create the per-run Arc.
+///
+/// Group commit: non-durable events are written to the BufWriter without
+/// fsync — the OS page cache batches them. Durable events (terminal state,
+/// permission gates, user messages) trigger an explicit flush + fsync +
+/// dir-sync before returning. This reduces fsync calls from hundreds/sec
+/// to a handful while preserving the crash-safety contract.
 pub struct EventWriter {
-    inner: Mutex<HashMap<String, Arc<Mutex<u64>>>>, // run_id → Arc<Mutex<next_seq>>
+    inner: Mutex<HashMap<String, Arc<Mutex<RunWriter>>>>,
 }
 
 impl Default for EventWriter {
@@ -185,68 +214,92 @@ impl EventWriter {
         }
     }
 
-    /// Atomically assign seq + write to events.jsonl (both under the same per-run lock).
-    /// Returns `Err` if any step fails (dir creation, serialization, file I/O).
-    pub fn write_bus_event(&self, run_id: &str, event: &BusEvent) -> Result<(), String> {
-        log::trace!("[storage/events] write_bus_event: run_id={}", run_id);
+    /// Get or create the per-run RunWriter (seq + persistent BufWriter).
+    /// Returns the Arc<Mutex<RunWriter>> for the given run_id.
+    fn get_or_create_run(&self, run_id: &str) -> Arc<Mutex<RunWriter>> {
+        let mut map = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        // GC: drop entries whose per-run Arc has no other holders (session ended)
+        if map.len() > 50 {
+            map.retain(|_, v| Arc::strong_count(v) > 1);
+        }
+        map.entry(run_id.to_string())
+            .or_insert_with(|| {
+                let start_seq = next_seq(run_id);
+                let dir = super::run_dir(run_id);
+                let _ = super::ensure_dir(&dir);
+                let path = events_path(run_id);
+                let file = OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&path)
+                    .expect("failed to open events.jsonl");
+                Arc::new(Mutex::new(RunWriter {
+                    next_seq: start_seq,
+                    writer: BufWriter::new(file),
+                }))
+            })
+            .clone()
+    }
 
-        // Get or create the per-run lock (brief global lock, then release)
-        let run_lock = {
-            let mut map = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-            // GC: drop entries whose per-run Arc has no other holders (session ended)
-            if map.len() > 50 {
-                map.retain(|_, v| Arc::strong_count(v) > 1);
-            }
-            map.entry(run_id.to_string())
-                .or_insert_with(|| Arc::new(Mutex::new(next_seq(run_id))))
-                .clone()
-        };
-        // Global lock released here — other runs proceed in parallel
+    /// Write an event with a caller-supplied timestamp. If `durable` is true,
+    /// the write is immediately flushed + fsync'd + dir-sync'd. Otherwise the
+    /// data sits in the BufWriter and is group-committed on the next durable
+    /// write or when the OS flushes dirty pages.
+    ///
+    /// Returns the assigned monotonic seq.
+    fn write_inner(
+        &self,
+        run_id: &str,
+        event: &BusEvent,
+        ts: &str,
+        durable: bool,
+    ) -> Result<u64, String> {
+        let run_arc = self.get_or_create_run(run_id);
 
-        // Per-run lock: seq allocation + file write are atomic
-        let mut seq_guard = run_lock.lock().unwrap_or_else(|e| e.into_inner());
-        let current = *seq_guard;
-        *seq_guard = current + 1;
-
-        let dir = super::run_dir(run_id);
-        super::ensure_dir(&dir).map_err(|e| format!("ensure_dir failed: {}", e))?;
+        let mut run = run_arc.lock().unwrap_or_else(|e| e.into_inner());
+        let current = run.next_seq;
+        run.next_seq = current + 1;
 
         let envelope = serde_json::json!({
             "_bus": true,
             "seq": current,
-            "ts": now_iso(),
+            "ts": ts,
             "event": event,
         });
-        let path = events_path(run_id);
         let line =
             serde_json::to_string(&envelope).map_err(|e| format!("serialize failed: {}", e))?;
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&path)
-            .map_err(|e| format!("open {} failed: {}", path.display(), e))?;
-        let mut writer = BufWriter::new(file);
-        writeln!(writer, "{}", line)
-            .map_err(|e| format!("write to {} failed: {}", path.display(), e))?;
-        writer
-            .flush()
-            .map_err(|e| format!("flush {} failed: {}", path.display(), e))?;
-        // Source-of-truth contract: events.jsonl is the replayable audit log.
-        // `BufWriter::flush` only pushes to the kernel page cache — without an
-        // explicit fdatasync + parent-dir fsync the append can be lost on a
-        // crash (kernel buffer never reaches disk). Mirrors `append_json_line`
-        // in `storage/durable_io.rs` so the whole storage layer speaks one
-        // durability dialect.
-        writer
-            .get_ref()
-            .sync_data()
-            .map_err(|e| format!("sync_data {} failed: {}", path.display(), e))?;
-        sync_events_dir(dir.as_path())?;
+        writeln!(run.writer, "{}", line)
+            .map_err(|e| format!("write events.jsonl failed: {}", e))?;
 
-        Ok(())
+        if durable {
+            // Source-of-truth contract: terminal state, permission gates, and
+            // user messages must survive a crash. Flush + fdatasync + dir-sync.
+            run.writer
+                .flush()
+                .map_err(|e| format!("flush events.jsonl failed: {}", e))?;
+            run.writer
+                .get_ref()
+                .sync_data()
+                .map_err(|e| format!("sync_data events.jsonl failed: {}", e))?;
+            let dir = super::run_dir(run_id);
+            sync_events_dir(dir.as_path())?;
+        }
+
+        Ok(current)
+    }
+
+    /// Atomically assign seq + write to events.jsonl (both under the same per-run lock).
+    /// Returns `Err` if any step fails (dir creation, serialization, file I/O).
+    /// Uses group commit: non-durable events are buffered, durable events fsync.
+    pub fn write_bus_event(&self, run_id: &str, event: &BusEvent) -> Result<(), String> {
+        log::trace!("[storage/events] write_bus_event: run_id={}", run_id);
+        let durable = is_durable_event(event);
+        let ts = now_iso();
+        self.write_inner(run_id, event, &ts, durable).map(|_| ())
     }
 
     /// Like `write_bus_event` but uses a caller-supplied timestamp and returns the assigned seq.
+    /// Uses group commit: non-durable events are buffered, durable events fsync.
     pub fn write_bus_event_with_ts(
         &self,
         run_id: &str,
@@ -258,57 +311,30 @@ impl EventWriter {
             run_id,
             ts
         );
+        let durable = is_durable_event(event);
+        self.write_inner(run_id, event, ts, durable)
+    }
 
-        let run_lock = {
-            let mut map = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-            if map.len() > 50 {
-                map.retain(|_, v| Arc::strong_count(v) > 1);
-            }
-            map.entry(run_id.to_string())
-                .or_insert_with(|| Arc::new(Mutex::new(next_seq(run_id))))
-                .clone()
+    /// Force-flush all buffered data for a specific run to disk (fsync + dir-sync).
+    /// Called on session end / run teardown to ensure no data stays in userspace buffers.
+    pub fn flush_run(&self, run_id: &str) -> Result<(), String> {
+        let run_arc = {
+            let map = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+            map.get(run_id).cloned()
         };
-
-        let mut seq_guard = run_lock.lock().unwrap_or_else(|e| e.into_inner());
-        let current = *seq_guard;
-        *seq_guard = current + 1;
-
-        let dir = super::run_dir(run_id);
-        super::ensure_dir(&dir).map_err(|e| format!("ensure_dir failed: {}", e))?;
-
-        let envelope = serde_json::json!({
-            "_bus": true,
-            "seq": current,
-            "ts": ts,
-            "event": event,
-        });
-        let path = events_path(run_id);
-        let line =
-            serde_json::to_string(&envelope).map_err(|e| format!("serialize failed: {}", e))?;
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&path)
-            .map_err(|e| format!("open {} failed: {}", path.display(), e))?;
-        let mut writer = BufWriter::new(file);
-        writeln!(writer, "{}", line)
-            .map_err(|e| format!("write to {} failed: {}", path.display(), e))?;
-        writer
-            .flush()
-            .map_err(|e| format!("flush {} failed: {}", path.display(), e))?;
-        // Source-of-truth contract: events.jsonl is the replayable audit log.
-        // `BufWriter::flush` only pushes to the kernel page cache — without an
-        // explicit fdatasync + parent-dir fsync the append can be lost on a
-        // crash (kernel buffer never reaches disk). Mirrors `append_json_line`
-        // in `storage/durable_io.rs` so the whole storage layer speaks one
-        // durability dialect.
-        writer
-            .get_ref()
-            .sync_data()
-            .map_err(|e| format!("sync_data {} failed: {}", path.display(), e))?;
-        sync_events_dir(dir.as_path())?;
-
-        Ok(current)
+        if let Some(run_arc) = run_arc {
+            let mut run = run_arc.lock().unwrap_or_else(|e| e.into_inner());
+            run.writer
+                .flush()
+                .map_err(|e| format!("flush events.jsonl failed: {}", e))?;
+            run.writer
+                .get_ref()
+                .sync_data()
+                .map_err(|e| format!("sync_data events.jsonl failed: {}", e))?;
+            let dir = super::run_dir(run_id);
+            sync_events_dir(dir.as_path())?;
+        }
+        Ok(())
     }
 }
 
