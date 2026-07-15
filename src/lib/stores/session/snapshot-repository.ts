@@ -27,6 +27,36 @@ import type { TimelineEntry, CliCommand, McpServerInfo, Attachment } from "$lib/
 import type { UsageState, TurnUsage } from "$lib/stores/types";
 import { backfillAnchorId } from "./timeline-projection";
 
+/**
+ * Pending save callbacks waiting for idle callback or pagehide flush.
+ * Single owner: saveSnapshotToIdb pushes, pagehide/idle pops.
+ * No size limit needed — at most one entry per active session.
+ */
+const _pendingSaves: Array<() => void> = [];
+let _pagehideArmed = false;
+
+function _flushPendingSaves(): void {
+  while (_pendingSaves.length > 0) {
+    const fn = _pendingSaves.pop();
+    try {
+      fn?.();
+    } catch (e) {
+      dbgWarn("snapshot", "pagehide flush error", e);
+    }
+  }
+}
+
+function _armPagehide(): void {
+  if (_pagehideArmed || typeof window === "undefined") return;
+  _pagehideArmed = true;
+  // pagehide fires before the page is unloaded (more reliable than
+  // beforeunload on mobile). Also handles tab discard on Android.
+  window.addEventListener("pagehide", _flushPendingSaves);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") _flushPendingSaves();
+  });
+}
+
 /** Maximum tool_use_result size to serialize (bytes). */
 export const SNAPSHOT_MAX_TOOL_RESULT = 50_000;
 
@@ -294,6 +324,10 @@ export function saveSnapshotToIdb(
   guard: SaveSnapshotGuard,
 ): void {
   const doSave = () => {
+    // Remove from pending queue if still present
+    const idx = _pendingSaves.indexOf(doSave);
+    if (idx !== -1) _pendingSaves.splice(idx, 1);
+
     if (guard.isStale() || !guard.matchesRun()) return;
     if (guard.currentStatus() !== runStatus) {
       dbg("snapshot", "save:skipped (status changed)", {
@@ -309,6 +343,12 @@ export function saveSnapshotToIdb(
       .writeSnapshot(runId, runStatus, body)
       .catch((e) => dbgWarn("snapshot", "write failed", e));
   };
+
+  // Register for pagehide/visibilitychange flush so the snapshot survives
+  // mobile tab switches and desktop minimize/discard.
+  _pendingSaves.push(doSave);
+  _armPagehide();
+
   if (typeof requestIdleCallback !== "undefined") {
     requestIdleCallback(doSave, { timeout: 2000 });
   } else {
