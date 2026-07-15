@@ -86,6 +86,7 @@ const VALID_TRANSITIONS: Record<SessionPhase, Set<SessionPhase>> = {
     "empty",
     "cached",
     "stale_cached",
+    "idle",
   ]),
   ready: new Set([
     "spawning",
