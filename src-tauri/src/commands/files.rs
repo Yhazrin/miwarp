@@ -583,7 +583,13 @@ pub fn open_directory_in_finder(path: String) -> Result<(), String> {
     if !requested.is_dir() {
         return Err(format!("Path is not a directory: {}", path));
     }
-    let path_str = requested.display().to_string();
+    // Explorer may fall back to its default location when it receives a relative
+    // or otherwise non-normalized folder argument. Resolve the workspace before
+    // handing it to the platform shell so the requested workspace is opened.
+    let resolved = requested
+        .canonicalize()
+        .map_err(|e| format!("Cannot resolve directory '{}': {}", path, e))?;
+    let path_str = resolved.display().to_string();
 
     #[cfg(target_os = "macos")]
     {
@@ -595,8 +601,8 @@ pub fn open_directory_in_finder(path: String) -> Result<(), String> {
 
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("explorer")
-            .arg(&path_str)
+        std::process::Command::new("explorer.exe")
+            .args(["/e,", &path_str])
             .spawn()
             .map_err(|e| format!("failed to open Explorer: {}", e))?;
     }

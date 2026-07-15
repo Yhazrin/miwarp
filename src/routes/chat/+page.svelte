@@ -679,7 +679,7 @@
    *  be false due to cached runId redirects before the store populates). */
   let selectedWorkspaceCwd = $state("");
   let workspaceOverviewCwd = $derived(
-    !store.run && store.timeline.length === 0 && !store.streamingText
+    !hasNewParam && !store.run && store.timeline.length === 0 && !store.streamingText
       ? (selectedWorkspaceCwd || folderCwdOverride || "")
       : "",
   );
@@ -2108,7 +2108,7 @@
       <!-- Workspace overview: replaces welcome screen when a project folder is selected but no session is active -->
       {#if workspaceOverviewCwd}
         <div class="flex flex-1 min-h-0 flex-col overflow-y-auto">
-          <WorkspaceOverview cwd={workspaceOverviewCwd} onAddWorkspace={addWorkspaceFromPicker} />
+          <WorkspaceOverview cwd={workspaceOverviewCwd} />
         </div>
       {/if}
       <div class="flex flex-1 min-h-0 flex-col" class:hidden={!!workspaceOverviewCwd}>

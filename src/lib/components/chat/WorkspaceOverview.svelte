@@ -10,9 +10,9 @@
 -->
 <script lang="ts">
   import { goto, replaceState } from "$app/navigation";
+  import { openDirectoryInFinder } from "$lib/api";
   import { projectProfileStore } from "$lib/workbench/project-profile-store.svelte";
   import { runsSidebarStore } from "$lib/layout/runs-sidebar-store.svelte";
-  import { sessionStore } from "$lib/stores";
   import { normalizeCwd } from "$lib/utils/sidebar-groups";
   import { cwdDisplayLabel, relativeTime } from "$lib/utils/format";
   import { t } from "$lib/i18n/index.svelte";
@@ -23,10 +23,9 @@
 
   interface Props {
     cwd: string;
-    onAddWorkspace?: () => void;
   }
 
-  let { cwd, onAddWorkspace }: Props = $props();
+  let { cwd }: Props = $props();
 
   const label = $derived(cwdDisplayLabel(cwd));
 
@@ -76,24 +75,19 @@
         <button
           type="button"
           class="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-          onclick={() => {
-            sessionStore.sessionCwd = cwd;
-            sessionStore.loadRun("", undefined);
-          }}
+          onclick={() => goto(`/chat?new=1&folder=${encodeURIComponent(cwd)}`)}
         >
           <Icon name="message-square" size="xs" />
           {t("workbench_newSession")}
         </button>
-        {#if onAddWorkspace}
-          <button
-            type="button"
-            class="inline-flex h-7 items-center gap-1.5 rounded-md border border-border/40 bg-background/60 px-2.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-            onclick={onAddWorkspace}
-          >
-            <Icon name="folder-open" size="xs" />
-            {t("sidebar_openFolder")}
-          </button>
-        {/if}
+        <button
+          type="button"
+          class="inline-flex h-7 items-center gap-1.5 rounded-md border border-border/40 bg-background/60 px-2.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          onclick={() => void openDirectoryInFinder(cwd).catch(() => {})}
+        >
+          <Icon name="folder-open" size="xs" />
+          {t("sidebar_openFolder")}
+        </button>
       </div>
     </header>
 
