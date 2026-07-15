@@ -335,11 +335,9 @@
       void goto("/settings").finally(endRouteTransition);
     },
     selectWorkspace: (cwd: string) => {
-      console.log("[AppShell] selectWorkspace called, hasCallback:", !!selectWorkspaceCallback, "cwd:", cwd);
       selectWorkspaceCallback?.(cwd);
     },
     onSelectWorkspaceChange: (cb) => {
-      console.log("[AppShell] onSelectWorkspaceChange, registering:", typeof cb);
       selectWorkspaceCallback = cb;
     },
   });

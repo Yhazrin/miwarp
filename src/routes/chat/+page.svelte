@@ -317,10 +317,13 @@
   onMount(() => {
     // Register workspace selection callback so sidebar folder expansion
     // triggers the workspace overview in the chat page.
-    console.log("[ChatPage] onMount: registering onSelectWorkspace callback, context:", !!layoutChrome, "method:", typeof layoutChrome?.onSelectWorkspaceChange);
     layoutChrome.onSelectWorkspaceChange?.((cwd: string) => {
-      console.log("[ChatPage] selectWorkspace callback fired with cwd:", cwd);
-      selectedWorkspaceCwd = cwd;
+      // When a workspace folder is expanded in the sidebar, clear the
+      // current session so the workspace overview can display. Navigate
+      // to a clean /chat URL with the folder param.
+      chatViewCache.lastRunId = "";
+      store.loadRun("", xtermRef);
+      void goto(`/chat?folder=${encodeURIComponent(cwd)}`);
     });
 
     getPresets()

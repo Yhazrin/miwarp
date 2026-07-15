@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_FILE_PATH\" | grep -qE '\\.(svelte|ts)$'; then cd D:/project/miwarp && npx svelte-check --threshold error 2>&1 | tail -3; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
