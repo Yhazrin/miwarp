@@ -36,7 +36,10 @@ export type BootstrapDemandDeps = {
     TeamStore,
     "loadTeams" | "forceRefresh" | "handleTeamUpdate" | "handleTaskUpdate"
   >;
-  runsStore: Pick<RunsSidebarStore, "loadRuns" | "loadSidebarFavorites" | "startPoll">;
+  runsStore: Pick<
+    RunsSidebarStore,
+    "loadRuns" | "loadSidebarFavorites" | "startPoll" | "startBusEventRefresh"
+  >;
   sessionFolderStore: Pick<SessionFolderStore, "load">;
 };
 
@@ -53,6 +56,7 @@ export function createBootstrapDemandController(
 ): BootstrapDemandController {
   let runsStarted = false;
   let stopRunsPoll: (() => void) | null = null;
+  let stopBusRefresh: (() => void) | null = null;
   let teamSub: TeamSubscription | null = null;
   let attentionStarted = false;
 
@@ -61,6 +65,7 @@ export function createBootstrapDemandController(
     runsStarted = true;
     dbg("bootstrap", "demand: runs sidebar");
     stopRunsPoll = deps.runsStore.startPoll();
+    stopBusRefresh = deps.runsStore.startBusEventRefresh();
     void deps.runsStore.loadRuns();
     void deps.runsStore.loadSidebarFavorites();
     void deps.sessionFolderStore.load();
@@ -101,6 +106,8 @@ export function createBootstrapDemandController(
     dispose: () => {
       stopRunsPoll?.();
       stopRunsPoll = null;
+      stopBusRefresh?.();
+      stopBusRefresh = null;
       teamSub?.dispose();
       teamSub = null;
       // attentionQueueStore is a singleton with subscribe() being idempotent,
