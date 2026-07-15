@@ -56,9 +56,14 @@ declare function mcp__Claude_in_Chrome__javascript_tool(args: {
 
 // Execution state
 let isExecuting = false;
-let shouldCancel = false;
+let activeController: AbortController | null = null;
+
+const DEFAULT_STEP_TIMEOUT_MS = 30_000;
 
 export interface ExecuteOptions {
+  /** AbortSignal to cancel execution externally. If omitted, an internal
+   *  controller is created and exposed via cancelExecution(). */
+  signal?: AbortSignal;
   onStepStart?: (step: AutomationStep, index: number) => void;
   onStepComplete?: (step: AutomationStep, result: StepResult) => void;
   onProgress?: (progress: number, message: string) => void;
@@ -78,7 +83,9 @@ export async function executeScript(
   }
 
   isExecuting = true;
-  shouldCancel = false;
+  const controller = new AbortController();
+  activeController = controller;
+  const signal = options.signal ?? controller.signal;
 
   const startTime = Date.now();
   const results: StepResult[] = [];
@@ -89,7 +96,7 @@ export async function executeScript(
 
   try {
     for (let i = 0; i < script.steps.length; i++) {
-      if (shouldCancel) {
+      if (signal.aborted) {
         dbg(TAG, "Script execution cancelled");
         break;
       }
@@ -110,7 +117,7 @@ export async function executeScript(
       const stepStartTime = Date.now();
 
       try {
-        const result = await executeStep(step, tabId);
+        const result = await executeStep(step, tabId, signal);
 
         const stepResult: StepResult = {
           stepId: step.id,
@@ -149,7 +156,7 @@ export async function executeScript(
     }
 
     const duration = Date.now() - startTime;
-    const success = failedSteps === 0 && !shouldCancel;
+    const success = failedSteps === 0 && !signal.aborted;
 
     dbg(TAG, "Script execution complete", { success, completedSteps, failedSteps });
 
@@ -166,22 +173,38 @@ export async function executeScript(
     };
   } finally {
     isExecuting = false;
+    activeController = null;
   }
 }
 
 /**
- * Execute a single step
+ * Execute a single step with timeout + cancel signal.
+ * The combined signal aborts on whichever fires first: step timeout or cancel.
  */
-async function executeStep(step: AutomationStep, tabId: number): Promise<unknown> {
-  const timeout = step.timeout ?? 30000;
+async function executeStep(
+  step: AutomationStep,
+  tabId: number,
+  cancelSignal: AbortSignal,
+): Promise<unknown> {
+  const timeoutMs = step.timeout ?? DEFAULT_STEP_TIMEOUT_MS;
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  // AbortSignal.any merges multiple signals — aborts when any source aborts.
+  const combined = AbortSignal.any([cancelSignal, timeoutSignal]);
 
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error(`Step timed out after ${timeout}ms`)), timeout);
+  return new Promise((resolve, reject) => {
+    combined.addEventListener(
+      "abort",
+      () => {
+        const reason = cancelSignal.aborted
+          ? "Step cancelled"
+          : `Step timed out after ${timeoutMs}ms`;
+        reject(new Error(reason));
+      },
+      { once: true },
+    );
+
+    doExecuteStep(step, tabId).then(resolve, reject);
   });
-
-  const executePromise = doExecuteStep(step, tabId);
-
-  return Promise.race([executePromise, timeoutPromise]);
 }
 
 /**
@@ -467,11 +490,13 @@ async function executeSelectOption(step: AutomationStep, tabId: number): Promise
 // ── Utility Functions ──
 
 /**
- * Cancel ongoing execution
+ * Cancel ongoing execution via AbortController.
  */
 export function cancelExecution(): void {
-  shouldCancel = true;
-  dbg(TAG, "Execution cancel requested");
+  if (activeController) {
+    activeController.abort();
+    dbg(TAG, "Execution cancel requested via AbortController");
+  }
 }
 
 /**
