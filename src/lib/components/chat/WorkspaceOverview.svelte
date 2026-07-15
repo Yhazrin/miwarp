@@ -9,9 +9,10 @@
     - 操作按钮：新会话 / 打开文件夹
 -->
 <script lang="ts">
-  import { goto } from "$app/navigation";
+  import { goto, replaceState } from "$app/navigation";
   import { projectProfileStore } from "$lib/workbench/project-profile-store.svelte";
   import { runsSidebarStore } from "$lib/layout/runs-sidebar-store.svelte";
+  import { sessionStore } from "$lib/stores";
   import { normalizeCwd } from "$lib/utils/sidebar-groups";
   import { cwdDisplayLabel, relativeTime } from "$lib/utils/format";
   import { t } from "$lib/i18n/index.svelte";
@@ -75,7 +76,10 @@
         <button
           type="button"
           class="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-          onclick={() => goto(`/chat?new=1&folder=${encodeURIComponent(cwd)}`)}
+          onclick={() => {
+            sessionStore.sessionCwd = cwd;
+            sessionStore.loadRun("", undefined);
+          }}
         >
           <Icon name="message-square" size="xs" />
           {t("workbench_newSession")}
@@ -115,7 +119,7 @@
             <button
               type="button"
               class="flex w-full items-center justify-between gap-2 rounded-md border border-border/40 bg-card/40 px-3 py-2 text-left transition-colors hover:bg-muted/40"
-              onclick={() => goto(`/chat?run=${encodeURIComponent(session.id)}`)}
+              onclick={() => replaceState(`/chat?run=${encodeURIComponent(session.id)}`, {})}
             >
               <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-medium text-foreground">{session.title}</p>
