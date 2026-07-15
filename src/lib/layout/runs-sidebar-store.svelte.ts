@@ -152,6 +152,42 @@ export class RunsSidebarStore {
     return () => clearInterval(interval);
   }
 
+  /**
+   * Listen for run_state bus events and trigger an immediate (debounced)
+   * run list refresh. This makes the sidebar update within ~500ms of a
+   * run completing/failing instead of waiting for the 60s poll.
+   * Returns a stop() function.
+   */
+  startBusEventRefresh(): () => void {
+    if (typeof window === "undefined") return () => {};
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent).detail;
+      // Only refresh on terminal states (completed, failed, stopped)
+      // or new runs (idle/running) — skip high-frequency events like
+      // message_delta, tool_start, etc.
+      const state = detail?.state;
+      if (
+        state === "completed" ||
+        state === "failed" ||
+        state === "stopped" ||
+        state === "idle" ||
+        state === "running"
+      ) {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          void this.loadRuns();
+        }, 500);
+      }
+    };
+    // The transport emits "bus-event" as a CustomEvent on the window bus
+    window.addEventListener("bus-event", handler as EventListener);
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      window.removeEventListener("bus-event", handler as EventListener);
+    };
+  }
+
   // ── Favorites ──────────────────────────────────────────────────────
 
   async loadSidebarFavorites(): Promise<void> {

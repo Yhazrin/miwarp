@@ -54,6 +54,7 @@ describe("createBootstrapDemandController", () => {
     loadRuns: vi.fn().mockResolvedValue(undefined),
     loadSidebarFavorites: vi.fn().mockResolvedValue(undefined),
     startPoll: vi.fn(() => vi.fn()),
+    startBusEventRefresh: vi.fn(() => vi.fn()),
   };
   const sessionFolderStore = {
     load: vi.fn().mockResolvedValue(undefined),
