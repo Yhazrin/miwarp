@@ -58,6 +58,7 @@ export {
   ConnectionState,
   ConnectionStateMachine,
   TransportError,
+  IpcTimeoutError,
   ConnectionTimeoutError,
   ConnectionFailedError,
   ConnectionClosedError,

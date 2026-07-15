@@ -23,6 +23,7 @@ import {
 } from "./contract";
 import {
   ConnectionState,
+  IpcTimeoutError,
   type ConnectionStateListener,
   type ConnectionStateValue,
 } from "./connection-state";
@@ -39,10 +40,7 @@ export class TauriTransport implements Transport {
     if (!timeoutMs) return tauriPromise;
     let timer: ReturnType<typeof setTimeout>;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      timer = setTimeout(
-        () => reject(new Error(`IPC_TIMEOUT: ${cmd} did not respond in ${timeoutMs}ms`)),
-        timeoutMs,
-      );
+      timer = setTimeout(() => reject(new IpcTimeoutError(cmd, timeoutMs)), timeoutMs);
     });
     return Promise.race([tauriPromise, timeoutPromise]).finally(() => clearTimeout(timer));
   }

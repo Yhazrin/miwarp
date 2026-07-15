@@ -26,16 +26,33 @@ export type ConnectionStateListener = (
   previous: ConnectionStateValue,
 ) => void;
 
-/** Typed errors for connection lifecycle */
+/** Typed errors for connection lifecycle.
+ *  Unified shape: `{ code, message, data, retryable }`.
+ *  `retryable` tells callers whether reconnecting / retrying the same call
+ *  could succeed — connection glitches are retryable; auth failures and
+ *  disposed transports are not.
+ */
 export class TransportError extends Error {
   readonly code: string;
   readonly data?: unknown;
+  readonly retryable: boolean;
 
-  constructor(message: string, code: string, data?: unknown) {
+  constructor(message: string, code: string, data?: unknown, retryable = true) {
     super(message);
     this.name = "TransportError";
     this.code = code;
     this.data = data;
+    this.retryable = retryable;
+  }
+}
+
+export class IpcTimeoutError extends TransportError {
+  constructor(cmd: string, timeoutMs: number) {
+    super(`IPC_TIMEOUT: ${cmd} did not respond in ${timeoutMs}ms`, "IPC_TIMEOUT", {
+      cmd,
+      timeoutMs,
+    });
+    this.name = "IpcTimeoutError";
   }
 }
 
@@ -65,17 +82,19 @@ export class ConnectionClosedError extends TransportError {
 
 export class AuthFailureError extends TransportError {
   constructor(code: number, reason?: string) {
-    super(`Authentication failed (code ${code}): ${reason ?? "unknown"}`, "AUTH_FAILURE", {
-      code,
-      reason,
-    });
+    super(
+      `Authentication failed (code ${code}): ${reason ?? "unknown"}`,
+      "AUTH_FAILURE",
+      { code, reason },
+      false,
+    );
     this.name = "AuthFailureError";
   }
 }
 
 export class DisposedError extends TransportError {
   constructor() {
-    super("Transport has been disposed", "DISPOSED");
+    super("Transport has been disposed", "DISPOSED", undefined, false);
     this.name = "DisposedError";
   }
 }
