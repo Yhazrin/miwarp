@@ -215,30 +215,32 @@ impl EventWriter {
     }
 
     /// Get or create the per-run RunWriter (seq + persistent BufWriter).
-    /// Returns the Arc<Mutex<RunWriter>> for the given run_id.
-    fn get_or_create_run(&self, run_id: &str) -> Arc<Mutex<RunWriter>> {
+    /// Returns Err when the events file cannot be opened (invalid run_id path,
+    /// permission, etc.) — never panics; callers must surface the error.
+    fn get_or_create_run(&self, run_id: &str) -> Result<Arc<Mutex<RunWriter>>, String> {
         let mut map = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         // GC: drop entries whose per-run Arc has no other holders (session ended)
         if map.len() > 50 {
             map.retain(|_, v| Arc::strong_count(v) > 1);
         }
-        map.entry(run_id.to_string())
-            .or_insert_with(|| {
-                let start_seq = next_seq(run_id);
-                let dir = super::run_dir(run_id);
-                let _ = super::ensure_dir(&dir);
-                let path = events_path(run_id);
-                let file = OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(&path)
-                    .expect("failed to open events.jsonl");
-                Arc::new(Mutex::new(RunWriter {
-                    next_seq: start_seq,
-                    writer: BufWriter::new(file),
-                }))
-            })
-            .clone()
+        if let Some(existing) = map.get(run_id) {
+            return Ok(existing.clone());
+        }
+        let start_seq = next_seq(run_id);
+        let dir = super::run_dir(run_id);
+        let _ = super::ensure_dir(&dir);
+        let path = events_path(run_id);
+        let file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)
+            .map_err(|e| format!("failed to open events.jsonl for run_id={run_id}: {e}"))?;
+        let writer = Arc::new(Mutex::new(RunWriter {
+            next_seq: start_seq,
+            writer: BufWriter::new(file),
+        }));
+        map.insert(run_id.to_string(), writer.clone());
+        Ok(writer)
     }
 
     /// Write an event with a caller-supplied timestamp. If `durable` is true,
@@ -254,7 +256,7 @@ impl EventWriter {
         ts: &str,
         durable: bool,
     ) -> Result<u64, String> {
-        let run_arc = self.get_or_create_run(run_id);
+        let run_arc = self.get_or_create_run(run_id)?;
 
         let mut run = run_arc.lock().unwrap_or_else(|e| e.into_inner());
         let current = run.next_seq;
@@ -1224,6 +1226,33 @@ mod tests {
         assert_eq!(count, 2, "two envelopes on disk");
 
         cleanup_run(&run_id);
+    }
+
+    /// Invalid path characters in run_id (e.g. ':' on Windows) must return
+    /// Err — never panic/abort the process.
+    #[test]
+    fn write_bus_event_returns_err_on_invalid_run_id_path() {
+        let writer = EventWriter::new();
+        let run_id = "runtime-health:claude".to_string();
+        let event = BusEvent::RunState {
+            run_id: run_id.clone(),
+            state: "should_fail".to_string(),
+            exit_code: None,
+            error: None,
+        };
+        let result = writer.write_bus_event(&run_id, &event);
+        #[cfg(windows)]
+        assert!(
+            result.is_err(),
+            "colon in run_id must fail open on Windows, got {result:?}"
+        );
+        #[cfg(not(windows))]
+        {
+            // Unix allows ':'; clean up if the write succeeded.
+            if result.is_ok() {
+                cleanup_run(&run_id);
+            }
+        }
     }
 
     /// P0-S1: write_bus_event must never silently swallow a failure. If
