@@ -45,16 +45,21 @@ if git diff --cached --name-only | grep -q '\.rs$'; then
   fi
 fi
 
-# ── 2. Frontend formatting (only if TS/Svelte/JSON staged) ──
-if git diff --cached --name-only | grep -qE '\.(ts|svelte|json)$'; then
-  echo "▶ Checking Prettier formatting..."
-  if ! npx prettier --check 'src/**/*.{ts,svelte,json}' 'messages/*.json' --log-level warn 2>/dev/null; then
+# ── 2. Frontend formatting (only staged TS/Svelte/JSON files) ──
+STAGED_FRONTEND=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|svelte|json)$' || true)
+if [ -n "$STAGED_FRONTEND" ]; then
+  echo "▶ Checking Prettier formatting on staged files..."
+  PRETTIER_TMP=$(mktemp)
+  echo "$STAGED_FRONTEND" > "$PRETTIER_TMP"
+  if ! npx prettier --check --file-list "$PRETTIER_TMP" --log-level warn 2>/dev/null; then
+    rm -f "$PRETTIER_TMP"
     echo ""
-    echo "⚠  Prettier formatting check failed."
-    echo "   Run: npx prettier --write 'src/**/*.{ts,svelte,json}' 'messages/*.json'"
+    echo "⚠  Prettier formatting check failed on staged files."
+    echo "   Run: npx prettier --write <failed-files>"
     echo ""
     exit 1
   fi
+  rm -f "$PRETTIER_TMP"
 fi
 
 # ── 3. ESLint ──
