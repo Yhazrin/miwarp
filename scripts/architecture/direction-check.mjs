@@ -25,7 +25,7 @@
  * Run from repo root:
  *   node scripts/architecture/direction-check.mjs
  */
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import {
   REPO_ROOT,
   extractCrateImports,
@@ -154,7 +154,7 @@ const frontendFiles = walkFiles(
   (f) => /\.(ts|svelte|js)$/.test(f) && !f.includes("__tests__"),
 );
 for (const file of frontendFiles) {
-  if (file.includes("/src/lib/transport/")) continue;
+  if (file.includes(`${sep}src${sep}lib${sep}transport${sep}`)) continue;
   const src = readText(file);
   if (!src) continue;
   for (const spec of extractStaticImports(src)) {

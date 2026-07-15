@@ -428,7 +428,7 @@ pub fn run() {
                 commands::cli_sync::sync_cli_session,
                 commands::claude_history_migration::export_claude_code_history_archive,
                 commands::claude_history_migration::import_claude_code_history_archive,
-                commands::claude_history_migration::scan_claude_code_history,
+                commands::scan_history::scan_claude_code_history,
                 commands::updates::check_for_updates,
                 commands::web_server::get_web_server_status,
                 commands::web_server::get_web_server_token,
