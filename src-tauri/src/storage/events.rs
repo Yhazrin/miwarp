@@ -1,7 +1,7 @@
 use crate::models::{now_iso, BusEvent, ModelUsageSummary, RawRunUsage, RunEvent, RunEventType};
 use std::collections::HashMap;
 use std::fs::{self, OpenOptions};
-use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::io::{BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 
 /// Event types the frontend reducer actually handles during replay.
 /// "raw" events (CLI stream data) are 90%+ of the file but the frontend drops them,
@@ -783,47 +783,58 @@ pub fn list_bus_events(run_id: &str, since_seq: Option<u64>) -> Vec<serde_json::
         since_seq
     );
     let path = events_path(run_id);
-    if !path.exists() {
-        return vec![];
-    }
-    let content = match fs::read_to_string(&path) {
-        Ok(c) => c,
+    let file = match fs::File::open(&path) {
+        Ok(f) => f,
         Err(_) => return vec![],
     };
 
     let min_seq = since_seq.unwrap_or(0);
+    let reader = BufReader::with_capacity(64 * 1024, file);
+    let mut result = Vec::new();
 
-    // Pre-filter: skip lines that clearly aren't bus events before parsing JSON.
-    // Bus events have `"_bus":true` — do a cheap substring check first.
-    content
-        .lines()
-        .filter(|l| {
-            let l = l.trim();
-            !l.is_empty() && l.contains("\"_bus\"")
-        })
-        .filter_map(|l| {
-            let v: serde_json::Value = serde_json::from_str(l).ok()?;
-            if v.get("_bus")?.as_bool()? {
-                let seq = v.get("seq")?.as_u64()?;
-                if seq > min_seq {
-                    let event = v.get("event")?;
-                    let etype = event.get("type")?.as_str()?;
-                    if !REPLAY_TYPES.contains(&etype) {
-                        return None;
-                    }
-                    let mut event = event.clone();
-                    if let Some(obj) = event.as_object_mut() {
-                        if let Some(ts) = v.get("ts") {
-                            obj.insert("ts".to_string(), ts.clone());
-                        }
-                        obj.insert("_seq".to_string(), serde_json::Value::Number(seq.into()));
-                    }
-                    return Some(event);
-                }
+    // Stream line-by-line: BufReader reads in 64KB chunks, so RSS stays bounded
+    // regardless of file size. Pre-filter with substring check before parsing JSON.
+    for line_result in reader.lines() {
+        let line = match line_result {
+            Ok(l) => l,
+            Err(_) => continue,
+        };
+        let trimmed = line.trim();
+        if trimmed.is_empty() || !trimmed.contains("\"_bus\"") {
+            continue;
+        }
+        let Some(v) = serde_json::from_str::<serde_json::Value>(trimmed).ok() else {
+            continue;
+        };
+        let Some(true) = v.get("_bus").and_then(|b| b.as_bool()) else {
+            continue;
+        };
+        let Some(seq) = v.get("seq").and_then(|s| s.as_u64()) else {
+            continue;
+        };
+        if seq <= min_seq {
+            continue;
+        }
+        let Some(event) = v.get("event") else {
+            continue;
+        };
+        let Some(etype) = event.get("type").and_then(|t| t.as_str()) else {
+            continue;
+        };
+        if !REPLAY_TYPES.contains(&etype) {
+            continue;
+        }
+        let mut event = event.clone();
+        if let Some(obj) = event.as_object_mut() {
+            if let Some(ts) = v.get("ts") {
+                obj.insert("ts".to_string(), ts.clone());
             }
-            None
-        })
-        .collect()
+            obj.insert("_seq".to_string(), serde_json::Value::Number(seq.into()));
+        }
+        result.push(event);
+    }
+
+    result
 }
 
 #[cfg(test)]

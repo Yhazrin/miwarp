@@ -208,7 +208,12 @@ pub async fn dispatch_command(
             let since_seq = params.get("since_seq").and_then(|v| v.as_u64());
             // Validate run exists
             crate::storage::runs::get_run(&id).ok_or_else(|| format!("Run {} not found", id))?;
-            let events = crate::storage::events::list_bus_events(&id, since_seq);
+            let run_id = id.clone();
+            let events = tokio::task::spawn_blocking(move || {
+                crate::storage::events::list_bus_events(&run_id, since_seq)
+            })
+            .await
+            .map_err(|e| format!("spawn_blocking failed: {}", e))?;
             Ok(Value::Array(events))
         }
 

@@ -252,12 +252,17 @@ pub async fn broadcast_mcp_toggle(
 }
 
 #[tauri::command]
-pub fn get_bus_events(
+pub async fn get_bus_events(
     id: String,
     since_seq: Option<u64>,
 ) -> Result<Vec<serde_json::Value>, String> {
     crate::storage::runs::get_run(&id).ok_or_else(|| format!("Run {} not found", id))?;
-    Ok(crate::storage::events::list_bus_events(&id, since_seq))
+    // Run file I/O + JSON parsing on a blocking thread so we don't stall
+    // the tokio runtime when the events.jsonl is large (100MB+).
+    let run_id = id.clone();
+    tokio::task::spawn_blocking(move || crate::storage::events::list_bus_events(&run_id, since_seq))
+        .await
+        .map_err(|e| format!("spawn_blocking failed: {}", e))
 }
 
 #[tauri::command]
