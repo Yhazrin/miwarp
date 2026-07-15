@@ -317,7 +317,9 @@
   onMount(() => {
     // Register workspace selection callback so sidebar folder expansion
     // triggers the workspace overview in the chat page.
+    console.log("[ChatPage] onMount: registering onSelectWorkspace callback, context:", !!layoutChrome, "method:", typeof layoutChrome?.onSelectWorkspaceChange);
     layoutChrome.onSelectWorkspaceChange?.((cwd: string) => {
+      console.log("[ChatPage] selectWorkspace callback fired with cwd:", cwd);
       selectedWorkspaceCwd = cwd;
     });
 
@@ -668,18 +670,21 @@
       store.phase !== "loading",
   );
 
-  /** Effective cwd for the workspace overview panel: shows when the welcome
-   *  screen is visible and a workspace folder has been selected via sidebar
-   *  folder expansion or URL folder param. */
+  /** Effective cwd for the workspace overview panel: shows when a workspace
+   *  folder has been selected via sidebar expansion or URL folder param, and
+   *  no session is actively loaded (regardless of welcomeVisible, which can
+   *  be false due to cached runId redirects before the store populates). */
   let selectedWorkspaceCwd = $state("");
   let workspaceOverviewCwd = $derived(
-    welcomeVisible ? (selectedWorkspaceCwd || folderCwdOverride || "") : "",
+    !store.run && store.timeline.length === 0 && !store.streamingText
+      ? (selectedWorkspaceCwd || folderCwdOverride || "")
+      : "",
   );
 
   // Clear sidebar-selected workspace when a session becomes active so the
   // overview doesn't reappear on navigation back to the welcome screen.
   $effect(() => {
-    if (!welcomeVisible && selectedWorkspaceCwd) {
+    if (store.run && selectedWorkspaceCwd) {
       selectedWorkspaceCwd = "";
     }
   });

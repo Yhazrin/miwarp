@@ -147,10 +147,12 @@
         {selectedRunId}
         onToggle={() => {
           const wasExpanded = pss.expandedProjects.has(folder.folderKey);
+          console.log("[SidebarFolderClick]", { folderKey: folder.folderKey, cwd: folder.cwd, wasExpanded, isUncategorized: folder.isUncategorized, hasOnSelectWorkspace: typeof onSelectWorkspace });
           onToggleProject(folder.folderKey);
           // When expanding a workspace folder, notify the chat page so it can
           // show the workspace overview in the main area.
           if (!wasExpanded && !folder.isUncategorized && folder.cwd) {
+            console.log("[SidebarFolderClick] calling onSelectWorkspace with cwd:", folder.cwd);
             onSelectWorkspace(folder.cwd);
           }
         }}
