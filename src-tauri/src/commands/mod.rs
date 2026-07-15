@@ -36,6 +36,7 @@ pub mod runs;
 pub mod runtime_diagnostics;
 pub mod runtime_health;
 pub mod runtime_hub;
+pub mod scan_history;
 pub mod screenshot;
 pub mod session;
 pub mod settings;
