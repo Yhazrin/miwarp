@@ -3,45 +3,88 @@ use crate::models::{
     AllSettings, UserSettings,
 };
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn settings_path() -> PathBuf {
     super::data_dir().join("settings.json")
 }
 
-pub fn load() -> AllSettings {
-    let path = settings_path();
-    if path.exists() {
-        match fs::read_to_string(&path) {
-            Ok(content) => match serde_json::from_str(&content) {
-                Ok(mut settings) => {
-                    log::debug!("[storage/settings] loaded settings from {}", path.display());
-                    // Run one-time migrations on platform credentials
-                    if migrate_platform_credentials(&mut settings) {
-                        log::info!("[storage/settings] migrated platform credentials, saving");
-                        let _ = save(&settings);
-                    }
-                    if migrate_session_island_alignment(&mut settings) {
-                        log::info!(
-                            "[storage/settings] normalized session_island_alignment, saving"
-                        );
-                        let _ = save(&settings);
-                    }
-                    return settings;
-                }
-                Err(e) => {
-                    log::warn!("[storage/settings] failed to parse settings: {}", e);
-                }
-            },
-            Err(e) => {
-                log::warn!("[storage/settings] failed to read settings: {}", e);
-            }
+/// Back up a corrupt settings file to `settings.json.corrupt.<timestamp>`.
+/// Returns the backup path on success so the caller can log it.
+fn backup_corrupt_file(path: &Path) -> Option<PathBuf> {
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    let backup = path.with_extension(format!("json.corrupt.{ts}"));
+    match fs::rename(path, &backup) {
+        Ok(()) => {
+            log::warn!(
+                "[storage/settings] corrupt file backed up to {}",
+                backup.display()
+            );
+            Some(backup)
+        }
+        Err(e) => {
+            log::error!(
+                "[storage/settings] failed to back up corrupt file {}: {}",
+                path.display(),
+                e
+            );
+            None
         }
     }
-    log::debug!("[storage/settings] using default settings");
-    let defaults = AllSettings::default();
-    let _ = save(&defaults);
-    defaults
+}
+
+fn load_from_path(path: &Path) -> AllSettings {
+    match fs::read_to_string(path) {
+        Ok(content) => match serde_json::from_str::<AllSettings>(&content) {
+            Ok(mut settings) => {
+                log::debug!("[storage/settings] loaded settings from {}", path.display());
+                // Run one-time migrations on platform credentials
+                if migrate_platform_credentials(&mut settings) {
+                    log::info!("[storage/settings] migrated platform credentials, saving");
+                    let _ = save_to_path(&settings, path);
+                }
+                if migrate_session_island_alignment(&mut settings) {
+                    log::info!("[storage/settings] normalized session_island_alignment, saving");
+                    let _ = save_to_path(&settings, path);
+                }
+                settings
+            }
+            Err(e) => {
+                log::warn!(
+                    "[storage/settings] failed to parse settings: {}; using defaults (original preserved)",
+                    e
+                );
+                backup_corrupt_file(path);
+                AllSettings::default()
+            }
+        },
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            log::debug!("[storage/settings] settings file not found, using defaults");
+            AllSettings::default()
+        }
+        Err(e) => {
+            // IO error (permission denied, file locked, etc.) — do NOT overwrite
+            // the existing file with defaults. Return defaults for in-memory use
+            // only; the next explicit save() call will persist them atomically.
+            log::warn!(
+                "[storage/settings] failed to read settings: {}; using defaults (file preserved)",
+                e
+            );
+            AllSettings::default()
+        }
+    }
+}
+
+fn save_to_path(settings: &AllSettings, path: &Path) -> Result<(), String> {
+    log::debug!("[storage/settings] saving settings");
+    super::durable_io::write_json_atomic(path, settings)
+}
+
+pub fn load() -> AllSettings {
+    load_from_path(&settings_path())
 }
 
 /// Known provider defaults for migration.
@@ -395,26 +438,7 @@ fn migrate_session_island_alignment(settings: &mut AllSettings) -> bool {
 }
 
 pub fn save(settings: &AllSettings) -> Result<(), String> {
-    log::debug!("[storage/settings] saving settings");
-    let path = settings_path();
-    super::ensure_dir(path.parent().expect("settings path has parent"))
-        .map_err(|e| e.to_string())?;
-    let json = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
-    fs::write(&path, &json).map_err(|e| e.to_string())?;
-
-    // Restrict file permissions — settings may contain API keys
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        if let Err(e) = fs::set_permissions(&path, fs::Permissions::from_mode(0o600)) {
-            log::warn!(
-                "[storage/settings] failed to set permissions on settings.json: {}",
-                e
-            );
-        }
-    }
-
-    Ok(())
+    save_to_path(settings, &settings_path())
 }
 
 pub fn get_user_settings() -> UserSettings {
@@ -1293,5 +1317,160 @@ mod tests {
             serde_json::to_string(&patched.keybinding_overrides).unwrap(),
             serde_json::to_string(&original.keybinding_overrides).unwrap(),
         );
+    }
+
+    // ── Durability tests ──────────────────────────────────────────────
+
+    #[test]
+    fn load_truncated_json_backs_up_and_returns_defaults() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+
+        // Write truncated JSON (missing closing brace)
+        fs::write(&path, r#"{"user":{"default_agent":"claude""#).unwrap();
+
+        let loaded = load_from_path(&path);
+
+        // Should return defaults (not crash)
+        let defaults = AllSettings::default();
+        assert_eq!(loaded.user.default_agent, defaults.user.default_agent);
+
+        // Original file should be renamed to .corrupt.*
+        assert!(!path.exists(), "original corrupt file should be renamed");
+        let entries: Vec<_> = fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.file_name()
+                    .to_str()
+                    .is_some_and(|n| n.contains("corrupt"))
+            })
+            .collect();
+        assert_eq!(entries.len(), 1, "exactly one .corrupt backup should exist");
+
+        // Backup content matches original
+        let backup_content = fs::read_to_string(entries[0].path()).unwrap();
+        assert!(backup_content.contains("claude"));
+    }
+
+    #[test]
+    fn load_io_error_preserves_file_returns_defaults() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+
+        // Write valid settings first
+        let mut valid = AllSettings::default();
+        valid.user.default_agent = "custom-agent".to_string();
+        let json = serde_json::to_string_pretty(&valid).unwrap();
+        fs::write(&path, &json).unwrap();
+
+        // Make file unreadable (Unix only)
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o000)).unwrap();
+
+            let loaded = load_from_path(&path);
+
+            // Should return defaults (not crash)
+            assert_eq!(
+                loaded.user.default_agent,
+                AllSettings::default().user.default_agent
+            );
+
+            // Original file MUST still exist (not overwritten)
+            assert!(path.exists(), "original file must be preserved on IO error");
+
+            // Restore permissions for cleanup
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o644)).unwrap();
+        }
+    }
+
+    #[test]
+    fn load_missing_file_returns_defaults_without_creating_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+
+        let loaded = load_from_path(&path);
+
+        // Should return defaults
+        assert_eq!(
+            loaded.user.default_agent,
+            AllSettings::default().user.default_agent
+        );
+
+        // Should NOT create the file (no implicit save on missing)
+        assert!(!path.exists(), "missing file should not be created by load");
+    }
+
+    #[test]
+    fn save_atomic_write_never_leaves_partial_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+
+        // Write initial valid settings
+        let mut initial = AllSettings::default();
+        initial.user.default_agent = "initial".to_string();
+        save_to_path(&initial, &path).unwrap();
+
+        // Write updated settings
+        let mut updated = AllSettings::default();
+        updated.user.default_agent = "updated".to_string();
+        save_to_path(&updated, &path).unwrap();
+
+        // File should contain the updated value (not partial)
+        let content = fs::read_to_string(&path).unwrap();
+        let loaded: AllSettings = serde_json::from_str(&content).unwrap();
+        assert_eq!(loaded.user.default_agent, "updated");
+    }
+
+    #[test]
+    fn save_then_load_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+
+        let mut original = AllSettings::default();
+        original.user.default_agent = "roundtrip-agent".to_string();
+        original.user.ui_zoom = Some(1.25);
+        original
+            .user
+            .platform_credentials
+            .push(crate::models::PlatformCredential {
+                platform_id: "test".to_string(),
+                api_key: Some("sk-test-123".to_string()),
+                base_url: Some("https://test.example.com".to_string()),
+                auth_env_var: None,
+                name: None,
+                models: None,
+                extra_env: None,
+            });
+
+        save_to_path(&original, &path).unwrap();
+        let loaded = load_from_path(&path);
+
+        assert_eq!(loaded.user.default_agent, "roundtrip-agent");
+        assert_eq!(loaded.user.ui_zoom, Some(1.25));
+        assert_eq!(loaded.user.platform_credentials.len(), 1);
+        assert_eq!(loaded.user.platform_credentials[0].platform_id, "test");
+    }
+
+    #[test]
+    fn concurrent_save_last_writer_wins() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+
+        let mut s1 = AllSettings::default();
+        s1.user.default_agent = "writer-1".to_string();
+
+        let mut s2 = AllSettings::default();
+        s2.user.default_agent = "writer-2".to_string();
+
+        // Simulate concurrent writes (both succeed)
+        save_to_path(&s1, &path).unwrap();
+        save_to_path(&s2, &path).unwrap();
+
+        // Last writer wins
+        let loaded = load_from_path(&path);
+        assert_eq!(loaded.user.default_agent, "writer-2");
     }
 }
