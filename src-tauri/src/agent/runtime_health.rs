@@ -484,9 +484,17 @@ fn emit_change(emitter: &Arc<BroadcastEmitter>, report: &RuntimeHealthReport) {
     // The probe loop has no specific run_id; emit a synthetic per-agent
     // channel so listeners get the right routing.
     emitter.emit_realtime("runtime_health_changed", &bus, Some(&report.agent));
-    // Persist through the bus-event A-class channel for replay
-    let synthetic_run_id = format!("runtime-health:{}", report.agent);
+    // Persist through the bus-event A-class channel for replay.
+    // Must stay filesystem-safe on Windows (no ':' in path components).
+    let synthetic_run_id = synthetic_health_run_id(&report.agent);
     emitter.persist_and_emit(&synthetic_run_id, &bus);
+}
+
+/// Synthetic run_id used when persisting runtime-health bus events.
+/// Uses `_` (not `:`) so the path is valid on Windows and matches
+/// `run_journal::validate_run_id` charset rules.
+pub fn synthetic_health_run_id(agent: &str) -> String {
+    format!("runtime_health_{agent}")
 }
 
 /// Convenience: convert an `AgentRuntimeKind` to its canonical agent key.
@@ -515,6 +523,17 @@ mod tests {
         assert_eq!(HealthState::Healthy.as_str(), "healthy");
         assert_eq!(HealthState::Degraded.as_str(), "degraded");
         assert_eq!(HealthState::Unhealthy.as_str(), "unhealthy");
+    }
+
+    #[test]
+    fn synthetic_health_run_id_is_filesystem_safe() {
+        let id = synthetic_health_run_id("claude");
+        assert_eq!(id, "runtime_health_claude");
+        assert!(
+            id.chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_')),
+            "synthetic run_id must match journal charset (no ':')"
+        );
     }
 
     #[test]

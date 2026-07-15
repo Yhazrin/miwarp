@@ -49,7 +49,8 @@ pub async fn runtime_health_probe_now(
                 logged_in: report.logged_in,
                 timestamp_ms: crate::models::now_epoch_ms(),
             };
-            let synthetic_run_id = format!("runtime-health:{}", report.agent);
+            let synthetic_run_id =
+                crate::agent::runtime_health::synthetic_health_run_id(&report.agent);
             emitter.persist_and_emit(&synthetic_run_id, &bus);
         }
     }
