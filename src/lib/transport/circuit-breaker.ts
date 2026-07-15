@@ -171,11 +171,14 @@ export function createTransportCircuitBreaker(name: string): CircuitBreaker {
         return false;
       }
       // Don't count validation errors
-      if (error.message.includes("IPC_TIMEOUT")) {
+      // Structured TransportError has a `code` field; fall back to message matching
+      // for plain Error objects from the Tauri invoke layer.
+      const errorCode = (error as { code?: string }).code;
+      if (errorCode === "IPC_TIMEOUT" || error.message.includes("IPC_TIMEOUT")) {
         return true; // Timeout IS a failure
       }
       // Count connection errors
-      if (error.message.includes("WebSocket")) {
+      if (errorCode === "CONNECTION_FAILED" || error.message.includes("WebSocket")) {
         return true;
       }
       // Count other transport errors
