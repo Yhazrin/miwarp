@@ -700,8 +700,14 @@ async fn replay_events(
     run_id: &str,
     last_seq: u64,
 ) -> Result<(), String> {
-    // list_bus_events already filters by since_seq > last_seq
-    let events = crate::storage::events::list_bus_events(run_id, Some(last_seq));
+    // list_bus_events already filters by since_seq > last_seq.
+    // Run on a blocking thread to avoid stalling the tokio runtime on large files.
+    let run_id_owned = run_id.to_string();
+    let events = tokio::task::spawn_blocking(move || {
+        crate::storage::events::list_bus_events(&run_id_owned, Some(last_seq))
+    })
+    .await
+    .map_err(|e| format!("spawn_blocking failed: {}", e))?;
 
     let replayed = events.len();
     for event in &events {
