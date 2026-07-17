@@ -49,9 +49,9 @@ export const packRegistry: Record<SoundPackName, SoundPack> = {
  * Default sound pack name.
  * "aero" is the default - balanced, pleasant, professional.
  */
-export const DEFAULT_PACK: SoundPackName = "aero";
+const DEFAULT_PACK: SoundPackName = "aero";
 
 /**
  * Backwards-compat alias: the default pack's role → source mapping.
  */
-export const roleRegistry: SoundPack = aeroPack;
+const roleRegistry: SoundPack = aeroPack;

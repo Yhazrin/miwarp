@@ -37,7 +37,7 @@ interface NotifyOptions {
 let permissionChecked = false;
 let permissionGranted = false;
 
-export async function ensureNotificationPermission(): Promise<boolean> {
+async function ensureNotificationPermission(): Promise<boolean> {
   if (permissionChecked) return permissionGranted;
 
   const plugin = await loadNotificationPlugin();

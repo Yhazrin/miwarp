@@ -51,7 +51,7 @@ export function createInFlightRecord(
   };
 }
 
-export function buildRetryableRecord(
+function buildRetryableRecord(
   record: InFlightRecord,
   failure: SendFailure,
 ): RetryableRecord {

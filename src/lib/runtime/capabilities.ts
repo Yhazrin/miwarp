@@ -7,7 +7,7 @@
 // same change; the contract test in __tests__/runtime-capabilities-contract.test.ts
 // fails fast if a flag is dropped.
 
-export type CapabilityFlag =
+type CapabilityFlag
   | "supports_streaming"
   | "supports_resume"
   | "supports_permission_requests"
@@ -21,7 +21,7 @@ export type CapabilityFlag =
   | "supports_remote_execution"
   | "supports_structured_events";
 
-export interface RuntimeCapabilities {
+interface RuntimeCapabilities {
   supports_streaming: boolean;
   supports_resume: boolean;
   supports_permission_requests: boolean;
@@ -36,7 +36,7 @@ export interface RuntimeCapabilities {
   supports_structured_events: boolean;
 }
 
-export const CAPABILITY_FLAG_NAMES: readonly CapabilityFlag[] = [
+const CAPABILITY_FLAG_NAMES: readonly CapabilityFlag[] = [
   "supports_streaming",
   "supports_resume",
   "supports_permission_requests",

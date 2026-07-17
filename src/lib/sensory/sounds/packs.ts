@@ -1335,7 +1335,7 @@ export const crispPack: GeneratedSoundPack = {
 // All Sound Packs
 // ---------------------------------------------------------------------------
 
-export const soundPacks = {
+const soundPacks = {
   soft: softPack,
   aero: aeroPack,
   arcade: arcadePack,

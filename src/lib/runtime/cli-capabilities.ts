@@ -9,14 +9,14 @@
 
 // ── Version parsing ──
 
-export interface SemVer {
+interface SemVer {
   major: number;
   minor: number;
   patch: number;
 }
 
 /** Parse "MAJOR.MINOR.PATCH" → SemVer. Returns null on malformed input. */
-export function parseSemVer(raw: string): SemVer | null {
+function parseSemVer(raw: string): SemVer | null {
   if (!raw) return null;
   const match = raw.match(/^(\d+)\.(\d+)\.(\d+)/);
   if (!match) return null;
@@ -24,14 +24,14 @@ export function parseSemVer(raw: string): SemVer | null {
 }
 
 /** Compare two SemVers: negative if a < b, 0 if equal, positive if a > b. */
-export function compareSemVer(a: SemVer, b: SemVer): number {
+function compareSemVer(a: SemVer, b: SemVer): number {
   if (a.major !== b.major) return a.major - b.major;
   if (a.minor !== b.minor) return a.minor - b.minor;
   return a.patch - b.patch;
 }
 
 /** Returns true when `version >= threshold`. */
-export function versionAtLeast(version: SemVer, threshold: SemVer): boolean {
+function versionAtLeast(version: SemVer, threshold: SemVer): boolean {
   return compareSemVer(version, threshold) >= 0;
 }
 
@@ -109,14 +109,14 @@ export function getCliCapabilities(version: string): CliCapabilities {
  * Quick check: does this CLI version support a specific capability?
  * Convenience wrapper around getCliCapabilities for one-off checks.
  */
-export function cliSupports(version: string, flag: keyof CliCapabilities): boolean {
+function cliSupports(version: string, flag: keyof CliCapabilities): boolean {
   return getCliCapabilities(version)[flag];
 }
 
 // ── Derived display helpers ──
 
 /** Human-readable capability summary for settings/debug. */
-export function describeCapabilities(caps: CliCapabilities): string[] {
+function describeCapabilities(caps: CliCapabilities): string[] {
   const enabled: string[] = [];
   for (const [key, val] of Object.entries(caps)) {
     if (val) enabled.push(key.replace("supports_", ""));

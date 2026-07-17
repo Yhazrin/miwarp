@@ -13,7 +13,7 @@ const pendingRequests = new Map<string, Promise<MediaArtifact | null>>();
 /**
  * Resolve a single file path to a MediaArtifact.
  */
-export async function resolveArtifact(path: string, cwd?: string): Promise<MediaArtifact | null> {
+async function resolveArtifact(path: string, cwd?: string): Promise<MediaArtifact | null> {
   // Check cache
   if (artifactCache.has(path)) {
     return artifactCache.get(path)!;
@@ -88,7 +88,7 @@ export async function resolveArtifactsFromText(
 /**
  * Clear artifact cache (e.g., when session changes).
  */
-export function clearArtifactCache(): void {
+function clearArtifactCache(): void {
   artifactCache.clear();
   pendingRequests.clear();
 }

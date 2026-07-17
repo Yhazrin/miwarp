@@ -246,4 +246,4 @@ export class SessionFolderStore {
 export const sessionFolderStore = new SessionFolderStore();
 
 /** Convenience re-export so callers can `import type { SessionFolderGroup }` here. */
-export type { SessionFolderGroup };
+;

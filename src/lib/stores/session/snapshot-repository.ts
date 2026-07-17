@@ -58,7 +58,7 @@ function _armPagehide(): void {
 }
 
 /** Maximum tool_use_result size to serialize (bytes). */
-export const SNAPSHOT_MAX_TOOL_RESULT = 50_000;
+const SNAPSHOT_MAX_TOOL_RESULT = 50_000;
 
 /**
  * Minimal structural view the repository needs to read from the live

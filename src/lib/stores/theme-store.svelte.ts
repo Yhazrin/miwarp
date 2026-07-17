@@ -16,7 +16,7 @@ import {
 import { LS_LEGACY_THEME, LS_LEGACY_COLOR_SCHEME } from "$lib/utils/storage-keys";
 import { dbgWarn } from "$lib/utils/debug";
 
-export interface ThemeDefinition {
+interface ThemeDefinition {
   /** Base theme id without any -light/-dark suffix (e.g. "morandi", "codex"). */
   id: string;
   /**
@@ -46,7 +46,7 @@ export interface ThemeDefinition {
 }
 
 /** Old single-variant type. Kept as a type alias for legacy call sites. */
-export type ThemeVariant = "light" | "dark";
+type ThemeVariant "light" | "dark";
 
 const BUILTIN_THEMES: ThemeDefinition[] = [
   // ── Each theme = one design. The same brand reads cleanly in both light and
@@ -138,8 +138,8 @@ const BUILTIN_THEMES: ThemeDefinition[] = [
   },
 ];
 
-export type ThemeId = string;
-export type ColorScheme = "warm" | "neutral";
+type ThemeId string;
+type ColorScheme "warm" | "neutral";
 
 const _TOKEN_VARS = [
   "--miwarp-bg-deepest",
@@ -646,8 +646,7 @@ class ThemeStore {
     return { base, mode: impliedMode ?? "dark" };
   }
 }
-
-export { DEFAULT_THEME_ID };
+;
 
 /**
  * Resolve the display name for a theme reactively.
@@ -661,7 +660,7 @@ export { DEFAULT_THEME_ID };
  * inside `$derived(...)` so Svelte 5 wires the `t()` call into the locale
  * `$state` and re-evaluates on switch.
  */
-export function themeName(theme: ThemeDefinition): string {
+function themeName(theme: ThemeDefinition): string {
   if (theme.nameKey) {
     return t(theme.nameKey as Parameters<typeof t>[0]);
   }

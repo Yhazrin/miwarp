@@ -1,7 +1,7 @@
 import type { TaskNotificationItem } from "$lib/stores/session-store.svelte";
 
 /** Statuses that only belong inline on the Task tool card — not the top chat banner. */
-export const TERMINAL_TASK_NOTIFICATION_STATUSES = new Set([
+const TERMINAL_TASK_NOTIFICATION_STATUSES = new Set([
   "stopped",
   "completed",
   "done",
@@ -25,6 +25,6 @@ export function shouldShowTopTaskNotificationBanner(item: TaskNotificationItem):
   return !TERMINAL_TASK_NOTIFICATION_STATUSES.has(item.status.toLowerCase());
 }
 
-export function taskNotificationBannerKey(item: TaskNotificationItem): string {
+function taskNotificationBannerKey(item: TaskNotificationItem): string {
   return `${item.task_id}:${item.status}`;
 }

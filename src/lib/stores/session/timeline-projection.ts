@@ -18,7 +18,7 @@ import type { TimelineEntry, Attachment } from "$lib/types";
 import { IMAGE_TYPES } from "$lib/utils/file-types";
 
 /** Local structural type for the taskNotifications map values. */
-export interface TaskNotificationLike {
+interface TaskNotificationLike {
   task_id: string;
   status: string;
   message: string;
@@ -67,7 +67,7 @@ export function mapAttachments(
 }
 
 /** Append to a capped array (rolling 100-entry window). */
-export function appendCapped<T>(arr: T[], item: T): T[] {
+function appendCapped<T>(arr: T[], item: T): T[] {
   const next = [...arr, item];
   return next.length > 100 ? next.slice(-100) : next;
 }
@@ -89,20 +89,20 @@ export function activeToolName(
 }
 
 /** Active background task notifications (deduped by task_id). */
-export function activeBackgroundTasks<T extends TaskNotificationLike>(
+function activeBackgroundTasks<T extends TaskNotificationLike>(
   taskNotifications: Map<string, T>,
 ): T[] {
   return [...taskNotifications.values()].filter((t) => t.status !== "completed");
 }
 
-export function hasBackgroundTasks<T extends TaskNotificationLike>(
+function hasBackgroundTasks<T extends TaskNotificationLike>(
   taskNotifications: Map<string, T>,
 ): boolean {
   return activeBackgroundTasks(taskNotifications).length > 0;
 }
 
 /** Effective cwd: prefer sessionCwd, fall back to run.cwd, then "". */
-export function effectiveCwd(
+function effectiveCwd(
   sessionCwd: string,
   remoteHostName: string | null,
   platformCwd: string | null,

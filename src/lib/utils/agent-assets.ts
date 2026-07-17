@@ -5,7 +5,7 @@
 
 import { APP_LOGO_LIGHT_URL, staticAsset } from "$lib/utils/brand-assets";
 
-export type AgentKind =
+type AgentKind
   | "claude"
   | "codex"
   | "gemini"
@@ -31,7 +31,7 @@ export interface AgentAsset {
   fallback: string;
 }
 
-export const AGENT_ASSETS: Record<string, AgentAsset> = {
+const AGENT_ASSETS: Record<string, AgentAsset> = {
   claude: {
     kind: "claude",
     displayName: "Claude",
@@ -124,7 +124,7 @@ export const AGENT_ASSETS: Record<string, AgentAsset> = {
 /**
  * Normalize an agent name or platform ID to a known AgentKind key.
  */
-export function normalizeAgentKind(agent?: string | null, platformId?: string | null): string {
+function normalizeAgentKind(agent?: string | null, platformId?: string | null): string {
   const raw = (platformId || agent || "").toLowerCase();
 
   if (raw.includes("claude") || raw.includes("anthropic")) return "claude";

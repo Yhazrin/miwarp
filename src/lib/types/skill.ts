@@ -54,7 +54,7 @@ export type SkillCategory =
   | "integrations"
   | "custom";
 
-export type SkillSource =
+type SkillSource
   | "local" // User's custom skills
   | "marketplace" // Downloaded from marketplace
   | "builtin" // Built-in skills
@@ -170,7 +170,7 @@ export interface SkillExecution {
   sessionId?: string;
 }
 
-export type ExecutionStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+type ExecutionStatus "pending" | "running" | "completed" | "failed" | "cancelled";
 
 export interface SkillMetadata {
   name: string;

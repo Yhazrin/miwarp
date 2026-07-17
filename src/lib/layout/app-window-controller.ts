@@ -261,4 +261,4 @@ export function installAppWindowController(opts: WindowControllerOptions = {}): 
  * Re-export the app-update coordinator so callers can wire `setAutoCheckEnabled`
  * from the settings-changed handler without importing it twice.
  */
-export { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
+;

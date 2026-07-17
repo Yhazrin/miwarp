@@ -83,7 +83,7 @@ function normalizePath(p: string): string {
  * Extract line number from a path like "src/foo.ts:42".
  * Returns { path, line } or { path } if no line number.
  */
-export function parsePathWithLine(raw: string): { path: string; line?: number } {
+function parsePathWithLine(raw: string): { path: string; line?: number } {
   const match = raw.match(/^(.+?):(\d+)$/);
   if (match) {
     return { path: match[1], line: parseInt(match[2], 10) };

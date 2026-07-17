@@ -12,13 +12,13 @@
  * - HALF_OPEN -> CLOSED: On successful request
  * - HALF_OPEN -> OPEN: On failed request
  */
-export enum CircuitState {
+enum CircuitState {
   Closed = "closed",
   Open = "open",
   HalfOpen = "half_open",
 }
 
-export interface CircuitBreakerOptions {
+interface CircuitBreakerOptions {
   /** Number of failures before opening circuit (default: 5) */
   failureThreshold?: number;
   /** Time in ms before trying again (default: 30000 = 30s) */
@@ -31,7 +31,7 @@ export interface CircuitBreakerOptions {
   name?: string;
 }
 
-export class CircuitBreaker {
+class CircuitBreaker {
   private state = CircuitState.Closed;
   private failureCount = 0;
   private lastFailureTime = 0;
@@ -138,7 +138,7 @@ export class CircuitBreaker {
   }
 }
 
-export class CircuitOpenError extends Error {
+class CircuitOpenError extends Error {
   readonly circuitName: string;
   readonly retryAfterMs: number;
 
@@ -155,7 +155,7 @@ export class CircuitOpenError extends Error {
  * Network errors (timeout, connection refused) are counted as failures.
  * Client errors (400-499) are NOT counted.
  */
-export function createTransportCircuitBreaker(name: string): CircuitBreaker {
+function createTransportCircuitBreaker(name: string): CircuitBreaker {
   return new CircuitBreaker({
     name,
     failureThreshold: 5,

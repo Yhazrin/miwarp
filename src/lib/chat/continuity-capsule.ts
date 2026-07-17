@@ -29,13 +29,13 @@ export const CAPSULE_SCHEMA_VERSION = 1;
 export const CAPSULE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 export const CAPSULE_MAX_RUNS = 50;
 export const CAPSULE_DRAFT_TEXT_LIMIT = 256 * 1024;
-export const CAPSULE_DRAFT_ATTACHMENT_LIMIT = 1000;
-export const CAPSULE_DRAFT_PASTED_BLOCK_LIMIT = 1000;
-export const CAPSULE_DRAFT_PATHREF_LIMIT = 1000;
-export const CAPSULE_DRAFT_PASTED_TEXT_LIMIT = 256 * 1024;
-export const CAPSULE_DRAFT_PATHREF_VALUE_LIMIT = 4096;
+const CAPSULE_DRAFT_ATTACHMENT_LIMIT = 1000;
+const CAPSULE_DRAFT_PASTED_BLOCK_LIMIT = 1000;
+const CAPSULE_DRAFT_PATHREF_LIMIT = 1000;
+const CAPSULE_DRAFT_PASTED_TEXT_LIMIT = 256 * 1024;
+const CAPSULE_DRAFT_PATHREF_VALUE_LIMIT = 4096;
 
-export interface ContinuityAttachment {
+interface ContinuityAttachment {
   id: string;
   name: string;
   type: string;
@@ -43,7 +43,7 @@ export interface ContinuityAttachment {
   filePath?: string;
 }
 
-export interface ContinuityPastedBlock {
+interface ContinuityPastedBlock {
   id: string;
   text: string;
   lineCount: number;
@@ -52,7 +52,7 @@ export interface ContinuityPastedBlock {
   ext?: string;
 }
 
-export interface ContinuityPathRef {
+interface ContinuityPathRef {
   id: string;
   name: string;
   path: string;

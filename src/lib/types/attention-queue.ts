@@ -1,11 +1,11 @@
-export type AttentionKind =
+type AttentionKind
   | "task_attention"
   | "pending_approval"
   | "manual_confirmation"
   | "impossible_resume"
   | "journal_degraded";
 
-export type AttentionSeverity = "warning" | "blocking";
+type AttentionSeverity "warning" | "blocking";
 
 export type AttentionStatus = "open" | "acknowledged" | "resolved";
 
@@ -19,7 +19,7 @@ export type AttentionAction =
   | "dismiss"
   | "source_cleared";
 
-export interface AttentionResolution {
+interface AttentionResolution {
   action: AttentionAction;
   actor: string;
   note?: string | null;
@@ -57,7 +57,7 @@ export interface AttentionQueueSnapshot {
   updated_at: string;
 }
 
-export type AttentionEventKind =
+type AttentionEventKind
   | { type: "raised"; item: AttentionItem }
   | { type: "refreshed"; item: AttentionItem }
   | { type: "acknowledged"; item_id: string; actor?: string | null }

@@ -16,15 +16,15 @@ function normalizeVersion(v: string): string {
   return v.trim().replace(/^v/i, "");
 }
 
-export function getBackendCaps(): BackendCapabilities | null {
+function getBackendCaps(): BackendCapabilities | null {
   return caps;
 }
 
-export function isLegacyBackend(): boolean {
+function isLegacyBackend(): boolean {
   return legacyMode;
 }
 
-export function backendCapabilitiesReady(): boolean {
+function backendCapabilitiesReady(): boolean {
   return initialized;
 }
 

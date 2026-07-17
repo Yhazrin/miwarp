@@ -78,4 +78,4 @@ export function createFolderPicker(
   };
 }
 
-export type FolderPickerState = ReturnType<typeof createFolderPicker>;
+type FolderPickerState ReturnType<typeof createFolderPicker>;

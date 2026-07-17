@@ -15,23 +15,23 @@
 
 export type SoundCategory = "interaction" | "overlay" | "navigation" | "notification" | "hero";
 
-export type InteractionRole =
+type InteractionRole
   | "interaction.tap"
   | "interaction.subtle"
   | "interaction.toggle"
   | "interaction.confirm";
 
-export type OverlayRole = "overlay.open" | "overlay.close" | "overlay.expand" | "overlay.collapse";
+type OverlayRole "overlay.open" | "overlay.close" | "overlay.expand" | "overlay.collapse";
 
-export type NavigationRole = "navigation.forward" | "navigation.backward" | "navigation.tab";
+type NavigationRole "navigation.forward" | "navigation.backward" | "navigation.tab";
 
-export type NotificationRole =
+type NotificationRole
   | "notification.info"
   | "notification.success"
   | "notification.warning"
   | "notification.error";
 
-export type HeroRole = "hero.complete" | "hero.milestone";
+type HeroRole "hero.complete" | "hero.milestone";
 
 export type SoundRole =
   | InteractionRole
@@ -40,7 +40,7 @@ export type SoundRole =
   | NotificationRole
   | HeroRole;
 
-export const ALL_SOUND_ROLES: SoundRole[] = [
+const ALL_SOUND_ROLES: SoundRole[] = [
   "interaction.tap",
   "interaction.subtle",
   "interaction.toggle",
@@ -60,7 +60,7 @@ export const ALL_SOUND_ROLES: SoundRole[] = [
   "hero.milestone",
 ];
 
-export function parseRole(role: SoundRole): {
+function parseRole(role: SoundRole): {
   category: SoundCategory;
   name: string;
 } {

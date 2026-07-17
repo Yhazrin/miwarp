@@ -7,8 +7,8 @@
  * cadences or audit the impact of a tuning change.
  */
 
-export const SPLASH_FADE_MS = 300;
-export const SPLASH_REMOVE_DELAY_MS = 300;
+const SPLASH_FADE_MS = 300;
+const SPLASH_REMOVE_DELAY_MS = 300;
 
 /** Fallback poll for the runs list. Primary updates flow through `ocv:runs-changed`. */
 export const RUNS_POLL_INTERVAL_MS = 60_000;

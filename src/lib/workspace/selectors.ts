@@ -84,7 +84,7 @@ export function modelLabelForRun(run: TaskRun, platformId?: string): string {
   return "—";
 }
 
-export function runActivityTimestamp(run: TaskRun): string {
+function runActivityTimestamp(run: TaskRun): string {
   return safeDisplayString(run.last_activity_at ?? run.started_at, "");
 }
 

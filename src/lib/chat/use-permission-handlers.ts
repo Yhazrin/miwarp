@@ -431,5 +431,4 @@ function optimisticResolve(
     store.resolvePermissionAllow(requestId);
   }
 }
-
-export type { PermissionCoordinator };
+;

@@ -21,7 +21,7 @@ import type { Attachment, PromptInputSnapshot } from "$lib/types";
 import type { PendingAttachment } from "$lib/stores/prompt-input-store.svelte";
 
 /** Allow parent to inject navigation (lets us stub it in tests / Tauri builds). */
-export type GotoFn = (href: string) => void;
+type GotoFn (href: string) => void;
 
 export interface SubmitControllerDeps {
   getInputText: () => string;

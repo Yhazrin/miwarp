@@ -14,7 +14,7 @@ import { dbgWarn } from "$lib/utils/debug";
 
 // ── State Types ──
 
-export interface BrowserState {
+interface BrowserState {
   connected: boolean;
   currentBrowser: BrowserInfo | null;
   browsers: BrowserInfo[];
@@ -29,7 +29,7 @@ export interface BrowserState {
   historyIndex: number;
 }
 
-export type BrowserAction =
+type BrowserAction
   | { type: "CONNECT"; browser: BrowserInfo }
   | { type: "DISCONNECT" }
   | { type: "SET_BROWSERS"; browsers: BrowserInfo[] }

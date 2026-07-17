@@ -1,7 +1,7 @@
 import type { SendStatusEvent, SendState } from "$lib/chat/send-coordinator";
 import type { Toast, ToastType } from "$lib/stores/toast-store.svelte";
 
-export type SendStatusTone = "warning" | "error" | "info";
+type SendStatusTone "warning" | "error" | "info";
 
 export interface SendStatusPresentation {
   visible: boolean;
@@ -59,7 +59,7 @@ export function sendFailureLabelKey(event: SendStatusEvent): string {
   }
 }
 
-export function sendStatusTone(event: SendStatusEvent): SendStatusTone {
+function sendStatusTone(event: SendStatusEvent): SendStatusTone {
   if (event.state === "submitting" || event.state === "queued") return "info";
   if (event.state === "failed") {
     return event.error?.code === "stale_identity" ? "warning" : "error";
@@ -67,7 +67,7 @@ export function sendStatusTone(event: SendStatusEvent): SendStatusTone {
   return "info";
 }
 
-export function sendStatusShellClass(tone: SendStatusTone): string {
+function sendStatusShellClass(tone: SendStatusTone): string {
   switch (tone) {
     case "warning":
       return "session-island-send-warning";
@@ -145,7 +145,7 @@ export function getSendStatusPresentation(
 
 // ── Toast overlay (replaces standalone ToastHost) ──
 
-export type ToastStatusTone = "info" | "success" | "warning" | "error";
+type ToastStatusTone "info" | "success" | "warning" | "error";
 
 export interface ToastStatusPresentation {
   visible: boolean;

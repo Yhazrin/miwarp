@@ -20,7 +20,7 @@ const COLLAPSING_MS = 260; // animation duration for tool cards fade-out
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type BurstVisualState = "expanded" | "settling" | "collapsing" | "collapsed";
+type BurstVisualState "expanded" | "settling" | "collapsing" | "collapsed";
 
 export interface BurstCollapseHandle {
   /** Keys in each visual state */

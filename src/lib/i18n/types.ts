@@ -7,4 +7,4 @@ export type MessageKey = keyof typeof en;
 export type MessageParams = Record<string, string>;
 
 /** Re-export Locale from registry for convenience. */
-export type { Locale } from "./registry";
+;

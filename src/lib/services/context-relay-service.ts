@@ -15,7 +15,7 @@ export interface RelaySelectionOptions {
 }
 
 /** Capture the active selection and push it onto the relay queue. */
-export function relaySelectionToStore(opts: RelaySelectionOptions): boolean {
+function relaySelectionToStore(opts: RelaySelectionOptions): boolean {
   const text = readActiveSelection();
   if (!text) return false;
   try {

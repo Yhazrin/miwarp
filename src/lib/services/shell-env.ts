@@ -9,7 +9,7 @@
  */
 import { dbgWarn } from "$lib/utils/debug";
 
-export interface ShellEnvSnapshot {
+interface ShellEnvSnapshot {
   /** Detected shell path (e.g. /bin/zsh) */
   shell: string;
   /** Resolved cwd (the project's working directory or a worktree root) */
@@ -88,7 +88,7 @@ export function validateCwdForRun(cwd: string, workspaceRoot: string): string {
  * only return the list of present keys so the UI can show "X is set"
  * without leaking the value.
  */
-export function captureEnvSnapshot(): ShellEnvSnapshot {
+function captureEnvSnapshot(): ShellEnvSnapshot {
   const keys: string[] = [];
   if (typeof process !== "undefined" && process.env) {
     for (const k of SAFE_ENV_KEYS) {
@@ -105,7 +105,7 @@ export function captureEnvSnapshot(): ShellEnvSnapshot {
   };
 }
 
-export type ShellErrorKind =
+type ShellErrorKind
   | "cwd_missing"
   | "cwd_outside_workspace"
   | "shell_not_found"

@@ -48,7 +48,7 @@ export interface SensoryUIConfig {
  * Edit sensory.config.js at the project root or pass a `config` prop to
  * <SensoryUIProvider> to customise at runtime.
  */
-export const defaultConfig: SensoryUIConfig = {
+const defaultConfig: SensoryUIConfig = {
   enabled: true,
   volume: 0.35,
   theme: "aero",

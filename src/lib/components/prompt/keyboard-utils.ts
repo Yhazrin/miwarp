@@ -6,8 +6,7 @@
 
 const PRIVATE_USE_KEYBOARD_MIN = 0xf700;
 const PRIVATE_USE_KEYBOARD_MAX = 0xf8ff;
-
-export { PRIVATE_USE_KEYBOARD_MIN, PRIVATE_USE_KEYBOARD_MAX };
+;
 
 export function isPrivateUseKeyboardChar(ch: string): boolean {
   if (!ch) return false;
@@ -15,7 +14,7 @@ export function isPrivateUseKeyboardChar(ch: string): boolean {
   return cp >= PRIVATE_USE_KEYBOARD_MIN && cp <= PRIVATE_USE_KEYBOARD_MAX;
 }
 
-export function isStrippedKeyboardChar(ch: string): boolean {
+function isStrippedKeyboardChar(ch: string): boolean {
   if (ch === "\n" || ch === "\t") return false;
   const cp = ch.codePointAt(0)!;
   if (cp < 0x20) return true;
@@ -33,7 +32,7 @@ export function formatCodePoints(text: string): string[] {
   return out;
 }
 
-export function hasAnsiArrowEscape(text: string): boolean {
+function hasAnsiArrowEscape(text: string): boolean {
   // eslint-disable-next-line no-control-regex
   return /\x1b\[[ABCD]/.test(text);
 }

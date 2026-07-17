@@ -7,20 +7,20 @@
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import type { Skill } from "$lib/types/skill";
 
-export interface ExecutionResult {
+interface ExecutionResult {
   success: boolean;
   output: string;
   error?: string;
   metadata?: Record<string, any>;
 }
 
-export interface SkillHandler {
+interface SkillHandler {
   name: string;
   canHandle: (skill: Skill, args: string) => boolean;
   execute: (skill: Skill, args: string) => Promise<ExecutionResult>;
 }
 
-export class SkillExecutor {
+class SkillExecutor {
   private handlers: SkillHandler[] = [];
 
   constructor() {

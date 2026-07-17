@@ -84,7 +84,7 @@ export async function renderVegaLite(
 }
 
 /** Reset cached module state — test hook only. */
-export function resetVegaLoaderForTests(): void {
+function resetVegaLoaderForTests(): void {
   vegaEmbedModule = null;
   vegaLoaderModule = null;
 }

@@ -30,7 +30,7 @@ import shell from "highlight.js/lib/languages/shell";
 let initialized = false;
 
 /** Register all supported languages with hljs. Idempotent — safe to call multiple times. */
-export function initHljs(): typeof hljs {
+function initHljs(): typeof hljs {
   if (initialized) return hljs;
   hljs.registerLanguage("javascript", javascript);
   hljs.registerLanguage("js", javascript);

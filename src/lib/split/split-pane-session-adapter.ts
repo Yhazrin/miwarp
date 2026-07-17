@@ -46,7 +46,7 @@ export interface PaneSnapshotWithRaw extends PaneSnapshot {
 }
 
 /** Caller-provided store switch generation. Bundled so callers pass one arg. */
-export interface AdapterCtx {
+interface AdapterCtx {
   /** Value of `splitWorkspaceStore.switchGeneration` at call time. */
   switchGeneration: number;
 }

@@ -15,7 +15,7 @@ export interface RpcError {
   data?: unknown;
 }
 
-export class RequestTimeoutError extends Error {
+class RequestTimeoutError extends Error {
   readonly code = "IPC_TIMEOUT";
   readonly data: { requestId: string; timeoutMs: number };
 

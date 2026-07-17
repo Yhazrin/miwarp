@@ -502,14 +502,14 @@ export function cancelExecution(): void {
 /**
  * Get current execution state
  */
-export function getExecutionState(): { isExecuting: boolean } {
+function getExecutionState(): { isExecuting: boolean } {
   return { isExecuting };
 }
 
 /**
  * Create a recording session step from browser interaction
  */
-export function createStepFromInteraction(
+function createStepFromInteraction(
   type: StepType,
   params: Record<string, unknown>,
   description: string,
@@ -583,7 +583,7 @@ export function validateScript(script: AutomationScript): { valid: boolean; erro
 /**
  * Generate a summary of what the script will do
  */
-export function generateScriptSummary(script: AutomationScript): string {
+function generateScriptSummary(script: AutomationScript): string {
   const stepCount = script.steps.length;
   const types = [...new Set(script.steps.map((s) => s.type))];
 

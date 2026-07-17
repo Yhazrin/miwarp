@@ -126,7 +126,7 @@ export function getToolSummary(
 /**
  * Format elapsed time for display
  */
-export function formatElapsed(seconds: number): string {
+function formatElapsed(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -136,7 +136,7 @@ export function formatElapsed(seconds: number): string {
 /**
  * Get a short status label
  */
-export function getStatusLabel(status: string): string {
+function getStatusLabel(status: string): string {
   switch (status) {
     case "running":
       return t("tool_status_running");

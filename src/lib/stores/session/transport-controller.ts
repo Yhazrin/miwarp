@@ -20,7 +20,7 @@
 import { assertTransition, isTransitionValid, type SessionPhase } from "$lib/stores/types";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
-export type TransportEventKind = "spawn" | "response";
+type TransportEventKind "spawn" | "response";
 
 export interface TransportTimeouts {
   spawnMs: number;

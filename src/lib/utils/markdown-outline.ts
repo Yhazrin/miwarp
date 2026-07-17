@@ -50,7 +50,7 @@ export function extractToc(markdown: string): TocEntry[] {
 /**
  * Generate a slug from heading text (for anchor links).
  */
-export function slugify(text: string): string {
+function slugify(text: string): string {
   return text
     .toLowerCase()
     .replace(/[^\w\s-]/g, "")

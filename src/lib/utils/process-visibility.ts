@@ -66,12 +66,12 @@ export function shouldShowFullToolPayload(mode: ProcessVisibility): boolean {
   return normalizeProcessVisibility(mode) === "expert";
 }
 
-export function shouldShowAgentTaskStack(mode: ProcessVisibility): boolean {
+function shouldShowAgentTaskStack(mode: ProcessVisibility): boolean {
   return normalizeProcessVisibility(mode) === "expert";
 }
 
 /** User must see / act (permissions, questions, failures). Never hide these in Output. */
-export function isProcessVisibilityCriticalTool(tool: BusToolItem): boolean {
+function isProcessVisibilityCriticalTool(tool: BusToolItem): boolean {
   return (
     tool.status === "permission_prompt" ||
     tool.status === "ask_pending" ||
@@ -84,7 +84,7 @@ export function isProcessVisibilityCriticalTool(tool: BusToolItem): boolean {
 }
 
 /** Nested agent runs keep full inline chrome so sub-timeline stays usable. */
-export function isProcessVisibilityStructuralTool(tool: BusToolItem): boolean {
+function isProcessVisibilityStructuralTool(tool: BusToolItem): boolean {
   return tool.tool_name === "Agent" || tool.tool_name === "Task";
 }
 

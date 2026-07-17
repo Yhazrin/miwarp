@@ -54,7 +54,7 @@ type IsPrimScalar<U> = [U] extends [string | number | boolean | null | undefined
  * would NOT distribute, because `T[K]` is an indexed access — wrapping it
  * in a single-element tuple forces distribution.
  */
-export type UserSettingsPatch<T> = {
+type UserSettingsPatchT> = {
   [K in keyof T]?: IsPrimScalar<T[K]> extends true ? T[K] | null : T[K];
 };
 

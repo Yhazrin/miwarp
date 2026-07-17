@@ -22,7 +22,7 @@
 import { dbgWarn } from "$lib/utils/debug";
 import type { SkillSummary, UsageOverview, UserSettings } from "$lib/types";
 
-export type PersonalSettingsLoadState = "pending" | "ready" | "failed";
+type PersonalSettingsLoadState "pending" | "ready" | "failed";
 
 export interface PersonalColdStartDeps {
   /** Returns the cached settings synchronously if available, otherwise awaits

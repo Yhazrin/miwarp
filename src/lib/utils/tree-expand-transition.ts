@@ -1,9 +1,9 @@
 import type { TransitionConfig } from "svelte/transition";
 
 /** Matches `--motion-slow` in motion.css */
-export const TREE_EXPAND_DURATION = 280;
+const TREE_EXPAND_DURATION = 280;
 /** Slightly faster collapse feels snappier */
-export const TREE_COLLAPSE_DURATION = 220;
+const TREE_COLLAPSE_DURATION = 220;
 
 /**
  * CSS cubic-bezier easing (no overshoot when control-point y values stay in [0, 1]).
@@ -37,9 +37,9 @@ function createCubicBezier(x1: number, y1: number, x2: number, y2: number): (t: 
 }
 
 /** `--ease-emphasized`: smooth deceleration on expand, no rebound */
-export const TREE_EXPAND_EASE = createCubicBezier(0.16, 1, 0.3, 1);
+const TREE_EXPAND_EASE = createCubicBezier(0.16, 1, 0.3, 1);
 /** `--ease-standard`: ease-in for collapse */
-export const TREE_COLLAPSE_EASE = createCubicBezier(0.2, 0, 0, 1);
+const TREE_COLLAPSE_EASE = createCubicBezier(0.2, 0, 0, 1);
 
 export interface TreeExpandParams {
   delay?: number;

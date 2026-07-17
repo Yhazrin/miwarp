@@ -8,7 +8,7 @@ import { createBuiltInSkills } from "$lib/skills/builtin-catalog";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import type { Skill, SkillExecution, SkillCategory, SkillMetadata } from "$lib/types/skill";
 
-export class SkillStore {
+class SkillStore {
   // Skill registry
   skills = $state<Skill[]>([]);
 

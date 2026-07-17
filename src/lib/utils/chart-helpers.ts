@@ -23,13 +23,13 @@ export function valueToLevel(
   return 4;
 }
 
-export interface GridCell {
+interface GridCell {
   date: string;
   value: number;
   level: 0 | 1 | 2 | 3 | 4;
 }
 
-export interface MonthLabel {
+interface MonthLabel {
   label: string;
   col: number;
 }

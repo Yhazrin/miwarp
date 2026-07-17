@@ -30,7 +30,7 @@ import {
 import { systemTimers, type TimeoutApi } from "$lib/transport/timer-api";
 import type { ProcessVisibility } from "$lib/utils/process-visibility";
 
-export const DEFAULT_SAVE_DEBOUNCE_MS = 500;
+const DEFAULT_SAVE_DEBOUNCE_MS = 500;
 
 export interface ContinuitySaveInput {
   runId: string;

@@ -78,7 +78,7 @@ async function decodeBase64DataUri(dataUri: string): Promise<AudioBuffer> {
  * Accepts both regular URLs and base64 data URIs.
  * Results are cached by source string so each is decoded only once.
  */
-export async function decodeAudioData(source: string): Promise<AudioBuffer> {
+async function decodeAudioData(source: string): Promise<AudioBuffer> {
   // Handle base64 data URIs directly - no network fetch needed
   if (source.startsWith("data:")) {
     return decodeBase64DataUri(source);
@@ -187,11 +187,11 @@ export async function playSound(
   return playback;
 }
 
-export function clearBufferCache(): void {
+function clearBufferCache(): void {
   bufferCache.clear();
 }
 
-export async function closeAudioContext(): Promise<void> {
+async function closeAudioContext(): Promise<void> {
   if (audioContext) {
     await audioContext.close();
     audioContext = null;

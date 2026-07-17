@@ -32,36 +32,36 @@ export type PermissionRequestState =
   | "cancelled"
   | "expired";
 
-export type PermissionDecisionKind =
+type PermissionDecisionKind
   | "allow-once"
   | "allow-with-rules"
   | "allow-set-mode"
   | "deny"
   | "deny-stop";
 
-export interface AllowOnceDecision {
+interface AllowOnceDecision {
   kind: "allow-once";
   toolInput?: Record<string, unknown>;
 }
 
-export interface AllowWithRulesDecision {
+interface AllowWithRulesDecision {
   kind: "allow-with-rules";
   rules: PermissionSuggestion[];
   toolInput?: Record<string, unknown>;
 }
 
-export interface AllowSetModeDecision {
+interface AllowSetModeDecision {
   kind: "allow-set-mode";
   rules: PermissionSuggestion[];
   toolInput?: Record<string, unknown>;
 }
 
-export interface DenyDecision {
+interface DenyDecision {
   kind: "deny";
   message?: string;
 }
 
-export interface DenyStopDecision {
+interface DenyStopDecision {
   kind: "deny-stop";
   message?: string;
 }

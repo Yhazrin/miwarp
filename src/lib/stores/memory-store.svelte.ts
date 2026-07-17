@@ -16,9 +16,9 @@ import { dbg, dbgWarn } from "$lib/utils/debug";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type MemoryScope = "project" | "global" | "memory";
+type MemoryScope "project" | "global" | "memory";
 
-export interface MemoryEntry {
+interface MemoryEntry {
   path: string;
   label: string;
   scope: MemoryScope;
@@ -27,14 +27,14 @@ export interface MemoryEntry {
   size?: number;
 }
 
-export interface ConsolidationResult {
+interface ConsolidationResult {
   duplicatesMerged: number;
   staleEntriesRemoved: number;
   indexUpdated: boolean;
   errors: string[];
 }
 
-export interface MemorySyncState {
+interface MemorySyncState {
   lastSync: string | null;
   pendingChanges: number;
   syncInProgress: boolean;

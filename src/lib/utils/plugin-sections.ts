@@ -2,7 +2,7 @@
  * Plugin sidebar navigation entries. Labels are `() => string` so they pick up
  * the current locale via `t()` at render time — keeps i18n reactive.
  */
-export type PluginSectionId =
+type PluginSectionId
   | "overview"
   | "skills"
   | "sources"

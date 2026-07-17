@@ -23,7 +23,7 @@ export function getCliCurrentModel(agent?: string): string | undefined {
   return _infos[normalizeAgent(agent)]?.current_model ?? undefined;
 }
 
-export function getCliInfo_cached(agent?: string): CliInfo | null {
+function getCliInfo_cached(agent?: string): CliInfo | null {
   return _infos[normalizeAgent(agent)] ?? null;
 }
 
@@ -62,7 +62,7 @@ export function getCliVersionInfo_cached(): CliVersionInfo | null {
   return _versionInfo;
 }
 
-export function isCliVersionLoading(): boolean {
+function isCliVersionLoading(): boolean {
   return _versionLoading;
 }
 

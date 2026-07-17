@@ -17,7 +17,7 @@
  */
 
 export const SPLIT_QUERY_PARAM = "split";
-export const RUN_QUERY_PARAM = "run";
+const RUN_QUERY_PARAM = "run";
 export const PANES_QUERY_PARAM = "panes";
 export const LAYOUT_QUERY_PARAM = "layout";
 

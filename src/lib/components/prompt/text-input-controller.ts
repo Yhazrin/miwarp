@@ -108,7 +108,7 @@ export function stripKeyboardControlChars(text: string): string {
  * intercept keys. Each method returns `true` to indicate it consumed the key
  * and the text-input controller should `preventDefault`.
  */
-export interface KeydownRouter {
+interface KeydownRouter {
   /** Up/Down arrow; the history controller decides. */
   onArrowNav(key: "ArrowUp" | "ArrowDown"): boolean;
   /** Enter (without shift); the submit controller decides. */

@@ -54,7 +54,7 @@ export function getPhaseColor(phase: AgentPhase): string {
   }
 }
 
-export function getPhaseIcon(phase: AgentPhase): string {
+function getPhaseIcon(phase: AgentPhase): string {
   // SVG path for each phase
   switch (phase) {
     case "planning":

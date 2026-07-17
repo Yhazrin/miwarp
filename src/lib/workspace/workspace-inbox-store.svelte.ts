@@ -129,4 +129,4 @@ export class WorkspaceInboxStore {
   }
 }
 
-export const workspaceInboxStore = new WorkspaceInboxStore();
+const workspaceInboxStore = new WorkspaceInboxStore();

@@ -44,7 +44,7 @@ import type { CliCommand, CliModelInfo } from "$lib/types";
 export type SlashPhase = "commands" | "sub-model" | "sub-fast";
 
 /** Allow parent to inject navigation (lets us stub it in tests / Tauri builds). */
-export type GotoFn = (href: string) => void;
+type GotoFn (href: string) => void;
 
 export interface SlashCommandControllerDeps {
   /** Read the input text (where the slash goes). */

@@ -16,7 +16,7 @@ export * from "./tool-plan-extraction";
 import type { PermissionSuggestion } from "$lib/types";
 
 /** Extract plain text from an array of content blocks (Anthropic format). */
-export function extractTextFromBlocks(blocks: unknown[]): string {
+function extractTextFromBlocks(blocks: unknown[]): string {
   if (!Array.isArray(blocks)) return "";
   return blocks
     .filter((b): b is { type: "text"; text: string } => {
@@ -286,7 +286,7 @@ export function extractAgentToolMeta(input: unknown): AgentToolMeta | null {
 }
 
 /** Unified extraction: returns AgentToolMeta for Agent tools, TaskToolMeta for Task tools, null otherwise. */
-export function extractAgentLikeMeta(
+function extractAgentLikeMeta(
   toolName: string,
   input: unknown,
 ): AgentToolMeta | TaskToolMeta | null {

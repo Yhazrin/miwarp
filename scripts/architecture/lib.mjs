@@ -80,12 +80,12 @@ export function cratePathToFile(cratePath) {
 }
 
 /** Convert `agent::session_actor` to a module directory under src-tauri/src/. */
-export function cratePathToDir(cratePath) {
+function cratePathToDir(cratePath) {
   return cratePath.split("::")[0];
 }
 
 /** Build the import graph: file → set of files it imports. */
-export function buildGraph(files, resolver) {
+function buildGraph(files, resolver) {
   const graph = new Map();
   for (const file of files) {
     const src = readText(file);

@@ -1,25 +1,25 @@
 import type { CliCommand, McpServerInfo } from "$lib/types";
 
-export type AuthState = "unknown" | "authenticated" | "missing" | "expired";
-export type ModelSource = "config" | "env" | "provider_default" | "session_override" | "unknown";
+type AuthState "unknown" | "authenticated" | "missing" | "expired";
+type ModelSource "config" | "env" | "provider_default" | "session_override" | "unknown";
 
-export type CapabilityField<T> =
+type CapabilityFieldT> =
   | { kind: "supported"; value: T }
   | { kind: "unsupported"; capability: string };
 
-export interface RuntimeSkillInfo {
+interface RuntimeSkillInfo {
   name: string;
   description?: string | null;
 }
 
-export interface RuntimeHealth {
+interface RuntimeHealth {
   runtimeId: string;
   state: string;
   consecutiveFailures: number;
   connectionGeneration: number;
 }
 
-export interface RuntimeDiagnosis {
+interface RuntimeDiagnosis {
   category: string;
   severity: string;
   titleKey: string;
@@ -54,7 +54,7 @@ export interface RuntimeControlPlaneList {
   fetchedAtMs: number;
 }
 
-export interface ConfigFieldDiff {
+interface ConfigFieldDiff {
   key: string;
   before: unknown;
   after: unknown;

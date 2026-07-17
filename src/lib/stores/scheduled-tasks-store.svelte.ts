@@ -18,7 +18,7 @@ import type {
 
 const DEFAULT_TOTAL_STEPS = 4;
 
-export class ScheduledTasksStore {
+class ScheduledTasksStore {
   tasks = $state<ScheduledTask[]>([]);
   runs = $state<ScheduledTaskRun[]>([]);
   loading = $state(false);
