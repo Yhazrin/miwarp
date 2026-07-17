@@ -1,16 +1,13 @@
 <script lang="ts">
   import type { HookEvent, ContextSnapshot, SessionInfoData, FileEntry } from "$lib/types";
-  import type { TimelineEntry, BusToolItem } from "$lib/types";
+  import type { TimelineEntry } from "$lib/types";
   import type { TurnUsage } from "$lib/stores/types";
   import { LS_TOOLACTIVITY_WIDTH } from "$lib/utils/storage-keys";
-  import { getToolColor } from "$lib/utils/tool-colors";
-  import { truncate, formatTokenCount, formatDuration } from "$lib/utils/format";
-  import { getToolDetail as getToolDetailRaw } from "$lib/utils/tool-rendering";
+  import { formatTokenCount, formatDuration } from "$lib/utils/format";
   import { dbg } from "$lib/utils/debug";
   import { sortTasksByPriority, formatElapsed } from "$lib/utils/task-sort";
   import { t } from "$lib/i18n/index.svelte";
   import Icon from "$lib/components/Icon.svelte";
-  import EmptyState from "$lib/components/EmptyState.svelte";
   import ContextHistoryPanel from "$lib/components/ContextHistoryPanel.svelte";
   import WorkspaceContextPanel from "$lib/components/WorkspaceContextPanel.svelte";
   import AgentTaskStack from "$lib/components/AgentTaskStack.svelte";
@@ -30,6 +27,11 @@
   } from "$lib/utils/file-entries";
   import type { TaskNotificationItem } from "$lib/stores/session-store.svelte";
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
+  import type { ToolTurn, ToolActivityStats } from "./tool-activity-utils";
+  import { buildTurns, computeToolStats } from "./tool-activity-utils";
+  import ToolsTabPanel from "./ToolsTabPanel.svelte";
+  import CollapsedIconRail from "./CollapsedIconRail.svelte";
+  import ToolTabBar from "./ToolTabBar.svelte";
 
   let {
     timeline = [],
@@ -106,9 +108,7 @@
     }
   });
 
-  // Perf: measure tab-switch frame cost. Tracks the gap between activeTab change and the next
-  // animation frame — proxy for "how much work was queued by switching".
-  // Gated by isPerfEnabled() so non-debug runs don't pay performance.now() + rAF overhead.
+  // Perf: measure tab-switch frame cost.
   let _prevTab: ToolActivityPanelTab | null = null;
   $effect(() => {
     const cur = activeTab;
@@ -159,11 +159,6 @@
   });
 
   // ── Width state (browser-safe initialization) ──
-  // Note: auto-widening on previewPath change was removed because the width change forced
-  // chat-main to reflow its thousands of message nodes every time previewPath transitioned,
-  // causing perceptible lag. Users drag the handle to adjust (persisted to localStorage).
-  // Default bumped from 320 → 420 to give more reasonable starting room for code preview;
-  // 320 was too narrow for typical lines. Users can still drag narrower if desired.
   const WIDTH_MIN = 280;
   const WIDTH_MAX = 720;
   const WIDTH_DEFAULT = 420;
@@ -187,10 +182,6 @@
   let effectiveWidth = $derived(clampWidth(savedWidth));
 
   // ── Resize handle (VS Code-style: ghost line during drag, single commit on release) ──
-  // Why this approach: in-place live resize forces chat-main reflow on every pointermove,
-  // which is too expensive with thousands of chat DOM nodes. Instead, during drag we DON'T
-  // move any panel — only render a fixed-position vertical line at the cursor that previews
-  // the new boundary. On release we commit savedWidth ONCE → single reflow.
   let resizing = $state(false);
   let ghostX = $state(0);
   let resizeStartX = 0;
@@ -213,15 +204,12 @@
 
   function flushGhostFrame() {
     rafId = null;
-    // ghostX state already updated; this is just a frame-aligned re-render gate.
   }
 
   function onResizeMove(e: PointerEvent) {
     if (!resizing) return;
-    const delta = resizeStartX - e.clientX; // dragging left grows the panel
+    const delta = resizeStartX - e.clientX;
     pendingWidth = clampWidth(resizeStartWidth + delta);
-    // Snap ghost line to the new panel boundary (clamped). Aside is on the right side of
-    // the viewport, so its left edge after commit = window.innerWidth - pendingWidth.
     const wantedX = typeof window !== "undefined" ? window.innerWidth - pendingWidth : e.clientX;
     if (rafId === null && typeof window !== "undefined") {
       rafId = window.requestAnimationFrame(flushGhostFrame);
@@ -249,92 +237,6 @@
     dragFpsStop = null;
   }
 
-  // ── Helpers ──
-
-  function getToolDetail(tool: BusToolItem): string {
-    return truncate(getToolDetailRaw(tool.input as Record<string, unknown>), 50);
-  }
-
-  function getHookDetail(event: HookEvent): string {
-    return truncate(getToolDetailRaw(event.tool_input as Record<string, unknown>), 50);
-  }
-
-  type StatusCategory = "done" | "running" | "error" | "other";
-
-  function categorizeBusStatus(status: string): StatusCategory {
-    switch (status) {
-      case "success":
-        return "done";
-      case "running":
-        return "running";
-      case "error":
-      case "denied":
-      case "permission_denied":
-        return "error";
-      case "ask_pending":
-      case "permission_prompt":
-        return "other";
-      default:
-        return "other";
-    }
-  }
-
-  function categorizeHookStatus(status: string | undefined): StatusCategory {
-    if (!status) return "other";
-    switch (status) {
-      case "done":
-      case "success":
-        return "done";
-      case "running":
-      case "pending":
-        return "running";
-      case "error":
-      case "denied":
-        return "error";
-      default:
-        return "other";
-    }
-  }
-
-  // ── Tree structure for hierarchical tool display ──
-
-  interface ToolNode {
-    tool: BusToolItem;
-    children: ToolNode[];
-  }
-
-  /** Build a tree from TimelineEntries, preserving parent→child hierarchy. */
-  function buildToolTree(entries: TimelineEntry[], seen: Set<string>): ToolNode[] {
-    const result: ToolNode[] = [];
-    for (const entry of entries) {
-      if (entry.kind === "tool" && !seen.has(entry.tool.tool_use_id)) {
-        seen.add(entry.tool.tool_use_id);
-        result.push({
-          tool: entry.tool,
-          children: entry.subTimeline ? buildToolTree(entry.subTimeline, seen) : [],
-        });
-      }
-    }
-    return result;
-  }
-
-  /** Flatten tree nodes for counting/statistics. */
-  function flattenNodes(nodes: ToolNode[]): BusToolItem[] {
-    const result: BusToolItem[] = [];
-    for (const node of nodes) {
-      result.push(node.tool);
-      if (node.children.length > 0) result.push(...flattenNodes(node.children));
-    }
-    return result;
-  }
-
-  /** Recursively count all nodes in a tree. */
-  function countToolNodes(nodes: ToolNode[]): number {
-    let count = 0;
-    for (const node of nodes) count += 1 + countToolNodes(node.children);
-    return count;
-  }
-
   // ── Dual-source strategy ──
 
   // ── Background tasks (sorted: active first, then by recency) ──
@@ -345,72 +247,14 @@
 
   // ── Turn grouping (timeline mode) ──
 
-  interface ToolTurn {
-    turnIndex: number;
-    userPreview: string;
-    tools: ToolNode[];
-    anchorId?: string;
-  }
-
   /** Whether we need full turns computation (tools tab active and panel visible). */
   let needsFullTurns = $derived(!collapsed && activeTab === "tools" && useTimeline);
 
-  let turns = $derived.by(() => {
+  let turns = $derived.by((): ToolTurn[] => {
     if (!needsFullTurns) {
-      // Lightweight: return count-only indicator, no tree building
-      if (!useTimeline) return [];
-      let count = 0;
-      for (const e of timeline) {
-        if (e.kind === "tool") count++;
-      }
-      return count > 0 ? [] : []; // empty but truthful
+      return [];
     }
-    const result: ToolTurn[] = [];
-    let currentTools: ToolNode[] = [];
-    let currentPreview = "";
-    let currentAnchorId: string | undefined;
-    let turnIdx = 0;
-    // Defensive dedup: CLI can emit events with missing parent_tool_use_id,
-    // causing the same tool_use_id to appear in both main timeline and a subTimeline.
-    // Track seen IDs to prevent each_key_duplicate crashes in {#each} blocks.
-    const seen = new Set<string>();
-
-    for (const entry of timeline) {
-      if (entry.kind === "separator") continue;
-      if (entry.kind === "user") {
-        // Flush previous turn (guard: don't flush initial empty state)
-        if (currentTools.length > 0 || currentPreview || currentAnchorId) {
-          result.push({
-            turnIndex: turnIdx,
-            userPreview: currentPreview,
-            tools: currentTools,
-            anchorId: currentAnchorId,
-          });
-        }
-        turnIdx++;
-        currentPreview = entry.content.slice(0, 40);
-        currentAnchorId = entry.anchorId;
-        currentTools = [];
-      } else if (entry.kind === "tool") {
-        if (!seen.has(entry.tool.tool_use_id)) {
-          seen.add(entry.tool.tool_use_id);
-          currentTools.push({
-            tool: entry.tool,
-            children: entry.subTimeline ? buildToolTree(entry.subTimeline, seen) : [],
-          });
-        }
-      }
-    }
-    // Flush last turn
-    if (currentTools.length > 0 || currentPreview || currentAnchorId) {
-      result.push({
-        turnIndex: turnIdx,
-        userPreview: currentPreview,
-        tools: currentTools,
-        anchorId: currentAnchorId,
-      });
-    }
-    return result;
+    return buildTurns(timeline);
   });
 
   // ── HookEvent fallback (pipe/PTY mode) ──
@@ -422,7 +266,6 @@
 
   let fileEntries: FileEntry[] = $derived.by(() => {
     if (collapsed || activeTab !== "files") {
-      // Lightweight: just check if any files exist for indicator dot
       if (useTimeline) {
         for (const e of timeline) {
           if (
@@ -431,7 +274,7 @@
               e.tool.tool_name === "Edit" ||
               e.tool.tool_name === "Bash")
           ) {
-            return []; // has files but we don't need details
+            return [];
           }
         }
       }
@@ -448,7 +291,6 @@
   });
 
   $effect(() => {
-    // Lightweight check for indicators - don't build full fileEntries
     let hasFiles = false;
     if (useTimeline) {
       for (const e of timeline) {
@@ -470,49 +312,10 @@
     };
   });
 
-  // ── Tool category grouping ──
-
-  const READ_TOOLS = new Set(["Read", "read_file"]);
-  const SEARCH_TOOLS = new Set([
-    "Grep",
-    "Glob",
-    "search_files",
-    "list_directory",
-    "WebFetch",
-    "WebSearch",
-  ]);
-  const BASH_TOOLS = new Set(["Bash", "bash", "PowerShell"]);
-  const WRITE_TOOLS = new Set([
-    "Write",
-    "Edit",
-    "write_file",
-    "edit_file",
-    "MultiEdit",
-    "NotebookEdit",
-  ]);
-
-  function categorizeTool(name: string): "read" | "search" | "bash" | "write" | "other" {
-    if (READ_TOOLS.has(name)) return "read";
-    if (SEARCH_TOOLS.has(name)) return "search";
-    if (BASH_TOOLS.has(name)) return "bash";
-    if (WRITE_TOOLS.has(name)) return "write";
-    return "other";
-  }
-
   // ── Summary + status counts (single-pass) ──
   // Only do full scan when tools tab is active; otherwise return lightweight indicator
 
-  let toolStats = $derived.by(() => {
-    const counts: Record<string, number> = {};
-    let done = 0,
-      running = 0,
-      errors = 0,
-      total = 0;
-    let reads = 0,
-      searches = 0,
-      bashCmds = 0,
-      writes = 0;
-
+  let toolStats = $derived.by((): ToolActivityStats => {
     // Lightweight path: when collapsed or not on tools tab, just count total
     if (collapsed || (activeTab !== "tools" && activeTab !== "workspace")) {
       if (!useTimeline) {
@@ -528,7 +331,7 @@
           writes: 0,
         };
       }
-      // Quick count without building trees
+      let total = 0;
       for (const entry of timeline) {
         if (entry.kind === "tool") total++;
       }
@@ -545,80 +348,12 @@
       };
     }
 
-    if (useTimeline) {
-      for (const turn of turns) {
-        for (const t of flattenNodes(turn.tools)) {
-          counts[t.tool_name] = (counts[t.tool_name] ?? 0) + 1;
-          total++;
-          const cat = categorizeBusStatus(t.status);
-          if (cat === "done") done++;
-          else if (cat === "running") running++;
-          else if (cat === "error") errors++;
-          const group = categorizeTool(t.tool_name);
-          if (group === "read") reads++;
-          else if (group === "search") searches++;
-          else if (group === "bash") bashCmds++;
-          else if (group === "write") writes++;
-        }
-      }
-    } else {
-      for (const ev of hookToolEvents) {
-        const name = ev.tool_name ?? "other";
-        counts[name] = (counts[name] ?? 0) + 1;
-        total++;
-        const cat = categorizeHookStatus(ev.status);
-        if (cat === "done") done++;
-        else if (cat === "running") running++;
-        else if (cat === "error") errors++;
-        const group = categorizeTool(name);
-        if (group === "read") reads++;
-        else if (group === "search") searches++;
-        else if (group === "bash") bashCmds++;
-        else if (group === "write") writes++;
-      }
-    }
-    return {
-      summary: Object.entries(counts).sort((a, b) => b[1] - a[1]),
-      doneCount: done,
-      runningCount: running,
-      errorCount: errors,
-      totalToolCount: total,
-      reads,
-      searches,
-      bash: bashCmds,
-      writes,
-    };
+    return computeToolStats(turns, hookToolEvents, useTimeline);
   });
-
-  // ── Per-turn category breakdown ──
-  interface TurnCategoryBreakdown {
-    reads: number;
-    searches: number;
-    bash: number;
-    writes: number;
-    errors: number;
-  }
-
-  function getTurnBreakdown(turn: ToolTurn): TurnCategoryBreakdown {
-    let reads = 0,
-      searches = 0,
-      bashCmds = 0,
-      writes = 0,
-      errs = 0;
-    for (const t of flattenNodes(turn.tools)) {
-      const group = categorizeTool(t.tool_name);
-      if (group === "read") reads++;
-      else if (group === "search") searches++;
-      else if (group === "bash") bashCmds++;
-      else if (group === "write") writes++;
-      if (categorizeBusStatus(t.status) === "error") errs++;
-    }
-    return { reads, searches, bash: bashCmds, writes, errors: errs };
-  }
 
   // ── Per-turn usage lookup ──
 
-  let usageByTurn = $derived(
+  let _usageByTurn = $derived(
     usageByTurnProp ?? new Map(turnUsages.map((tu) => [tu.turnIndex, tu])),
   );
 
@@ -627,14 +362,12 @@
 
   let collapsedTurns = $state(new Set<number>());
 
-  // Auto-collapse older turns when turn count changes (session load / new turn)
   let prevTurnCount = 0;
   $effect(() => {
     const count = turns.length;
     if (count !== prevTurnCount && count > 1) {
       const collapsed = new Set<number>();
       for (const turn of turns) {
-        // Collapse all except the last turn
         if (turn !== turns[turns.length - 1]) {
           collapsed.add(turn.turnIndex);
         }
@@ -670,75 +403,10 @@
   });
 </script>
 
-{#snippet statusIcon(category: StatusCategory)}
-  <StatusIcon status={category} size="sm" />
-{/snippet}
-
-{#snippet categoryIcon(color: string, iconPath: string)}
-  <span class="flex h-3 w-3 shrink-0 items-center justify-center rounded {color}">
-    <svg
-      class="h-1.5 w-1.5 text-miwarp-accent-on-accent"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2.5"
-      stroke-linecap="round"
-      stroke-linejoin="round"><path d={iconPath} /></svg
-    >
-  </span>
-{/snippet}
-
-{#snippet toolNodeView(node: ToolNode)}
-  {@const style = getToolColor(node.tool.tool_name)}
-  {@const detail = getToolDetail(node.tool)}
-  {@const cat = categorizeBusStatus(node.tool.status)}
-  <button
-    type="button"
-    class="w-full text-left px-2.5 py-1 hover:bg-accent/50 rounded-sm transition-colors group {cat ===
-    'error'
-      ? 'border-l-2 border-l-[hsl(var(--miwarp-status-error)/0.4)] bg-[hsl(var(--miwarp-status-error)/0.03)]'
-      : ''}"
-    onclick={() => onScrollToTool?.(node.tool.tool_use_id)}
-    title={t("toolActivity_scrollToTool")}
-  >
-    <div class="flex items-center gap-1.5">
-      {@render statusIcon(cat)}
-      <div class="flex h-4 w-4 shrink-0 items-center justify-center rounded {style.bg}">
-        <svg
-          class="h-2.5 w-2.5 {style.text}"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d={style.icon} />
-        </svg>
-      </div>
-      <span class="text-[11px] font-medium text-foreground shrink-0">{node.tool.tool_name}</span>
-      {#if detail}
-        <span
-          class="text-[10px] text-muted-foreground truncate min-w-0 opacity-70 group-hover:opacity-100"
-          >{detail}</span
-        >
-      {/if}
-    </div>
-  </button>
-  {#if node.children.length > 0}
-    <div class="ml-5 border-l-2 border-[hsl(var(--miwarp-status-info)/0.25)]">
-      {#each node.children as child (child.tool.tool_use_id)}
-        {@render toolNodeView(child)}
-      {/each}
-    </div>
-  {/if}
-{/snippet}
-
 <!--
   Outer wrapper is ALWAYS mounted: width animates between a slim icon rail and effectiveWidth.
   The expanded panel inside stays in the DOM at full width but is visually clipped + hidden when
-  collapsed, so CodeMirror (FilePreviewPane) is never torn down on collapse toggle. This is the
-  fix for "files tab + click expand briefly hangs".
+  collapsed, so CodeMirror (FilePreviewPane) is never torn down on collapse toggle.
 -->
 {#if resizing}
   <!-- Ghost line during drag: zero-cost preview, no layout reflow elsewhere -->
@@ -885,136 +553,14 @@
     ></div>
     <!-- Header: icon tabs (hidden when parent shows SessionPanelTabs in status bar) -->
     {#if !underUnifiedCapsule}
-      <div
-        class="mt-3 mx-1.5 mb-1.5 rounded-2xl border border-border/40 bg-background/40 px-2 py-1.5 backdrop-blur-xl"
-      >
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-0.5 overflow-x-auto pr-1 scrollbar-hide">
-            <!-- Workspace icon -->
-            <button
-              type="button"
-              class="p-1.5 rounded-xl transition-colors {activeTab === 'workspace'
-                ? 'bg-accent/30 text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-              onclick={() => (activeTab = "workspace")}
-              title={t("toolActivity_tabWorkspace")}
-            >
-              <Icon name="home" size="sm" />
-            </button>
-            <!-- Activity (tools) icon -->
-            <button
-              type="button"
-              class="p-1.5 rounded-xl transition-colors {activeTab === 'tools'
-                ? 'bg-accent/30 text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-              onclick={() => (activeTab = "tools")}
-              title={t("toolActivity_tabActivity")}
-            >
-              <Icon name="wrench" size="sm" />
-            </button>
-            <!-- Context icon -->
-            <button
-              type="button"
-              class="p-1.5 rounded-xl transition-colors relative {activeTab === 'context'
-                ? 'bg-accent/30 text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-              onclick={() => (activeTab = "context")}
-              title={t("toolActivity_tabContext")}
-            >
-              <Icon name="clock" size="sm" />
-              {#if contextHistory.length > 0}
-                <span
-                  class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-success"
-                ></span>
-              {/if}
-            </button>
-            <!-- Files icon -->
-            <button
-              type="button"
-              class="p-1.5 rounded-xl transition-colors relative {activeTab === 'files'
-                ? 'bg-accent/30 text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-              onclick={() => (activeTab = "files")}
-              title={t("toolActivity_tabFiles")}
-            >
-              <Icon name="file" size="sm" />
-              {#if fileEntries.length > 0}
-                <span
-                  class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
-                ></span>
-              {/if}
-            </button>
-            <!-- Preview icon -->
-            <button
-              type="button"
-              class="p-1.5 rounded-xl transition-colors {activeTab === 'preview'
-                ? 'bg-accent/30 text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-              onclick={() => (activeTab = "preview")}
-              title={t("toolActivity_tabPreview")}
-            >
-              <svg
-                class="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="2" y="3" width="20" height="14" rx="2" />
-                <path d="M8 21h8M12 17v4" />
-              </svg>
-            </button>
-            <!-- Tasks icon -->
-            <button
-              type="button"
-              class="p-1.5 rounded-xl transition-colors relative {activeTab === 'tasks'
-                ? 'bg-accent/30 text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-              onclick={() => (activeTab = "tasks")}
-              title={t("toolActivity_tabTasks")}
-            >
-              <svg
-                class="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <path d="M9 12l2 2 4-4" />
-              </svg>
-              {#if activeBackgroundTasks.length > 0}
-                <span
-                  class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-info animate-pulse"
-                ></span>
-              {/if}
-            </button>
-            <!-- Scheduled Tasks icon -->
-            <button
-              type="button"
-              class="p-1.5 rounded-xl transition-colors {activeTab === 'scheduled-tasks'
-                ? 'bg-accent/30 text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-              onclick={() => (activeTab = "scheduled-tasks")}
-              title={t("sessionControl_panelScheduledTasks")}
-            >
-              <Icon name="clock" size="sm" />
-            </button>
-          </div>
-          <button
-            type="button"
-            class="rounded-xl p-1 text-muted-foreground transition-colors hover:bg-accent/30 hover:text-foreground"
-            onclick={onToggle}
-            title={t("toolActivity_collapse")}
-          >
-            <Icon name="chevron-left" size="md" />
-          </button>
-        </div>
-      </div>
+      <ToolTabBar
+        {activeTab}
+        onTabChange={(tab) => (activeTab = tab)}
+        {onToggle}
+        {contextHistory}
+        {fileEntries}
+        {activeBackgroundTasks}
+      />
     {/if}
 
     <!-- Lazy keep-alive: each tab mounts on first activation and stays mounted (visibility-only after).
@@ -1194,371 +740,32 @@
             ? 'visible'
             : 'hidden'}; pointer-events: {activeTab === 'tools' ? 'auto' : 'none'};"
         >
-          <!-- Tools panel -->
-          <!-- Overview: compact single-line session stats -->
-          {#if toolStats.totalToolCount > 0}
-            <div
-              class="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border/50 text-[10px]"
-            >
-              <span class="font-medium text-foreground"
-                >{t("toolActivity_totalTools", { count: String(toolStats.totalToolCount) })}</span
-              >
-              {#if toolStats.reads > 0}
-                <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-miwarp-status-info">
-                  {@render categoryIcon(
-                    "bg-miwarp-status-info",
-                    "M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z",
-                  )}
-                  {toolStats.reads}
-                </span>
-              {/if}
-              {#if toolStats.searches > 0}
-                <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-miwarp-accent-violet">
-                  {@render categoryIcon(
-                    "bg-miwarp-accent-violet",
-                    "M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM21 21l-4.35-4.35",
-                  )}
-                  {toolStats.searches}
-                </span>
-              {/if}
-              {#if toolStats.bash > 0}
-                <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-miwarp-status-success">
-                  {@render categoryIcon("bg-miwarp-status-success", "M4 17l6-6-6-6M12 19h8")}
-                  {toolStats.bash}
-                </span>
-              {/if}
-              {#if toolStats.writes > 0}
-                <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-miwarp-status-warning">
-                  {@render categoryIcon(
-                    "bg-miwarp-status-warning",
-                    "M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z",
-                  )}
-                  {toolStats.writes}
-                </span>
-              {/if}
-              {#if toolStats.errorCount > 0}
-                <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-miwarp-status-error">
-                  <StatusIcon status="error" size="xs" />
-                  {toolStats.errorCount}
-                </span>
-              {/if}
-            </div>
-          {/if}
-
-          <!-- Summary chips -->
-          {#if toolStats.summary.length > 1}
-            <div class="flex flex-wrap gap-1 px-2.5 py-1.5 border-b border-border/50">
-              {#each toolStats.summary as [name, count]}
-                {@const style = getToolColor(name)}
-                <span
-                  class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded {style.bg} {style.text} font-medium"
-                >
-                  {name}
-                  <span class="opacity-70">{count}</span>
-                </span>
-              {/each}
-            </div>
-          {/if}
-
-          <!-- Tool list -->
-          <div class="flex-1 overflow-y-auto py-0.5 scrollbar-hide">
-            {#if toolStats.totalToolCount === 0}
-              <EmptyState
-                title={t("toolActivity_noToolCalls")}
-                description={t("toolActivity_emptyHint")}
-                class="h-32 px-4 py-4"
-              >
-                {#snippet iconComponent()}
-                  <Icon name="wrench" size="lg" class="text-muted-foreground/20 mb-2" />
-                {/snippet}
-              </EmptyState>
-            {:else if useTimeline}
-              <!-- Timeline mode: grouped by turn -->
-              {#each turns as turn (turn.turnIndex)}
-                {@const isCollapsed = collapsedTurns.has(turn.turnIndex)}
-                {@const tu = usageByTurn.get(turn.turnIndex)}
-                {@const hasTools = turn.tools.length > 0}
-                {@const turnHasError =
-                  hasTools &&
-                  flattenNodes(turn.tools).some((t) => categorizeBusStatus(t.status) === "error")}
-                <!-- Turn header: div with two sibling buttons (no nesting) -->
-                <div
-                  class="flex items-center w-full px-2.5 py-1.5 hover:bg-accent/50 transition-colors border-b border-border/30 {turnHasError
-                    ? 'border-l-2 border-l-[hsl(var(--miwarp-status-error)/0.5)]'
-                    : ''}"
-                >
-                  <button
-                    type="button"
-                    class="flex-1 flex items-center gap-1.5 text-left min-w-0"
-                    onclick={() => {
-                      if (hasTools) {
-                        toggleTurn(turn.turnIndex);
-                      } else if (turn.anchorId) {
-                        dbg("tool-activity", "scroll to turn (no tools)", {
-                          turnIndex: turn.turnIndex,
-                          anchorId: turn.anchorId,
-                        });
-                        onScrollToTurn?.(turn.anchorId);
-                      }
-                    }}
-                  >
-                    {#if hasTools}
-                      <Icon
-                        name="chevron-right"
-                        size="xs"
-                        class="text-muted-foreground/50 shrink-0 transition-transform {isCollapsed
-                          ? ''
-                          : 'rotate-90'}"
-                      />
-                    {/if}
-                    <span class="text-[11px] font-medium text-muted-foreground truncate">
-                      {#if turn.userPreview}
-                        {t("toolActivity_turn", { index: String(turn.turnIndex) })}
-                        <span class="text-foreground/70">{truncate(turn.userPreview, 25)}</span>
-                      {:else}
-                        <span class="text-muted-foreground/60"
-                          >{t("toolActivity_systemResume")}</span
-                        >
-                      {/if}
-                    </span>
-                    <span class="ml-auto flex items-center gap-1.5 shrink-0">
-                      {#if tu}
-                        <span class="text-[10px] text-muted-foreground"
-                          >{formatTokenCount(tu.inputTokens + tu.outputTokens)}</span
-                        >
-                      {/if}
-                      {#if hasTools}
-                        {@const bk = getTurnBreakdown(turn)}
-                        <span class="flex items-center gap-1 text-[10px]">
-                          {#if bk.reads > 0}<span class="text-[hsl(var(--miwarp-status-info)/0.7)]"
-                              >{bk.reads}R</span
-                            >{/if}
-                          {#if bk.searches > 0}<span
-                              class="text-[hsl(var(--miwarp-accent-violet)/0.7)]"
-                              >{bk.searches}S</span
-                            >{/if}
-                          {#if bk.bash > 0}<span
-                              class="text-[hsl(var(--miwarp-status-success)/0.7)]">{bk.bash}B</span
-                            >{/if}
-                          {#if bk.writes > 0}<span
-                              class="text-[hsl(var(--miwarp-status-warning)/0.7)]"
-                              >{bk.writes}W</span
-                            >{/if}
-                          <span
-                            class="px-1 py-0.5 rounded-full bg-muted text-muted-foreground font-medium"
-                            >{countToolNodes(turn.tools)}</span
-                          >
-                        </span>
-                      {/if}
-                      {#if turnHasError}
-                        <span class="text-[hsl(var(--miwarp-status-error)/0.7)]">
-                          <StatusIcon status="error" size="xs" />
-                        </span>
-                      {/if}
-                    </span>
-                  </button>
-                  {#if turn.anchorId}
-                    <button
-                      type="button"
-                      class="shrink-0 ml-1 p-0.5 rounded text-muted-foreground/40 hover:text-foreground hover:bg-muted transition-colors"
-                      onclick={() => {
-                        dbg("tool-activity", "scroll to turn", {
-                          turnIndex: turn.turnIndex,
-                          anchorId: turn.anchorId,
-                        });
-                        onScrollToTurn?.(turn.anchorId!);
-                      }}
-                      title={t("toolActivity_scrollToTurn")}
-                    >
-                      <Icon name="crosshair" size="xs" />
-                    </button>
-                  {/if}
-                </div>
-
-                <!-- Tools in this turn (only render if turn has tools) -->
-                {#if hasTools && !isCollapsed}
-                  <div class="py-0.5">
-                    {#each turn.tools as node (node.tool.tool_use_id)}
-                      {@render toolNodeView(node)}
-                    {/each}
-                  </div>
-                {/if}
-              {/each}
-            {:else}
-              <!-- HookEvent fallback mode (pipe/PTY) -->
-              {#each hookToolEvents as event, ei (ei)}
-                {@const style = getToolColor(event.tool_name ?? "")}
-                {@const detail = getHookDetail(event)}
-                {@const cat = categorizeHookStatus(event.status)}
-                <div class="px-2.5 py-1">
-                  <div class="flex items-center gap-1.5">
-                    {@render statusIcon(cat)}
-                    <div
-                      class="flex h-4 w-4 shrink-0 items-center justify-center rounded {style.bg}"
-                    >
-                      <svg
-                        class="h-2.5 w-2.5 {style.text}"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <path d={style.icon} />
-                      </svg>
-                    </div>
-                    <span class="text-[11px] font-medium text-foreground shrink-0"
-                      >{event.tool_name ?? event.hook_type}</span
-                    >
-                    {#if detail}
-                      <span class="text-[10px] text-muted-foreground truncate min-w-0"
-                        >{detail}</span
-                      >
-                    {/if}
-                  </div>
-                </div>
-              {/each}
-            {/if}
-          </div>
-
-          <!-- Stats footer -->
-          {#if toolStats.totalToolCount > 0}
-            <div class="border-t border-border px-3 py-1.5">
-              <div class="flex items-center gap-3 text-[11px]">
-                {#if toolStats.doneCount > 0}
-                  <span class="flex items-center gap-1 text-miwarp-status-success">
-                    <StatusIcon status="done" size="sm" />
-                    {toolStats.doneCount}
-                  </span>
-                {/if}
-                {#if toolStats.runningCount > 0}
-                  <span class="flex items-center gap-1 text-muted-foreground">
-                    <StatusIcon status="running" size="sm" />
-                    {toolStats.runningCount}
-                  </span>
-                {/if}
-                {#if toolStats.errorCount > 0}
-                  <span class="flex items-center gap-1 text-destructive">
-                    <StatusIcon status="error" size="sm" />
-                    {toolStats.errorCount}
-                  </span>
-                {/if}
-              </div>
-            </div>
-          {/if}
+          <ToolsTabPanel
+            {toolStats}
+            {turns}
+            {hookToolEvents}
+            {useTimeline}
+            {collapsedTurns}
+            {toggleTurn}
+            {onScrollToTool}
+            {onScrollToTurn}
+            bind:activeTab
+          />
         </div>
       {/if}
     </div>
   </div>
   {#if collapsed}
     <!-- Collapsed: thin icon rail overlay (absolute, only mounted when collapsed) -->
-    <div
-      class="absolute top-0 left-0 h-full flex flex-col items-center py-2 px-1 gap-1"
-      style="width: 0px;"
-    >
-      <button
-        type="button"
-        class="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-accent"
-        onclick={onToggle}
-        title={t("toolActivity_show")}
-      >
-        <Icon name="chevron-right" size="md" />
-      </button>
-      <!-- Collapsed icon buttons -->
-      <button
-        type="button"
-        class="p-1 rounded transition-colors {activeTab === 'workspace'
-          ? 'text-foreground bg-accent'
-          : 'text-muted-foreground/50 hover:text-muted-foreground'}"
-        onclick={() => {
-          activeTab = "workspace";
-          onToggle();
-        }}
-        title={t("toolActivity_tabWorkspace")}
-      >
-        <Icon name="home" size="sm" />
-      </button>
-      <button
-        type="button"
-        class="p-1 rounded transition-colors {activeTab === 'tools'
-          ? 'text-foreground bg-accent'
-          : 'text-muted-foreground/50 hover:text-muted-foreground'}"
-        onclick={() => {
-          activeTab = "tools";
-          onToggle();
-        }}
-        title={t("toolActivity_tabActivity")}
-      >
-        <Icon name="wrench" size="sm" />
-      </button>
-      <button
-        type="button"
-        class="p-1 rounded transition-colors {activeTab === 'context'
-          ? 'text-foreground bg-accent'
-          : 'text-muted-foreground/50 hover:text-muted-foreground'}"
-        onclick={() => {
-          activeTab = "context";
-          onToggle();
-        }}
-        title={t("toolActivity_tabContext")}
-      >
-        <Icon name="clock" size="sm" />
-      </button>
-      <button
-        type="button"
-        class="p-1 rounded transition-colors {activeTab === 'files'
-          ? 'text-foreground bg-accent'
-          : 'text-muted-foreground/50 hover:text-muted-foreground'}"
-        onclick={() => {
-          activeTab = "files";
-          onToggle();
-        }}
-        title={t("toolActivity_tabFiles")}
-      >
-        <Icon name="file" size="sm" />
-      </button>
-      <button
-        type="button"
-        class="p-1 rounded transition-colors relative {activeTab === 'tasks'
-          ? 'text-foreground bg-accent'
-          : 'text-muted-foreground/50 hover:text-muted-foreground'}"
-        onclick={() => {
-          activeTab = "tasks";
-          onToggle();
-        }}
-        title={t("toolActivity_tabTasks")}
-      >
-        <Icon name="check-square" size="sm" />
-        {#if activeBackgroundTasks.length > 0}
-          <span
-            class="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-miwarp-status-info animate-pulse"
-          ></span>
-        {/if}
-      </button>
-      <button
-        type="button"
-        class="p-1 rounded transition-colors {activeTab === 'scheduled-tasks'
-          ? 'text-foreground bg-accent'
-          : 'text-muted-foreground/50 hover:text-muted-foreground'}"
-        onclick={() => {
-          activeTab = "scheduled-tasks";
-          onToggle();
-        }}
-        title={t("sessionControl_panelScheduledTasks")}
-      >
-        <Icon name="clock" size="sm" />
-      </button>
-      {#if toolStats.totalToolCount > 0}
-        <span class="mt-1 text-[10px] text-muted-foreground" style="writing-mode: vertical-rl;"
-          >{toolStats.totalToolCount}</span
-        >
-      {/if}
-    </div>
+    <CollapsedIconRail
+      {activeTab}
+      {onToggle}
+      onSwitchTab={(tab) => {
+        activeTab = tab;
+        onToggle();
+      }}
+      {activeBackgroundTasks}
+      totalToolCount={toolStats.totalToolCount}
+    />
   {/if}
 </aside>

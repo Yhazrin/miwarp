@@ -2,23 +2,6 @@
   AppShell — the root layout's outer shell. Renders the sidebar (icon
   rail + content panel) and the main pane, plus the overlay / modals /
   toast chrome that live at the root level.
-
-  Owns the template that previously lived directly inside
-  `src/routes/+layout.svelte`. All state is sourced from the layout-
-  scoped stores (project-selection-store, runs-sidebar-store,
-  session-folder-store, explorer-tree-store, team-sidebar-store) and
-  the singleton stores that already existed pre-refactor (team-store,
-  keybindings, etc.).
-
-  The component does NOT own any `$state` beyond the chrome booleans
-  that are local to the shell (sidebar collapse / width / drag state,
-  dialog open flags, plugin section, etc.). Everything else flows
-  from stores so the shell can be reasoned about as a render function
-  over the union of layout stores.
-
-  No setContext / IPC / transport.listen calls here — those live in
-  +layout.svelte's onMount, which composes this shell + a window
-  controller.
 -->
 <script lang="ts">
   import "../../app.css";
@@ -69,7 +52,7 @@
   import { writeActiveSessionId } from "$lib/utils/chat-persistence";
   import { beginRouteTransition, endRouteTransition } from "$lib/utils/route-transition";
   import { armChatSettingsHop } from "$lib/utils/chat-settings-nav";
-  import { EVT_RUNS_CHANGED, EVT_PROJECT_CHANGED } from "$lib/utils/bus-events";
+  import { EVT_PROJECT_CHANGED } from "$lib/utils/bus-events";
   import { clampUiZoom, layoutPx } from "$lib/utils/ui-zoom";
   import { IS_MAC } from "$lib/utils/platform";
   import { dbg, dbgWarn } from "$lib/utils/debug";
@@ -85,21 +68,97 @@
   import { cwdDisplayLabel } from "$lib/utils/format";
   import { escapeHtml } from "$lib/utils/ansi";
   import type { PluginSection } from "$lib/utils/plugin-sections";
-
-  // ── Components ──────────────────────────────────────────────────
   import OverlayStack from "$lib/components/layout/OverlayStack.svelte";
   import AppUpdateNotice from "$lib/components/AppUpdateNotice.svelte";
   import type { Component } from "svelte";
 
-  // ── Props ───────────────────────────────────────────────────────
+  // ── Drag & batch state ──
+  let dragRunId = $state<string | null>(null);
+  let dragOverFolderId = $state<string | null>(null);
+  let dragOverUnfolderedKey = $state<string | null>(null);
+  let sessionDragLabel = $state("");
+  let sessionDragX = $state(0);
+  let sessionDragY = $state(0);
+  let selectedGroupKeys = $state(new Set<string>());
+  let lastSelectedKey = $state("");
+  let batchModeActive = $derived(selectedGroupKeys.size > 0);
+  let deleteConfirmOpen = $state(false);
+  let deleteTarget = $state<import("$lib/utils/sidebar-groups").ConversationGroup | null>(null);
+  let batchDeleteConfirmOpen = $state(false);
+  let removeProjectConfirmOpen = $state(false);
+  let removeProjectTarget = $state("");
+
+  import { executeFolderDrop, collectSelectedRunIds, batchSoftDelete, batchHardDeleteAction } from "$lib/layout/app-shell-handlers.svelte";
+
+  function handleSessionDragStart(runId: string, label: string, e: PointerEvent) {
+    dragRunId = runId; sessionDragLabel = label; sessionDragX = e.clientX; sessionDragY = e.clientY;
+    import("$lib/utils/session-drag-state").then((m) => m.setSessionDragActive(true));
+  }
+  function handleSessionDragMove(e: PointerEvent) { sessionDragX = e.clientX; sessionDragY = e.clientY; }
+  async function handleSessionDragEnd(e: PointerEvent) {
+    const rid = dragRunId; dragRunId = null; dragOverFolderId = null; dragOverUnfolderedKey = null; sessionDragLabel = "";
+    if (!rid) return;
+    const { setSessionDragOverSplit, setSessionDragActive, findSessionDropTarget, findSessionSplitDropTarget } =
+      await import("$lib/utils/session-drag-state");
+    setSessionDragOverSplit(false); setSessionDragActive(false);
+    const overSplit = pathIsChat(get(page).url.pathname) && findSessionSplitDropTarget(e.clientX, e.clientY);
+    const dropTarget = overSplit ? null : findSessionDropTarget(e.clientX, e.clientY);
+    if (overSplit) { await (await import("$lib/split/split-workspace-lifecycle")).addSplitPane(rid); return; }
+    if (!dropTarget) return;
+    await executeFolderDrop(rid, dropTarget, rss, sfs);
+  }
+  function requestDeleteConversation(conv: import("$lib/utils/sidebar-groups").ConversationGroup) { deleteTarget = conv; deleteConfirmOpen = true; }
+  async function confirmDeleteConversation() {
+    const c = deleteTarget; deleteConfirmOpen = false; deleteTarget = null;
+    if (c) { await rss.softDelete(c.runs.map((r) => r.id)); if (c.runs.some((r) => r.id === selectedRunId)) goto("/chat"); }
+  }
+  async function confirmHardDeleteConversation() {
+    const c = deleteTarget; deleteConfirmOpen = false; deleteTarget = null;
+    if (c) { await rss.hardDelete(c.runs.map((r) => r.id)); if (c.runs.some((r) => r.id === selectedRunId)) goto("/chat"); }
+  }
+  function cancelDeleteConversation() { deleteConfirmOpen = false; deleteTarget = null; }
+  function enterBatchMode(gk: string) { selectedGroupKeys = new Set([gk]); lastSelectedKey = gk; }
+  function toggleSelectConversation(gk: string, e: MouseEvent) {
+    const allKeys: string[] = [];
+    for (const f of enrichedProjectFolders) {
+      for (const c of f.conversations) allKeys.push(c.groupKey);
+      for (const sf of f.subFolders ?? []) for (const c of sf.conversations) allKeys.push(c.groupKey);
+    }
+    if (selectedGroupKeys.size > 0 && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+      const ns = new Set(selectedGroupKeys); if (ns.has(gk)) ns.delete(gk); else ns.add(gk);
+      selectedGroupKeys = ns; lastSelectedKey = gk; return;
+    }
+    if (e.shiftKey && lastSelectedKey) {
+      const fi = allKeys.indexOf(lastSelectedKey), ti = allKeys.indexOf(gk);
+      if (fi >= 0 && ti >= 0) { const ns = new Set(selectedGroupKeys); for (let i = Math.min(fi,ti); i <= Math.max(fi,ti); i++) ns.add(allKeys[i]); selectedGroupKeys = ns; }
+    } else if (e.metaKey || e.ctrlKey) {
+      const ns = new Set(selectedGroupKeys); if (ns.has(gk)) ns.delete(gk); else ns.add(gk); selectedGroupKeys = ns;
+    } else { selectedGroupKeys = new Set(); lastSelectedKey = gk; return; }
+    lastSelectedKey = gk;
+  }
+  function clearBatchSelection() { selectedGroupKeys = new Set(); lastSelectedKey = ""; }
+  async function batchDelete() {
+    const ids = collectSelectedRunIds(selectedGroupKeys, enrichedProjectFolders);
+    batchDeleteConfirmOpen = false; clearBatchSelection(); await batchSoftDelete(rss, ids, selectedRunId);
+  }
+  async function batchHardDelete() {
+    const ids = collectSelectedRunIds(selectedGroupKeys, enrichedProjectFolders);
+    batchDeleteConfirmOpen = false; clearBatchSelection(); await batchHardDeleteAction(rss, ids, selectedRunId);
+  }
+  function requestRemoveProject(cwd: string) { removeProjectTarget = normalizeCwd(cwd); removeProjectConfirmOpen = true; }
+  function confirmRemoveProject() { const n = removeProjectTarget; removeProjectConfirmOpen = false; removeProjectTarget = ""; if (n) pss.removeProject(n); }
+  function cancelRemoveProject() { removeProjectConfirmOpen = false; removeProjectTarget = ""; }
+
+  // ── Plugin section type ──
+  type PluginSection = { id: string; label: () => string; icon: string };
+
+  // ── Props ──
   let { children } = $props();
 
-  // ── Top-level chrome booleans ───────────────────────────────────
+  // ── State ──
   let commandPaletteOpen = $state(false);
   let showSetupWizard = $state(false);
   let showAbout = $state(false);
-  /** Mutable callback set by the chat page on mount. Called when the sidebar
-   *  expands a workspace folder so the chat page can show the workspace overview. */
   let selectWorkspaceCallback: ((cwd: string) => void) | null = $state(null);
   let showCliBrowser = $state(false);
   let permissionsModalOpen = $state(false);
@@ -121,9 +180,7 @@
   const sidebarUpdateAvailable = $derived(appUpdateCoordinator.hasUpdate);
   const sidebarVersionChecked = $derived(appUpdateCoordinator.state.lastCheckedAt !== null);
 
-  // Sidebar collapse + width (kept at the shell level so the resize
-  // handler can mutate them directly without round-tripping through a
-  // store; the layout persists the width via layout-bootstrap helpers).
+  // Sidebar collapse + width
   let sidebarOpen = $state(true);
   let sidebarWidth = $state(280);
   let sidebarResizing = $state(false);
@@ -140,9 +197,7 @@
   let workspaceSettingsCwd = $state("");
   let workspaceSettingsAlias = $state("");
 
-  // ── Deferred (lazy) modal slots — dynamic-imported on first use ────
-  // Mirrors the +layout.svelte pre-refactor makeModalSlot pattern: keep the
-  // eager bundle lean, only fetch the modal chunk when the user opens one.
+  // ── Deferred (lazy) modal slots ──
   type DeferredModal = Component<any>;
   type ModalSlot = { Component: DeferredModal | null; ensure: () => Promise<void> };
   function makeModalSlot(loader: () => Promise<{ default: DeferredModal }>): ModalSlot {
@@ -176,34 +231,12 @@
   );
   const sidebarModals = makeModalSlot(() => import("$lib/components/sidebar/SidebarModals.svelte"));
 
-  // Pre-fetch modal chunks the first time their flag flips on, so the
-  // first open is instant. Pure side-effect on $state reads.
   $effect(() => {
     if (showAbout) void aboutModal.ensure();
     if (permissionsModalOpen) void permissionsModal.ensure();
     if (workspaceSettingsOpen) void workspaceSettingsModal.ensure();
     if (anySidebarModalOpen) void sidebarModals.ensure();
   });
-
-  // Delete-confirm flows
-  let deleteConfirmOpen = $state(false);
-  let deleteTarget: import("$lib/utils/sidebar-groups").ConversationGroup | null = $state(null);
-  let batchDeleteConfirmOpen = $state(false);
-  let removeProjectConfirmOpen = $state(false);
-  let removeProjectTarget = $state("");
-
-  // Batch selection
-  let selectedGroupKeys = $state(new Set<string>());
-  let lastSelectedKey = $state("");
-  let batchModeActive = $derived(selectedGroupKeys.size > 0);
-
-  // Drag state for session pointer-drag
-  let dragRunId = $state<string | null>(null);
-  let dragOverFolderId = $state<string | null>(null);
-  let dragOverUnfolderedKey = $state<string | null>(null);
-  let sessionDragLabel = $state("");
-  let sessionDragX = $state(0);
-  let sessionDragY = $state(0);
 
   // Plugin section navigation
   let pluginActiveSection = $state<string>("overview");
@@ -225,7 +258,7 @@
     },
   });
 
-  // ── Page-derived booleans (delegated to navigation-model) ───────
+  // ── Page-derived booleans ──
   let currentPath = $derived($page.url.pathname);
   let pageInfo = $derived(describeCurrentPage(currentPath));
   let {
@@ -245,7 +278,7 @@
     attentionQueueStore.openItems.length + attentionQueueStore.acknowledgedItems.length,
   );
 
-  // ── Stores exposed via context (set by +layout.svelte) ─────────
+  // ── Stores exposed via context ──
   const teamStore = getContext<TeamStore>("teamStore");
   const keybindingStore = getContext<KeybindingStore>("keybindings");
   const settingsCache = getContext<SettingsCacheContext | undefined>(SETTINGS_CACHE_CONTEXT_KEY);
@@ -255,20 +288,14 @@
     bootstrapDemand.ensureForRoute(currentPath);
   });
 
-  // ── Settings-driven UI flags (consumed from the layout cache) ──
+  // ── Settings-driven UI flags ──
   const settings = $derived(settingsCache?.settings ?? null);
   const iconRailEnabled = $derived(settings?.icon_rail_enabled !== false);
   const mascotEnabled = $derived(settings?.mascot_enabled !== false);
   const uiZoom = $derived(clampUiZoom(settings?.ui_zoom));
   const nativeWindowGlassEnabled = $derived(settings?.native_window_glass_enabled !== false);
 
-  // ── Helper functions ────────────────────────────────────────────
-  // formatAppVersion is defined above (version chip section)
-
-  function navigateToChatRun(
-    targetRunId: string,
-    opts: { scrollTo?: string; replaceState?: boolean } | undefined = undefined,
-  ) {
+  function navigateToChatRun(targetRunId: string, opts?: { scrollTo?: string; replaceState?: boolean }) {
     getChatTimelineResetHandle()?.shrinkVisibleRender(24);
     requestAnimationFrame(() => {
       let href = `/chat?run=${encodeURIComponent(targetRunId)}`;
@@ -279,14 +306,11 @@
 
   function newChat() {
     getChatTimelineResetHandle()?.shrinkVisibleRender(24);
-    requestAnimationFrame(() => {
-      goto("/chat?new=1");
-    });
+    requestAnimationFrame(() => goto("/chat?new=1"));
   }
 
   function getNavItemHref(item: { path: string; icon: string }): string {
-    if (item.icon === "message") return chatViewCache.lastChatHref || "/chat";
-    return item.path;
+    return item.icon === "message" ? chatViewCache.lastChatHref || "/chat" : item.path;
   }
 
   function newChatInFolder(cwd: string) {
@@ -306,9 +330,7 @@
     if (!pss.pinnedCwds.includes(normalized)) pss.pin(normalized);
     window.dispatchEvent(new CustomEvent(EVT_PROJECT_CHANGED, { detail: { cwd: normalized } }));
     chatViewCache.lastRunId = "";
-    goto(
-      `/chat?new=1&folder=${encodeURIComponent(normalized)}&sf=${encodeURIComponent(subFolderId)}`,
-    );
+    goto(`/chat?new=1&folder=${encodeURIComponent(normalized)}&sf=${encodeURIComponent(subFolderId)}`);
   }
 
   function toggleSidebar() {
@@ -316,30 +338,19 @@
   }
   setContext("toggleSidebar", toggleSidebar);
 
-  // layout chrome context (consumed by /chat etc.)
+  // layout chrome context
   let layoutChromeState = $state({ sidebarOpen: true });
   $effect(() => {
     layoutChromeState.sidebarOpen = sidebarOpen && needsLayoutContentPanel;
   });
   setContext<LayoutChromeContext>(LAYOUT_CHROME_CONTEXT_KEY, {
-    get state() {
-      return layoutChromeState;
-    },
+    get state() { return layoutChromeState; },
     toggleSidebar,
     newChat,
-    openCliBrowser: () => {
-      showCliBrowser = true;
-    },
-    openSettings: () => {
-      beginRouteTransition();
-      void goto("/settings").finally(endRouteTransition);
-    },
-    selectWorkspace: (cwd: string) => {
-      selectWorkspaceCallback?.(cwd);
-    },
-    onSelectWorkspaceChange: (cb) => {
-      selectWorkspaceCallback = cb;
-    },
+    openCliBrowser: () => { showCliBrowser = true; },
+    openSettings: () => { beginRouteTransition(); void goto("/settings").finally(endRouteTransition); },
+    selectWorkspace: (cwd: string) => { selectWorkspaceCallback?.(cwd); },
+    onSelectWorkspaceChange: (cb) => { selectWorkspaceCallback = cb; },
   });
 
   function highlightMatch(text: string, query: string): string {
@@ -350,7 +361,7 @@
     return escaped.replace(re, "<mark>$1</mark>");
   }
 
-  // ── Sidebar enrich + selection ──────────────────────────────────
+  // ── Sidebar enrich + selection ──
   const enrichedProjectFolders = $derived.by(() => {
     if (!needsLayoutContentPanel) return [];
     const folders = buildEnrichedProjectFolders(
@@ -380,347 +391,81 @@
       sfs.moveToFolderOpen,
   );
 
-  // ── Filtered search results ─────────────────────────────────────
+  // ── Filtered search results ──
   const removedCwdSet = $derived(new Set(pss.removedCwds.map(normalizeCwd)));
   const visibleSearchResults = $derived.by(() => {
-    if (rss.searchResults.length === 0) return rss.searchResults;
-    if (removedCwdSet.size === 0) return rss.searchResults;
+    if (rss.searchResults.length === 0 || removedCwdSet.size === 0) return rss.searchResults;
     const runCwdMap = new Map<string, string>();
     for (const run of rss.runs) runCwdMap.set(run.id, normalizeCwd(run.cwd));
-    return rss.searchResults.filter((result) => {
-      const cwd = runCwdMap.get(result.runId);
-      if (cwd === undefined) return true;
-      if (!cwd) return true;
-      return !removedCwdSet.has(cwd);
+    return rss.searchResults.filter((r) => {
+      const cwd = runCwdMap.get(r.runId);
+      return cwd === undefined || !cwd || !removedCwdSet.has(cwd);
     });
   });
 
   const filteredTeams = $derived(tss.filteredTeams(teamStore));
 
-  // ── Sidebar resize (ghost-line) ─────────────────────────────────
+  // ── Sidebar resize (ghost-line) ──
   function screenKey(): string {
-    try {
-      if (typeof window !== "undefined" && window.screen) {
-        return `${window.screen.width}x${window.screen.height}`;
-      }
-    } catch {
-      /* SSR or restricted */
-    }
+    try { if (typeof window !== "undefined" && window.screen) return `${window.screen.width}x${window.screen.height}`; } catch { /* SSR */ }
     return "default";
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in template
-  let resizeCleanup: (() => void) | null = null;
+  let _resizeCleanup: (() => void) | null = null;
   function startResize(e: PointerEvent) {
     e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = sidebarWidth;
+    const startX = e.clientX, startWidth = sidebarWidth;
     let pendingWidth = startWidth;
-    sidebarResizing = true;
-    sidebarGhostX = e.clientX;
+    sidebarResizing = true; sidebarGhostX = e.clientX;
     const handle = e.currentTarget as HTMLElement;
     handle.setPointerCapture?.(e.pointerId);
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "col-resize";
-
+    document.body.style.userSelect = "none"; document.body.style.cursor = "col-resize";
     function onMove(ev: PointerEvent) {
       pendingWidth = Math.min(500, Math.max(180, startWidth + (ev.clientX - startX)));
-      const x = startX + (pendingWidth - startWidth);
-      if (sidebarGhostEl) sidebarGhostEl.style.left = `${x - 1}px`;
+      if (sidebarGhostEl) sidebarGhostEl.style.left = `${startX + (pendingWidth - startWidth) - 1}px`;
     }
     function cleanup() {
       handle.removeEventListener("pointermove", onMove);
       handle.removeEventListener("pointerup", onUp);
       handle.removeEventListener("pointercancel", onUp);
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
-      sidebarWidth = pendingWidth;
-      sidebarResizing = false;
-      sidebarGhostEl = null;
-      resizeCleanup = null;
-      try {
-        localStorage.setItem(`ocv:sidebar-width:${screenKey()}`, String(sidebarWidth));
-      } catch {
-        /* ignore */
-      }
+      document.body.style.userSelect = ""; document.body.style.cursor = "";
+      sidebarWidth = pendingWidth; sidebarResizing = false; sidebarGhostEl = null; _resizeCleanup = null;
+      try { localStorage.setItem(`ocv:sidebar-width:${screenKey()}`, String(sidebarWidth)); } catch { /* ignore */ }
     }
-    function onUp() {
-      cleanup();
-    }
+    function onUp() { cleanup(); }
     handle.addEventListener("pointermove", onMove);
     handle.addEventListener("pointerup", onUp);
     handle.addEventListener("pointercancel", onUp);
-    resizeCleanup = cleanup;
+    _resizeCleanup = cleanup;
   }
 
-  // ── Drag-and-drop (session pointer-drag) ────────────────────────
-  function folderKeyForRun(run: { parent_cwd?: string | null; cwd: string }): string {
-    const cwd = normalizeCwd(run.parent_cwd ?? run.cwd);
-    return cwd === "" ? "uncategorized" : `cwd:${cwd}`;
-  }
-
-  function _applySessionDropHighlight(
-    target: { type: string; folderId?: string; workspaceKey?: string } | null,
-  ) {
-    dragOverFolderId = target?.type === "folder" ? (target.folderId ?? null) : null;
-    dragOverUnfolderedKey = target?.type === "unfoldered" ? (target.workspaceKey ?? null) : null;
-  }
-
-  function handleSessionDragStart(runId: string, label: string, e: PointerEvent) {
-    dragRunId = runId;
-    sessionDragLabel = label;
-    sessionDragX = e.clientX;
-    sessionDragY = e.clientY;
-    import("$lib/utils/session-drag-state").then((m) => m.setSessionDragActive(true));
-  }
-
-  function handleSessionDragMove(e: PointerEvent) {
-    sessionDragX = e.clientX;
-    sessionDragY = e.clientY;
-    // Best-effort: full highlight logic lives in session-drag-state and
-    // was tied to the original layout effect. The store version is
-    // wired by +layout.svelte.
-    void e;
-  }
-
-  async function handleSessionDragEnd(e: PointerEvent) {
-    const runId = dragRunId;
-    dragRunId = null;
-    dragOverFolderId = null;
-    dragOverUnfolderedKey = null;
-    sessionDragLabel = "";
-    if (!runId) return;
-    const {
-      setSessionDragOverSplit,
-      setSessionDragActive,
-      findSessionDropTarget,
-      findSessionSplitDropTarget,
-    } = await import("$lib/utils/session-drag-state");
-    setSessionDragOverSplit(false);
-    setSessionDragActive(false);
-    const pathname = get(page).url.pathname;
-    const overSplit = pathIsChat(pathname) && findSessionSplitDropTarget(e.clientX, e.clientY);
-    const dropTarget = overSplit ? null : findSessionDropTarget(e.clientX, e.clientY);
-    if (overSplit) {
-      const { addSplitPane } = await import("$lib/split/split-workspace-lifecycle");
-      await addSplitPane(runId);
-      return;
-    }
-    if (!dropTarget) return;
-    const run = rss.runs.find((r) => r.id === runId);
-    if (!run) return;
-    try {
-      if (dropTarget.type === "folder") {
-        const { moveRunToFolder } = await import("$lib/api");
-        await moveRunToFolder(runId, dropTarget.folderId);
-        rss.applyFolderMoveLocally([runId], dropTarget.folderId);
-        sfs.ensureSubFolderExpanded(dropTarget.folderId);
-      } else {
-        if (folderKeyForRun(run) !== dropTarget.workspaceKey) return;
-        const { moveRunToFolder } = await import("$lib/api");
-        await moveRunToFolder(runId, null);
-        rss.applyFolderMoveLocally([runId], null);
-      }
-      window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
-    } catch (err) {
-      dbg("layout", "session pointer-drop moveRunToFolder failed", { err });
-    }
-  }
-
-  // ── Delete / batch / project-remove flows ───────────────────────
-  function requestDeleteConversation(conv: import("$lib/utils/sidebar-groups").ConversationGroup) {
-    deleteTarget = conv;
-    deleteConfirmOpen = true;
-  }
-
-  async function confirmDeleteConversation() {
-    const conv = deleteTarget;
-    deleteConfirmOpen = false;
-    deleteTarget = null;
-    if (!conv) return;
-    await rss.softDelete(conv.runs.map((r) => r.id));
-    if (conv.runs.some((r) => r.id === selectedRunId)) goto("/chat");
-  }
-
-  async function confirmHardDeleteConversation() {
-    const conv = deleteTarget;
-    deleteConfirmOpen = false;
-    deleteTarget = null;
-    if (!conv) return;
-    await rss.hardDelete(conv.runs.map((r) => r.id));
-    if (conv.runs.some((r) => r.id === selectedRunId)) goto("/chat");
-  }
-
-  function cancelDeleteConversation() {
-    deleteConfirmOpen = false;
-    deleteTarget = null;
-  }
-
-  function enterBatchMode(groupKey: string) {
-    selectedGroupKeys = new Set([groupKey]);
-    lastSelectedKey = groupKey;
-  }
-
-  function toggleSelectConversation(groupKey: string, e: MouseEvent) {
-    const allKeys: string[] = [];
-    for (const folder of enrichedProjectFolders) {
-      for (const conv of folder.conversations) allKeys.push(conv.groupKey);
-      for (const sf of folder.subFolders ?? []) {
-        for (const conv of sf.conversations) allKeys.push(conv.groupKey);
-      }
-    }
-    if (selectedGroupKeys.size > 0 && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-      const newSet = new Set(selectedGroupKeys);
-      if (newSet.has(groupKey)) newSet.delete(groupKey);
-      else newSet.add(groupKey);
-      selectedGroupKeys = newSet;
-      lastSelectedKey = groupKey;
-      return;
-    }
-    if (e.shiftKey && lastSelectedKey) {
-      const fromIdx = allKeys.indexOf(lastSelectedKey);
-      const toIdx = allKeys.indexOf(groupKey);
-      if (fromIdx >= 0 && toIdx >= 0) {
-        const start = Math.min(fromIdx, toIdx);
-        const end = Math.max(fromIdx, toIdx);
-        const newSet = new Set(selectedGroupKeys);
-        for (let i = start; i <= end; i++) newSet.add(allKeys[i]);
-        selectedGroupKeys = newSet;
-      }
-    } else if (e.metaKey || e.ctrlKey) {
-      const newSet = new Set(selectedGroupKeys);
-      if (newSet.has(groupKey)) newSet.delete(groupKey);
-      else newSet.add(groupKey);
-      selectedGroupKeys = newSet;
-    } else {
-      selectedGroupKeys = new Set();
-      lastSelectedKey = groupKey;
-      return;
-    }
-    lastSelectedKey = groupKey;
-  }
-
-  function clearBatchSelection() {
-    selectedGroupKeys = new Set();
-    lastSelectedKey = "";
-  }
-
-  function collectSelectedRunIds(): string[] {
-    const keys = new Set(selectedGroupKeys);
-    const ids: string[] = [];
-    for (const folder of enrichedProjectFolders) {
-      for (const conv of folder.conversations) {
-        if (keys.has(conv.groupKey)) ids.push(...conv.runs.map((r) => r.id));
-      }
-      for (const sf of folder.subFolders ?? []) {
-        for (const conv of sf.conversations) {
-          if (keys.has(conv.groupKey)) ids.push(...conv.runs.map((r) => r.id));
-        }
-      }
-    }
-    return ids;
-  }
-
-  async function batchDelete() {
-    const ids = collectSelectedRunIds();
-    batchDeleteConfirmOpen = false;
-    clearBatchSelection();
-    if (ids.length === 0) return;
-    await rss.softDelete(ids);
-    if (ids.includes(selectedRunId)) goto("/chat");
-  }
-
-  async function batchHardDelete() {
-    const ids = collectSelectedRunIds();
-    batchDeleteConfirmOpen = false;
-    clearBatchSelection();
-    if (ids.length === 0) return;
-    await rss.hardDelete(ids);
-    if (ids.includes(selectedRunId)) goto("/chat");
-  }
-
-  function requestRemoveProject(cwd: string) {
-    removeProjectTarget = normalizeCwd(cwd);
-    removeProjectConfirmOpen = true;
-  }
-
-  function confirmRemoveProject() {
-    const normalized = removeProjectTarget;
-    removeProjectConfirmOpen = false;
-    removeProjectTarget = "";
-    if (!normalized) return;
-    pss.removeProject(normalized);
-  }
-
-  function cancelRemoveProject() {
-    removeProjectConfirmOpen = false;
-    removeProjectTarget = "";
-  }
-
-  function pickFolder() {
-    folderPickerInitialHost = null;
-    folderPickerInitialPath = pss.projectCwd;
-    folderPickerOpen = true;
-  }
-
-  /** Persist a user-typed alias for a workspace by mutating UserSettings
-   *  through the standard updateUserSettings path. The USER_SETTINGS_CHANGED_EVENT
-   *  bridge in +layout.svelte will pick the change up and refresh downstream
-   *  consumers. */
+  // ── Workspace alias ──
   async function saveWorkspaceAlias(cwd: string, alias: string): Promise<void> {
     const normalized = normalizeCwd(cwd);
     const current = settings?.workspace_aliases ?? {};
     const updated: Record<string, string> = { ...current };
-    if (alias.trim()) {
-      updated[normalized] = alias.trim();
-    } else {
-      delete updated[normalized];
-    }
+    if (alias.trim()) updated[normalized] = alias.trim(); else delete updated[normalized];
     try {
       const { updateUserSettings } = await import("$lib/api");
       await updateUserSettings({ workspace_aliases: updated });
       dbg("layout", "workspace alias saved", { cwd: normalized, alias });
-    } catch (e) {
-      dbgWarn("layout", "save workspace alias failed", e);
-    }
+    } catch (e) { dbgWarn("layout", "save workspace alias failed", e); }
   }
 
-  /** Open the move-to-folder dialog for the selected conversation group(s). */
-  function _requestMoveToFolder(conv: import("$lib/utils/sidebar-groups").ConversationGroup): void {
-    sfs.requestMove(conv.runs.map((r) => r.id));
-  }
-
-  /** Confirm the move-to-folder selection. */
-  function doMoveToFolder(): void {
-    void sfs.doMoveFromDialog();
-  }
+  function doMoveToFolder(): void { void sfs.doMoveFromDialog(); }
 
   function onFolderPicked(result: { hostName: string | null; path: string }) {
     const { hostName, path } = result;
     if (!path) return;
-    if (hostName) {
-      goto(`/chat?host=${encodeURIComponent(hostName)}&folder=${encodeURIComponent(path)}`);
-      return;
-    }
+    if (hostName) { goto(`/chat?host=${encodeURIComponent(hostName)}&folder=${encodeURIComponent(path)}`); return; }
     const normalized = normalizeCwd(path) || "";
     if (normalized && pss.removedCwds.includes(normalized)) pss.unremoveProject(normalized);
     pss.setProjectCwd(normalized);
   }
 
-  /** Setup wizard completion: just close; settings auto-rerun via the
-   *  USER_SETTINGS_CHANGED_EVENT bridge in +layout.svelte. */
-  function handleSetupComplete(): void {
-    showSetupWizard = false;
-  }
-
-  /** CLI import ran a run; navigate to the chat. */
-  async function _loadRuns(): Promise<void> {
-    await rss.loadRuns();
-  }
-
-  function toggleProject(folderKey: string) {
-    pss.toggleProject(folderKey);
-  }
+  function handleSetupComplete(): void { showSetupWizard = false; }
+  function toggleProject(folderKey: string) { pss.toggleProject(folderKey); }
+  function pickFolder() { folderPickerInitialHost = null; folderPickerInitialPath = pss.projectCwd; folderPickerOpen = true; }
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Escape" && selectedGroupKeys.size > 0) {
@@ -730,7 +475,7 @@
     keybindingStore.dispatch(e);
   }
 
-  // ── Derived: titlebar / sidebar geometry ────────────────────────
+  // ── Derived: titlebar / sidebar geometry ──
   const windowChromeLeftInset = $derived.by(() => {
     const z = uiZoom;
     const actionsInset = layoutPx(IS_MAC ? 80 : 12, z);
@@ -756,26 +501,20 @@
   );
   const sidebarLogicallyCollapsed = $derived(!sidebarOpen || !needsLayoutContentPanel);
 
-  // ── Cross-tab auto-expand (run → folder / cwd → folder) ────────
+  // Cross-tab auto-expand (run → folder / cwd → folder)
   let _prevAutoExpandRunId = "";
   let _prevAutoExpandRunsLen = 0;
   $effect(() => {
     if (!isChatPage) return;
     const runId = selectedRunId;
     const runsLen = rss.runs.length;
-    const runChanged = runId !== _prevAutoExpandRunId;
-    const runsChanged = runsLen !== _prevAutoExpandRunsLen;
-    if (!runChanged && !runsChanged) return;
-    _prevAutoExpandRunId = runId;
-    _prevAutoExpandRunsLen = runsLen;
+    if (runId === _prevAutoExpandRunId && runsLen === _prevAutoExpandRunsLen) return;
+    _prevAutoExpandRunId = runId; _prevAutoExpandRunsLen = runsLen;
     if (!runId) return;
     const next = autoExpandForRun(runId, enrichedProjectFolders, pss.expandedProjects);
     if (next) pss.replaceExpanded(next);
     const sfKey = subFolderKeyForRun(runId, enrichedProjectFolders);
-    if (sfKey) {
-      const folderId = sfKey.startsWith("sf:") ? sfKey.slice(3) : sfKey;
-      sfs.ensureSubFolderExpanded(folderId);
-    }
+    if (sfKey) sfs.ensureSubFolderExpanded(sfKey.startsWith("sf:") ? sfKey.slice(3) : sfKey);
   });
 
   let _prevAutoExpandCwd = "";
@@ -784,25 +523,17 @@
     if (cwd === _prevAutoExpandCwd) return;
     _prevAutoExpandCwd = cwd;
     if (!cwd) return;
-    const folderKey = `cwd:${cwd}`;
-    const next = expandForProjectChange(folderKey, pss.expandedProjects);
+    const next = expandForProjectChange(`cwd:${cwd}`, pss.expandedProjects);
     if (next) pss.replaceExpanded(next);
   });
 
-  // Persist expandedProjects, prune stale keys after runs have loaded
   $effect(() => {
-    if (!needsLayoutContentPanel) return;
-    if (!rss.runsLoadSucceededOnce) return;
+    if (!needsLayoutContentPanel || !rss.runsLoadSucceededOnce) return;
     pss.persistAndPruneExpanded(new Set(enrichedProjectFolders.map((f) => f.folderKey)));
   });
 
-  // Persist active session id (auto-restore on next launch)
-  $effect(() => {
-    const id = selectedRunId;
-    untrack(() => writeActiveSessionId(id));
-  });
+  $effect(() => { untrack(() => writeActiveSessionId(selectedRunId)); });
 
-  // Project workspaces list → workspaces store (for chat welcome picker)
   $effect(() => {
     if (!needsLayoutContentPanel) return;
     workspacesStore.list = enrichedProjectFolders.map((f) => ({
@@ -812,21 +543,17 @@
     }));
   });
 
-  // Update workspaces-store visible: defensive reset of projectCwd
   $effect(() => {
-    if (!needsLayoutContentPanel) return;
-    if (!pss.projectCwd) return;
+    if (!needsLayoutContentPanel || !pss.projectCwd) return;
     const key = normalizeCwd(pss.projectCwd);
     const validCwds = new Set([
       ...selectableFolders.map((f) => normalizeCwd(f.cwd)),
       ...pss.pinnedCwds.map(normalizeCwd),
     ]);
-    if (!validCwds.has(key)) {
-      pss.setProjectCwd("");
-    }
+    if (!validCwds.has(key)) pss.setProjectCwd("");
   });
 
-  // Explorer tree: reload when projectCwd or route changes
+  // Explorer tree
   let _prevExplorerCwd: string | undefined;
   $effect(() => {
     if (!isExplorerPage) return;
@@ -834,104 +561,60 @@
     if (_cwd) {
       void ets.loadRootTree(_cwd);
       _prevExplorerCwd = _cwd;
-    } else if (!rss.runsLoadSucceededOnce) {
       return;
-    } else if (rss.runs.length > 0) {
-      const fallback = ets.pickRecentRunsFallback(rss.runs);
-      if (fallback) {
-        pss.setProjectCwd(fallback);
-        _prevExplorerCwd = fallback;
-      } else {
-        ets.fileTree = [];
-        ets.treeLoading = false;
-        ets.treeError = null;
-        _prevExplorerCwd = _cwd;
-      }
-    } else {
-      ets.fileTree = [];
-      ets.treeLoading = false;
-      ets.treeError = null;
-      _prevExplorerCwd = _cwd;
     }
+    if (!rss.runsLoadSucceededOnce) return;
+    if (rss.runs.length > 0) {
+      const fallback = ets.pickRecentRunsFallback(rss.runs);
+      if (fallback) { pss.setProjectCwd(fallback); _prevExplorerCwd = fallback; return; }
+    }
+    ets.fileTree = []; ets.treeLoading = false; ets.treeError = null; _prevExplorerCwd = _cwd;
   });
 
-  // Native window glass class toggle
   $effect(() => {
     if (typeof document === "undefined") return;
     document.documentElement.classList.toggle("native-glass-enabled", nativeWindowGlassEnabled);
   });
 
-  // Plugin section sync from URL on /plugins
   afterNavigate(({ to }) => {
     if (to?.url.pathname.startsWith("/plugins")) {
       const section = to.url.searchParams.get("section");
-      if (section && pluginSections.some((s) => s.id === section)) {
-        pluginActiveSection = section;
-      }
+      if (section && pluginSections.some((s) => s.id === section)) pluginActiveSection = section;
     }
     const hubMatch = to?.url.pathname.match(/^\/scheduled-tasks\/([^/]+)/);
     if (hubMatch) {
-      const hubTaskId = hubMatch[1];
-      const hubFolder = enrichedProjectFolders.find((folder) =>
-        folder.scheduledTaskHubs.some((hub) => hub.taskId === hubTaskId),
+      const hubFolder = enrichedProjectFolders.find((f) =>
+        f.scheduledTaskHubs.some((h) => h.taskId === hubMatch[1]),
       );
       if (hubFolder) pss.toggleProject(hubFolder.folderKey);
     }
   });
 
-  // Route transition + chat/settings hop arming
   beforeNavigate(({ from, to }) => {
     if (!from || !to) return;
     const fromPath = from.url.pathname;
     const toPath = to.url.pathname;
     if (pathIsChatOrSettingsTransition(fromPath, toPath)) {
-      beginRouteTransition();
-      armChatSettingsHop();
-      return;
+      beginRouteTransition(); armChatSettingsHop(); return;
     }
-    // Collapsing/expanding the sidebar content panel (e.g. /chat → /personal)
-    // animates width; skip motion so route entry does not stutter.
-    if (routeNeedsLayoutContentPanel(fromPath) !== routeNeedsLayoutContentPanel(toPath)) {
-      beginRouteTransition();
-    }
+    if (routeNeedsLayoutContentPanel(fromPath) !== routeNeedsLayoutContentPanel(toPath)) beginRouteTransition();
   });
-  afterNavigate(() => {
-    endRouteTransition();
-  });
+  afterNavigate(() => endRouteTransition());
 
-  // ── Bridge: listen for chrome CustomEvents dispatched by +layout ─
-  // The layout owns side-effect state (keybindings, event bus) but
-  // AppShell owns the chrome booleans. The layout forwards commands
-  // via `miwarp:layout-*` CustomEvents; AppShell consumes them here.
+  // Chrome CustomEvents bridge
   $effect(() => {
     if (typeof window === "undefined") return;
-    const onToggleSidebar = () => (sidebarOpen = !sidebarOpen);
-    const onToggleCommandPalette = () => (commandPaletteOpen = !commandPaletteOpen);
-    const onNewChat = () => newChat();
-    const onShowWizard = () => (showSetupWizard = true);
-    const onOpenPermissions = () => (permissionsModalOpen = true);
-    const onExplorerFileSelected = (e: Event) => {
-      ets.explorerSelectedFile = (e as CustomEvent).detail?.path ?? "";
-    };
-    const onAppVersion = (e: Event) => {
-      bundledAppVersion = (e as CustomEvent).detail ?? null;
-    };
-    window.addEventListener("miwarp:layout-toggle-sidebar", onToggleSidebar);
-    window.addEventListener("miwarp:layout-toggle-command-palette", onToggleCommandPalette);
-    window.addEventListener("miwarp:layout-new-chat", onNewChat);
-    window.addEventListener("miwarp:layout-show-wizard", onShowWizard);
-    window.addEventListener("miwarp:layout-open-permissions", onOpenPermissions);
-    window.addEventListener("miwarp:layout-explorer-file-selected", onExplorerFileSelected);
-    window.addEventListener("miwarp:layout-app-version", onAppVersion);
-    return () => {
-      window.removeEventListener("miwarp:layout-toggle-sidebar", onToggleSidebar);
-      window.removeEventListener("miwarp:layout-toggle-command-palette", onToggleCommandPalette);
-      window.removeEventListener("miwarp:layout-new-chat", onNewChat);
-      window.removeEventListener("miwarp:layout-show-wizard", onShowWizard);
-      window.removeEventListener("miwarp:layout-open-permissions", onOpenPermissions);
-      window.removeEventListener("miwarp:layout-explorer-file-selected", onExplorerFileSelected);
-      window.removeEventListener("miwarp:layout-app-version", onAppVersion);
-    };
+    const handlers: [string, (e: Event) => void][] = [
+      ["miwarp:layout-toggle-sidebar", () => (sidebarOpen = !sidebarOpen)],
+      ["miwarp:layout-toggle-command-palette", () => (commandPaletteOpen = !commandPaletteOpen)],
+      ["miwarp:layout-new-chat", () => newChat()],
+      ["miwarp:layout-show-wizard", () => (showSetupWizard = true)],
+      ["miwarp:layout-open-permissions", () => (permissionsModalOpen = true)],
+      ["miwarp:layout-explorer-file-selected", (e) => { ets.explorerSelectedFile = (e as CustomEvent).detail?.path ?? ""; }],
+      ["miwarp:layout-app-version", (e) => { bundledAppVersion = (e as CustomEvent).detail ?? null; }],
+    ];
+    for (const [evt, fn] of handlers) window.addEventListener(evt, fn);
+    return () => { for (const [evt, fn] of handlers) window.removeEventListener(evt, fn); };
   });
 </script>
 
@@ -995,12 +678,12 @@
         onNavigateToChatRun={navigateToChatRun}
         onToggleProject={toggleProject}
         onRequestDeleteConversation={requestDeleteConversation}
-        onToggleSelectConversation={toggleSelectConversation}
+        onToggleSelectConversation={(groupKey, e) => toggleSelectConversation(groupKey, e)}
         onEnterBatchMode={enterBatchMode}
         onSessionDragStart={handleSessionDragStart}
         onSessionDragMove={handleSessionDragMove}
-        onSessionDragEnd={handleSessionDragEnd}
-        onRequestRemoveProject={requestRemoveProject}
+        onSessionDragEnd={(e) => handleSessionDragEnd(e)}
+        onRequestRemoveProject={(cwd) => requestRemoveProject(cwd)}
         onNewChatInFolder={newChatInFolder}
         onNewChatInSubFolder={newChatInSubFolder}
         onSelectWorkspace={(cwd) => selectWorkspaceCallback?.(cwd)}
@@ -1096,31 +779,16 @@
     {@const C = sidebarModals.Component}
     <C
       bind:deleteConfirmOpen
-      onDeleteSoft={confirmDeleteConversation}
-      onDeleteHard={confirmHardDeleteConversation}
+      onDeleteSoft={() => confirmDeleteConversation()}
+      onDeleteHard={() => confirmHardDeleteConversation()}
       onDeleteCancel={cancelDeleteConversation}
       bind:batchDeleteConfirmOpen
-      batchDeleteCount={selectedGroupKeys.size}
-      onBatchSoftDelete={batchDelete}
-      onBatchHardDelete={batchHardDelete}
-      onBatchDeleteCancel={() => (batchDeleteConfirmOpen = false)}
+      onBatchDeleteSoft={() => batchDelete()}
+      onBatchDeleteHard={() => batchHardDelete()}
       bind:removeProjectConfirmOpen
-      onRemoveProject={confirmRemoveProject}
+      onRemoveProjectConfirm={() => confirmRemoveProject()}
       onRemoveProjectCancel={cancelRemoveProject}
-      bind:folderCreateOpen={sfs.folderCreateOpen}
-      bind:folderCreateName={sfs.folderCreateName}
-      onCreateFolder={() => sfs.doCreate()}
-      bind:folderRenameOpen={sfs.folderRenameOpen}
-      bind:folderRenameName={sfs.folderRenameName}
-      onRenameFolder={() => sfs.doRename()}
-      bind:folderDeleteOpen={sfs.folderDeleteOpen}
-      folderDeleteTargetName={sfs.folderDeleteTarget?.name ?? ""}
-      onDeleteFolderKeep={() => sfs.doDelete(false)}
-      onDeleteFolderCascade={() => sfs.doDelete(true)}
-      bind:moveToFolderOpen={sfs.moveToFolderOpen}
-      moveToFolderCount={sfs.moveToFolderRunIds.length}
-      bind:moveToFolderSelectedId={sfs.moveToFolderSelectedId}
-      moveToFolderOptions={foldersForMoveDialog}
+      {foldersForMoveDialog}
       onMoveToFolder={doMoveToFolder}
     />
   {/if}

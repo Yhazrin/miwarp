@@ -167,18 +167,12 @@ pub async fn dispatch_method(method: &str, params: Value, state: &AppState) -> R
         }
 
         // ── Desktop-only commands ──
-        // Runtime configuration operates on the desktop host's local CLI files.
         "runtime_hub_list" | "runtime_hub_health" | "runtime_hub_diagnose" |
         "runtime_hub_set_default" | "runtime_hub_preview_config" |
         "runtime_hub_apply_config" | "runtime_hub_start_config_watch" |
         "runtime_hub_stop_config_watch" |
-        // Diagnostics export and retention are intentionally local to the desktop host.
         "diagnostics_snapshot" | "diagnostics_summary" | "diagnostics_preview" |
         "diagnostics_export" | "diagnostics_export_bundle" | "diagnostics_clear" |
-        // v1.1.0 / 110-A9 Browser Verification Lite — placeholder. Desktop
-        // has the real (currently placeholder) implementation; web falls
-        // through to "desktop only" so remote clients don't silently
-        // launch browser sessions on the server.
         "browser_navigate" | "browser_screenshot" | "browser_get_dom" |
         "capture_screenshot" | "update_screenshot_hotkey" | "get_clipboard_files" |
         "run_claude_login" | "check_for_updates" | "send_chat_message" => {

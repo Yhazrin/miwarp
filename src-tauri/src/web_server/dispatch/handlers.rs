@@ -145,7 +145,8 @@ pub async fn handle_runs(method: &str, params: Value, state: &AppState) -> Resul
             let result = crate::commands::history::get_run_files(run_id).await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
-        _ => Err(format!("unknown runs method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -191,7 +192,8 @@ pub async fn handle_prompt_favorites(method: &str, params: Value) -> Result<Valu
             let result = crate::commands::runs::list_prompt_tags()?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
-        _ => Err(format!("unknown prompt favorites method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -218,7 +220,8 @@ pub async fn handle_events(method: &str, params: Value) -> Result<Value, String>
             .map_err(|e| format!("spawn_blocking failed: {}", e))?;
             Ok(Value::Array(events))
         }
-        _ => Err(format!("unknown events method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -236,7 +239,8 @@ pub async fn handle_artifacts(method: &str, params: Value) -> Result<Value, Stri
             let md = crate::commands::export::export_conversation(run_id)?;
             Ok(json!(md))
         }
-        _ => Err(format!("unknown artifacts method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -438,7 +442,8 @@ pub async fn handle_task_core(method: &str, params: Value, state: &AppState) -> 
             }
             serde_json::to_value(report).map_err(|e| e.to_string())
         }
-        _ => Err(format!("unknown task core method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -489,7 +494,8 @@ pub async fn handle_settings(method: &str, params: Value, state: &AppState) -> R
             let result = crate::commands::settings::update_agent_settings(agent, patch)?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
-        _ => Err(format!("unknown settings method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -526,7 +532,8 @@ pub fn handle_files(method: &str, params: Value) -> Result<Value, String> {
             let result = crate::commands::files::list_memory_files(cwd)?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
-        _ => Err(format!("unknown files method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -581,7 +588,8 @@ pub async fn handle_fs(method: &str, params: Value) -> Result<Value, String> {
             let result = crate::commands::remote_fs::resolve_remote_home(host_name).await?;
             Ok(json!(result))
         }
-        _ => Err(format!("unknown fs method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -626,7 +634,8 @@ pub async fn handle_git(method: &str, params: Value) -> Result<Value, String> {
             let result = crate::commands::git::get_git_timeline(cwd, limit).await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
-        _ => Err(format!("unknown git method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -670,7 +679,8 @@ pub fn handle_teams(method: &str, params: Value) -> Result<Value, String> {
             crate::commands::teams::delete_team(name)?;
             Ok(json!(true))
         }
-        _ => Err(format!("unknown teams method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -812,7 +822,8 @@ pub async fn handle_plugins(method: &str, params: Value) -> Result<Value, String
                     .await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
-        _ => Err(format!("unknown plugins method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -908,7 +919,8 @@ pub async fn handle_skill_sources(method: &str, params: Value) -> Result<Value, 
                 crate::commands::skill_sources::check_skill_source_updates(id, cwd).await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
-        _ => Err(format!("unknown skill sources method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -930,7 +942,8 @@ pub fn handle_cli_config(method: &str, params: Value) -> Result<Value, String> {
             let result = crate::commands::cli_config::update_cli_config(patch)?;
             Ok(result)
         }
-        _ => Err(format!("unknown cli config method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -956,7 +969,8 @@ pub async fn handle_cli_permissions(method: &str, params: Value) -> Result<Value
                 .await?;
             Ok(json!(true))
         }
-        _ => Err(format!("unknown cli permissions method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -1033,7 +1047,8 @@ pub async fn handle_mcp(method: &str, params: Value) -> Result<Value, String> {
             let result = crate::commands::mcp::search_mcp_registry(query, limit, cursor).await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
-        _ => Err(format!("unknown mcp method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -1145,7 +1160,8 @@ pub async fn handle_diagnostics(method: &str, params: Value) -> Result<Value, St
             let result = crate::commands::diagnostics::generate_ssh_key()?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
-        _ => Err(format!("unknown diagnostics method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -1196,13 +1212,14 @@ pub async fn handle_stats(method: &str, params: Value) -> Result<Value, String> 
                 crate::commands::app_readme::read_app_readme_impl(locale.as_deref(), None)?;
             Ok(json!(result))
         }
-        _ => Err(format!("unknown stats method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
 // ── Onboarding ──
 
-pub async fn handle_onboarding(method: &str, _params: Value) -> Result<Value, String> {
+pub async fn handle_onboarding(method: &str, params: Value) -> Result<Value, String> {
     match method {
         "check_auth_status" => {
             let result = crate::commands::onboarding::check_auth_status().await?;
@@ -1217,7 +1234,7 @@ pub async fn handle_onboarding(method: &str, _params: Value) -> Result<Value, St
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
         "set_cli_api_key" => {
-            let key = extract_str(&_params, "key")?;
+            let key = extract_str(&params, "key")?;
             crate::commands::onboarding::set_cli_api_key(key).await?;
             Ok(json!(true))
         }
@@ -1225,7 +1242,8 @@ pub async fn handle_onboarding(method: &str, _params: Value) -> Result<Value, St
             crate::commands::onboarding::remove_cli_api_key().await?;
             Ok(json!(true))
         }
-        _ => Err(format!("unknown onboarding method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -1268,43 +1286,22 @@ pub async fn handle_agents(method: &str, params: Value) -> Result<Value, String>
             crate::commands::agents::delete_agent_file(scope, file_name, cwd)?;
             Ok(json!(true))
         }
-        _ => Err(format!("unknown agents method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
 // ── CLI Sync ──
 
-pub async fn handle_cli_sync(method: &str, params: Value, state: &AppState) -> Result<Value, String> {
+pub async fn handle_cli_sync_discover(method: &str, params: Value) -> Result<Value, String> {
     match method {
         "discover_cli_sessions" => {
             let cwd = extract_str(&params, "cwd")?;
             let result = crate::commands::cli_sync::discover_cli_sessions(cwd).await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
-        "sync_cli_session" => {
-            let run_id = extract_str(&params, "run_id")?;
-            let writer = state.writer.clone();
-            let result = tokio::task::spawn_blocking(move || {
-                crate::storage::cli_sessions::sync_session(&run_id, writer)
-            })
-            .await
-            .map_err(|e| format!("spawn_blocking: {}", e))?;
-            let sync_result = result?;
-            serde_json::to_value(sync_result).map_err(|e| e.to_string())
-        }
-        "import_cli_session" => {
-            let session_id = extract_str(&params, "session_id")?;
-            let cwd = extract_str(&params, "cwd")?;
-            let writer = state.writer.clone();
-            let result = tokio::task::spawn_blocking(move || {
-                crate::storage::cli_sessions::import_session(&session_id, &cwd, writer)
-            })
-            .await
-            .map_err(|e| format!("spawn_blocking: {}", e))?;
-            let import_result = result?;
-            serde_json::to_value(import_result).map_err(|e| e.to_string())
-        }
-        _ => Err(format!("unknown cli sync method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -1327,13 +1324,14 @@ pub fn handle_clipboard(method: &str, params: Value) -> Result<Value, String> {
             let path = crate::commands::clipboard::save_temp_attachment(name, content_base64)?;
             Ok(json!(path))
         }
-        _ => Err(format!("unknown clipboard method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
 // ── Web Server Status ──
 
-pub fn handle_web_server_status(method: &str, _params: Value, state: &AppState) -> Result<Value, String> {
+pub fn handle_web_server_status(method: &str, params: Value, state: &AppState) -> Result<Value, String> {
     match method {
         "get_web_server_status" => {
             let port = state
@@ -1345,7 +1343,8 @@ pub fn handle_web_server_status(method: &str, _params: Value, state: &AppState) 
                 &None,
             ))
         }
-        _ => Err(format!("unknown web server status method: {}", method)),
+
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
@@ -1421,340 +1420,7 @@ pub async fn handle_session(method: &str, params: Value, state: &AppState) -> Re
                 map.get(&run_id)
                     .map(|h| h.cmd_tx.clone())
                     .ok_or_else(|| format!("Session {} not found", run_id))?
-            };
-            let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
-            cmd_tx
-                .send(ActorCommand::SendMessage {
-                    text: message,
-                    attachments,
-                    reply: reply_tx,
-                    client_message_id: None,
-                })
-                .await
-                .map_err(|_| "Actor dead".to_string())?;
-            reply_rx
-                .await
-                .map_err(|_| "Actor dropped reply".to_string())??;
-            Ok(json!(true))
-        }
-        "stop_session" => {
-            let run_id = extract_str(&params, "run_id")?;
-            crate::commands::session::stop_session_impl(
-                &state.emitter,
-                &state.sessions,
-                &state.spawn_locks,
-                &state.governor,
-                run_id,
-            )
-            .await?;
-            Ok(json!(true))
-        }
-        "send_session_control" => {
-            let run_id = extract_str(&params, "run_id")?;
-            let subtype = extract_str(&params, "subtype")?;
-            let ctrl_params = params.get("params").cloned();
-            log::debug!(
-                "[dispatch] send_session_control: run_id={}, subtype={}",
-                run_id,
-                subtype
-            );
-            let cmd_tx = {
-                let map = state.sessions.lock().await;
-                map.get(&run_id)
-                    .map(|h| h.cmd_tx.clone())
-                    .ok_or_else(|| format!("Session {} not found", run_id))?
-            };
-            let mut request = json!({ "subtype": subtype });
-            if let Some(p) = ctrl_params {
-                if let Some(obj) = p.as_object() {
-                    for (k, v) in obj {
-                        request[k] = v.clone();
-                    }
-                }
-            }
-            let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
-            cmd_tx
-                .send(ActorCommand::SendControl {
-                    request,
-                    reply: reply_tx,
-                })
-                .await
-                .map_err(|_| "Actor dead".to_string())?;
-            let (request_id, response_rx) = reply_rx
-                .await
-                .map_err(|_| "Actor dropped reply".to_string())??;
-            match tokio::time::timeout(std::time::Duration::from_secs(10), response_rx).await {
-                Ok(Ok(response)) => {
-                    log::debug!(
-                        "[dispatch] control response received for req_id={}",
-                        request_id
-                    );
-                    Ok(response)
-                }
-                Ok(Err(_)) => Err("Control response channel closed".to_string()),
-                Err(_) => Err("Timeout waiting for control response".to_string()),
-            }
-        }
-        "fork_session" => {
-            let run_id = extract_str(&params, "run_id")?;
-            let new_id = crate::commands::session::fork_session_impl(
-                &state.emitter,
-                &state.sessions,
-                &state.spawn_locks,
-                run_id,
-            )
-            .await?;
-            Ok(json!(new_id))
-        }
-        "approve_session_tool" => {
-            let run_id = extract_str(&params, "run_id")?;
-            let tool_name = extract_str(&params, "tool_name")?;
-            crate::commands::session::approve_session_tool_impl(
-                &state.emitter,
-                &state.sessions,
-                &state.spawn_locks,
-                &state.cancel_token,
-                run_id,
-                tool_name,
-            )
-            .await?;
-            Ok(json!(true))
-        }
-        "respond_permission" => {
-            let run_id = extract_str(&params, "run_id")?;
-            let request_id = extract_str(&params, "request_id")?;
-            let behavior = extract_str(&params, "behavior")?;
-            let updated_permissions: Option<Vec<Value>> = params
-                .get("updated_permissions")
-                .and_then(|v| serde_json::from_value(v.clone()).ok());
-            let updated_input = params.get("updated_input").cloned();
-            let deny_message = params
-                .get("deny_message")
-                .and_then(|v| v.as_str())
-                .map(String::from);
-            let interrupt = params.get("interrupt").and_then(|v| v.as_bool());
-            let tool_name = params
-                .get("tool_name")
-                .and_then(|v| v.as_str())
-                .map(String::from);
-            log::debug!(
-                "[dispatch] respond_permission: run_id={}, req_id={}, behavior={}",
-                run_id,
-                request_id,
-                behavior
-            );
-            // ── Behavior parity with Tauri command ──
-            if behavior != "allow" && behavior != "deny" {
-                return Err(format!(
-                    r#"{{"code":"unknown","message":"invalid behavior: {behavior}","retryable":false}}"#
-                ));
-            }
-            // ── Permanent allow parity with Tauri command ──
-            if let (Some(perms), Some(tool)) = (updated_permissions.as_ref(), tool_name.as_ref()) {
-                let attempts_permanent = perms.iter().any(|p| {
-                    p.get("type").and_then(|v| v.as_str()) == Some("addRules")
-                        || p.get("destination").and_then(|v| v.as_str()) == Some("userSettings")
-                });
-                if attempts_permanent
-                    && crate::agent::permission_error::is_permanent_allow_blocked(tool)
-                {
-                    log::warn!(
-                        "[dispatch] respond_permission: permanent allow blocked for tool={}",
-                        tool
-                    );
-                    return Err(crate::agent::permission_error::PermissionError::new(
-                        crate::agent::permission_error::PermissionErrorCode::DangerToolBlocked,
-                        format!("Permanent allow refused for {tool}"),
-                        false,
-                    )
-                    .to_string());
-                }
-            }
-            let cmd_tx = {
-                let map = state.sessions.lock().await;
-                map.get(&run_id)
-                    .map(|h| h.cmd_tx.clone())
-                    .ok_or_else(|| format!("Session {} not found", run_id))?
-            };
-            let mut response = if behavior == "allow" {
-                let input_val = updated_input.unwrap_or_else(|| json!({}));
-                json!({
-                    "behavior": "allow",
-                    "updatedInput": input_val,
-                })
-            } else {
-                let msg = deny_message.unwrap_or_else(|| "User denied permission".to_string());
-                let mut deny_obj = json!({
-                    "behavior": "deny",
-                    "message": msg,
-                });
-                if interrupt == Some(true) {
-                    deny_obj["interrupt"] = json!(true);
-                }
-                deny_obj
-            };
-            if let Some(perms) = updated_permissions {
-                if behavior == "allow" && !perms.is_empty() {
-                    response["updatedPermissions"] = Value::Array(perms);
-                }
-            }
-            let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
-            cmd_tx
-                .send(ActorCommand::RespondPermission {
-                    request_id,
-                    response,
-                    tool_name: tool_name.clone(),
-                    reply: reply_tx,
-                })
-                .await
-                .map_err(|_| "Actor dead".to_string())?;
-            let outcome = reply_rx
-                .await
-                .map_err(|_| "Actor dropped reply".to_string())?;
-            outcome?;
-            Ok(json!(true))
-        }
-        "respond_hook_callback" => {
-            let run_id = extract_str(&params, "run_id")?;
-            let request_id = extract_str(&params, "request_id")?;
-            let decision = extract_str(&params, "decision")?;
-            let updated_input = params.get("updated_input").cloned();
-            log::debug!(
-                "[dispatch] respond_hook_callback: run_id={}, req_id={}, decision={}, has_updated_input={}",
-                run_id,
-                request_id,
-                decision,
-                updated_input.is_some(),
-            );
-            let cmd_tx = {
-                let map = state.sessions.lock().await;
-                map.get(&run_id)
-                    .map(|h| h.cmd_tx.clone())
-                    .ok_or_else(|| format!("Session {} not found", run_id))?
-            };
-            let mut response = json!({ "decision": decision });
-            if decision == "allow" {
-                if let Some(input) = updated_input {
-                    response["updatedInput"] = input;
-                }
-            }
-            let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
-            cmd_tx
-                .send(ActorCommand::RespondHookCallback {
-                    request_id,
-                    response,
-                    reply: reply_tx,
-                })
-                .await
-                .map_err(|_| "Actor dead".to_string())?;
-            reply_rx
-                .await
-                .map_err(|_| "Actor dropped reply".to_string())??;
-            Ok(json!(true))
-        }
-        "cancel_control_request" => {
-            let run_id = extract_str(&params, "run_id")?;
-            let request_id = extract_str(&params, "request_id")?;
-            log::debug!(
-                "[dispatch] cancel_control_request: run_id={}, req_id={}",
-                run_id,
-                request_id
-            );
-            let cmd_tx = {
-                let map = state.sessions.lock().await;
-                map.get(&run_id)
-                    .map(|h| h.cmd_tx.clone())
-                    .ok_or_else(|| format!("Session {} not found", run_id))?
-            };
-            let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
-            cmd_tx
-                .send(ActorCommand::CancelControlRequest {
-                    request_id,
-                    reply: reply_tx,
-                })
-                .await
-                .map_err(|_| "Actor dead".to_string())?;
-            reply_rx
-                .await
-                .map_err(|_| "Actor dropped reply".to_string())??;
-            Ok(json!(true))
-        }
-        "respond_elicitation" => {
-            let run_id = extract_str(&params, "run_id")?;
-            let request_id = extract_str(&params, "request_id")?;
-            let action = extract_str(&params, "action")?;
-            let content = params.get("content").cloned();
-            log::debug!(
-                "[dispatch] respond_elicitation: run_id={}, req_id={}, action={}",
-                run_id,
-                request_id,
-                action
-            );
-            if !matches!(action.as_str(), "accept" | "decline" | "cancel") {
-                return Err(format!("Invalid elicitation action: {}", action));
-            }
-            let response = match action.as_str() {
-                "accept" => {
-                    let c = content.unwrap_or(json!({}));
-                    if !c.is_object() {
-                        return Err("content must be a JSON object for accept".into());
-                    }
-                    json!({"action": "accept", "content": c})
-                }
-                other => json!({"action": other}),
-            };
-            let cmd_tx = {
-                let map = state.sessions.lock().await;
-                map.get(&run_id)
-                    .map(|h| h.cmd_tx.clone())
-                    .ok_or_else(|| format!("Session {} not found", run_id))?
-            };
-            let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
-            cmd_tx
-                .send(ActorCommand::RespondElicitation {
-                    request_id,
-                    response,
-                    reply: reply_tx,
-                })
-                .await
-                .map_err(|_| "Actor dead".to_string())?;
-            reply_rx
-                .await
-                .map_err(|_| "Actor dropped reply".to_string())??;
-            Ok(json!(true))
-        }
-        _ => Err(format!("unknown session method: {}", method)),
+        _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
 
-// ── CLI Info ──
-
-pub async fn handle_cli_info(method: &str, params: Value, state: &AppState) -> Result<Value, String> {
-    match method {
-        "get_cli_info" => {
-            let force = params
-                .get("force_refresh")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
-            let agent = params.get("agent").and_then(|v| v.as_str());
-            let runtime_kind = agent
-                .map(crate::models::AgentRuntimeKind::from_agent)
-                .unwrap_or_default();
-            match crate::agent::control::get_cli_info(&state.cli_info_cache, agent, force).await {
-                Ok(info) => serde_json::to_value(info).map_err(|e| e.to_string()),
-                Err(e) => {
-                    log::warn!(
-                        "[dispatch] CLI info failed ({}): {}, using fallback",
-                        e.code,
-                        e.message
-                    );
-                    serde_json::to_value(crate::agent::control::fallback_cli_info_for(
-                        &runtime_kind,
-                    ))
-                    .map_err(|e| e.to_string())
-                }
-            }
-        }
-        _ => Err(format!("unknown cli info method: {}", method)),
-    }
-}
