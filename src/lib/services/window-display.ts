@@ -6,7 +6,7 @@
  * layout focused on navigation and lets the heuristics evolve independently.
  */
 import { applyUiZoomCssVar, clampUiZoom } from "$lib/utils/ui-zoom";
-import { IS_MAC, IS_WINDOWS, IS_LINUX } from "$lib/utils/platform";
+import { IS_MAC, IS_WINDOWS } from "$lib/utils/platform";
 
 type Platform = "platform-windows" | "platform-macos" | "platform-linux";
 

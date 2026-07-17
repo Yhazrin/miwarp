@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { taskCoreStore } from "$lib/stores/task-core-store.svelte";
-  import type { TaskCreateInput, TaskEvent } from "$lib/types/task";
+  import type { TaskCreateInput } from "$lib/types/task";
   import TaskListPanel from "$lib/components/tasks/TaskListPanel.svelte";
   import TaskDetailPanel from "$lib/components/tasks/TaskDetailPanel.svelte";
   import TaskCreateDialog from "$lib/components/tasks/TaskCreateDialog.svelte";

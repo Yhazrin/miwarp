@@ -866,7 +866,7 @@ const industrialHeroMilestone: SoundSynthesizer = (
   const oscs: OscillatorNode[] = [];
 
   // E power fifth hit
-  [NOTES.E3, NOTES.B3].forEach((freq, i) => {
+  [NOTES.E3, NOTES.B3].forEach((freq, _i) => {
     const osc = ctx.createOscillator();
     osc.type = "sawtooth";
     osc.frequency.value = freq * 0.7;

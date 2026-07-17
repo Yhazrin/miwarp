@@ -44,7 +44,7 @@
   let zoomDraft = $state<number | null>(null);
   const zoomValue = $derived(zoomDraft ?? settings?.ui_zoom ?? 1);
 
-  function lk(key: string): string {
+  function _lk(key: string): string {
     return t(key as MessageKey);
   }
 

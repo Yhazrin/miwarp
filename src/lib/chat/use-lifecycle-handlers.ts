@@ -3,7 +3,6 @@ import { getTransport } from "$lib/transport";
 import * as api from "$lib/api";
 import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
 import {
-  EVT_CWD_CHANGED,
   EVT_PROJECT_CHANGED,
   EVT_RUNS_CHANGED,
   EVT_STATUSBAR_TOGGLE,
@@ -24,137 +23,29 @@ import {
 import { parseContextMarkdown } from "$lib/utils/context-parser";
 import { handleTauriDrop as execTauriDrop } from "$lib/chat/handle-tauri-drop";
 import { isSessionDragActive } from "$lib/utils/session-drag-state";
-import type { ForkOverlayState } from "$lib/chat/use-fork-lifecycle";
 import { getLastTarget } from "$lib/utils/remote-cwd";
-import type { SessionStore } from "$lib/stores/session-store.svelte";
-import type { EventMiddleware } from "$lib/stores/event-middleware";
-import type { KeybindingStore } from "$lib/stores/keybindings.svelte";
 import type {
   UserSettings,
-  AgentSettings,
-  RemoteHost,
-  AuthOverview,
   ScreenshotPayload,
-  ContextSnapshot,
   TaskRun,
   BtwDelta,
   BtwComplete,
   BtwError,
 } from "$lib/types";
-import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
 import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
 import { consumeChatBootstrap } from "$lib/chat/chat-bootstrap-cache";
 import { disarmChatSettingsHop, isChatSettingsHop } from "$lib/utils/chat-settings-nav";
-import { type SettingsCacheContext, resolveLayoutCachedSettings } from "$lib/layout-chrome-context";
+import { resolveLayoutCachedSettings } from "$lib/layout-chrome-context";
 import { readRunsListCache } from "$lib/utils/runs-list-cache";
-import type { BtwStateData } from "$lib/chat/use-chat-actions";
 
-// ── Component ref types (minimum interface needed by lifecycle handlers) ──
+export type {
+  XTerminalRef,
+  PromptInputRef,
+  StatusBarRef,
+  LifecycleHandlerContext,
+} from "$lib/chat/lifecycle-context";
 
-export interface XTerminalRef {
-  writeText(s: string): void;
-  clear(): void;
-}
-
-export interface PromptInputRef {
-  focus(): void;
-  triggerSend(): void;
-  getInputSnapshot(): import("$lib/types").PromptInputSnapshot | null;
-  restoreSnapshot(snap: import("$lib/types").PromptInputSnapshot): void;
-  clearAll(): void;
-  addFiles(files: File[]): Promise<void>;
-  setValue(text: string): void;
-  addPathRefs(refs: { path: string; name: string; isDir: boolean }[]): void;
-}
-
-export interface StatusBarRef {
-  openModelDropdown(): void;
-}
-
-// ── Context interface ──
-
-export interface LifecycleHandlerContext {
-  // Core stores
-  store: SessionStore;
-  middleware: EventMiddleware;
-  keybindingStore: KeybindingStore;
-
-  // ── Settings & config state ──
-  getSettings: () => UserSettings | null;
-  setSettings: (v: UserSettings | null) => void;
-  /** v1.0.10 perf: optional handle to the layout-cached UserSettings so init()
-   *  can skip the cold getUserSettings() IPC when layout already loaded it. */
-  getSettingsCache?: () => SettingsCacheContext | undefined;
-  setRemoteHosts: (v: RemoteHost[]) => void;
-  setAuthOverview: (v: AuthOverview | null) => void;
-  checkAllLocalProxies: () => void;
-
-  // ── Agent settings state ──
-  getAgentSettings: () => AgentSettings | null;
-  setAgentSettings: (v: AgentSettings | null) => void;
-  setCurrentEffort: (v: string) => void;
-
-  // ── Permission mode ──
-  handlePermissionModeChange: (mode: string) => void;
-  getPermModeLabel: (mode: string) => string;
-
-  // ── CLI info & model contamination ──
-  loadCliInfo: () => Promise<unknown>;
-  getCliCurrentModel: () => string | undefined;
-  loadCliVersionInfo: () => void;
-  isContaminatedDefaultModel: (dm: string) => boolean | null;
-  setLastKnownGoodModel: (v: string) => void;
-
-  // ── Project init ──
-  checkProjectInit: () => void;
-  reloadProjectData: (cwd: string) => void;
-
-  // ── UI state ──
-  getShortcutHelpOpen: () => boolean;
-  setShortcutHelpOpen: (v: boolean) => void;
-  getStatusBarRef: () => StatusBarRef | undefined;
-  getStashedInput: () => import("$lib/types").PromptInputSnapshot | null;
-  setStashedInput: (v: import("$lib/types").PromptInputSnapshot | null) => void;
-  getPromptRef: () => PromptInputRef | undefined;
-  setStatusBarExpanded: (v: boolean) => void;
-  getSidebarCollapsed: () => boolean;
-  setSidebarCollapsed: (v: boolean) => void;
-  setSidebarRequestedTab: (v: ToolActivityPanelTab | null) => void;
-  setShowChatToast: (msg: string) => void;
-  setPageDragActive: (v: boolean) => void;
-  setDragProcessingCount: (fn: (prev: number) => number) => void;
-  getXtermRef: () => XTerminalRef | undefined;
-
-  // ── BTW state ──
-  getBtwState: () => BtwStateData;
-  setBtwState: (v: BtwStateData) => void;
-
-  // ── Context history ──
-  contextHistoryMap: Map<string, ContextSnapshot[]>;
-  triggerContextHistoryReactivity: () => void;
-
-  // ── Run state ──
-  getRunId: () => string;
-  setLastContinuableRun: (v: TaskRun | null) => void;
-  setMiddlewareReady: (v: boolean) => void;
-  setAutoNameDone: (v: boolean) => void;
-
-  // ── Fork overlay ──
-  getForkOverlay: () => ForkOverlayState | null;
-
-  // ── Verbose ──
-  cleanupVerbose: () => void;
-  cancelProgressive: () => void;
-
-  // ── Actions ──
-  handleSummarize: () => Promise<void>;
-  handleRewind: () => void;
-  toggleCliConfigBool: (key: string) => Promise<void>;
-  goto: (path: string, opts?: { replaceState?: boolean }) => void;
-
-  // ── i18n ──
-  t: (key: string, params?: Record<string, string>) => string;
-}
+import type { LifecycleHandlerContext } from "$lib/chat/lifecycle-context";
 
 // ── Composable ──
 

@@ -472,6 +472,7 @@
    * listener pushes toasts here; SessionStatusBar auto-dismisses them.
    */
   let toastOverlay = $state<import("$lib/stores/toast-store.svelte").Toast | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in template
   let toastOverlayVersion = $state(0);
   function clearToastOverlay(): void {
     toastOverlay = null;
@@ -1619,7 +1620,7 @@
    * captured draft snapshot is passed in via the status event; we resolve
    * the current prompt text and let the regular send path take over.
    */
-  function handleSendRetry(event: { runId: string; clientMessageId: string }): void {
+  function handleSendRetry(_event: { runId: string; clientMessageId: string }): void {
     const prompt = promptRef;
     if (!prompt?.getInputSnapshot) return;
     const draft = prompt.getInputSnapshot() as { text: string; attachments?: unknown[] };

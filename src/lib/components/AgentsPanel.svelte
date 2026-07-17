@@ -84,6 +84,7 @@
   let loading = $state(true);
   let customAgents = $state<AgentDefinitionSummary[]>([]);
   let pluginAgents = $state<AgentDefinitionSummary[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in template
   let pluginError = $state(false);
   let searchQuery = $state("");
   let selectedAgent = $state<AgentDefinitionSummary | null>(null);

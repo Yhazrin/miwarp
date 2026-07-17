@@ -50,7 +50,7 @@
     return t(key as MessageKey);
   }
 
-  function renderIcon(def: ToolbarIconDef) {
+  function _renderIcon(def: ToolbarIconDef) {
     return def;
   }
 </script>

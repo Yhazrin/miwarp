@@ -350,37 +350,23 @@
   const toastOverlayActive = $derived(Boolean(toastPresentation?.visible));
 
   // ── Capsule morph: running / done / stopped / cached (flash) + waiting (persistent) ──
-  type MorphFlash = "none" | "running" | "done" | "stopped" | "cached";
-  type MorphShell = "none" | "running" | "done" | "stopped" | "cached" | "waiting";
-  type StatusOverlayMode = "none" | "send" | "permission" | "toast" | "morph";
+  import {
+    createMorphState,
+    clearMorphFlash,
+    resolveMorphShell,
+    morphShellClass,
+    morphShellLabel,
+    processMorphTransition,
+    type MorphFlash,
+    type MorphShell,
+    type StatusOverlayMode,
+  } from "$lib/chat/session-island-morph";
 
+  const morph = createMorphState();
   let morphFlash = $state<MorphFlash>("none");
-  let morphFlashTimer: ReturnType<typeof setTimeout> | undefined;
-
-  let trackedRunId = $state<string | null>(null);
-  let prevTaskRunning = $state(false);
-  let prevSessionPhase = $state("empty");
-  let morphInitialized = $state(false);
-
-  function clearMorphFlash() {
-    morphFlash = "none";
-    clearTimeout(morphFlashTimer);
-  }
-
-  function showMorphFlash(kind: Exclude<MorphFlash, "none">, durationMs: number) {
-    clearMorphFlash();
-    morphFlash = kind;
-    morphFlashTimer = setTimeout(() => {
-      morphFlash = "none";
-    }, durationMs);
-  }
 
   /** Resolved visual shell: transient flash wins over persistent waiting. */
-  let morphShell = $derived.by((): MorphShell => {
-    if (morphFlash !== "none") return morphFlash;
-    if (taskWaiting) return "waiting";
-    return "none";
-  });
+  let morphShell = $derived.by((): MorphShell => resolveMorphShell(morphFlash, taskWaiting));
 
   /** Send failures / in-flight submits take priority over session morph flashes. */
   let statusOverlayMode = $derived.by((): StatusOverlayMode => {
@@ -398,9 +384,6 @@
       return sendStatusPresentation.shellClass;
     }
     if (statusOverlayMode === "permission" && permissionPresentation) {
-      // Inline add-on class shrinks the width to the content; the base
-      // shell class (send-pending / send-warning / send-failed) still owns
-      // color, shadow, and rounded geometry.
       return `${permissionPresentation.shellClass} session-island-permission-shell`;
     }
     if (statusOverlayMode === "toast" && toastPresentation) {
@@ -412,87 +395,9 @@
     return "";
   }
 
-  function morphShellClass(shell: MorphShell): string {
-    switch (shell) {
-      case "running":
-        return "session-island-running";
-      case "done":
-        return "session-island-done";
-      case "waiting":
-        return "session-island-waiting";
-      case "stopped":
-        return "session-island-stopped";
-      case "cached":
-        return "session-island-cached";
-      default:
-        return "";
-    }
-  }
-
-  function morphShellLabel(shell: MorphShell): string {
-    switch (shell) {
-      case "running":
-        return "running";
-      case "done":
-        return "done";
-      case "waiting":
-        return "waiting";
-      case "stopped":
-        return "stopped";
-      case "cached":
-        return "cached";
-      default:
-        return "";
-    }
-  }
-
   $effect(() => {
-    const runId = run?.id ?? null;
-    const taskActive = taskRunning;
-    const phase = sessionPhase;
-
-    if (runId !== trackedRunId) {
-      trackedRunId = runId;
-      prevTaskRunning = taskActive;
-      prevSessionPhase = phase;
-      clearMorphFlash();
-      morphInitialized = true;
-      return;
-    }
-
-    if (!morphInitialized) {
-      prevTaskRunning = taskActive;
-      prevSessionPhase = phase;
-      morphInitialized = true;
-      return;
-    }
-
-    if (phase === "stopped" && prevSessionPhase !== "stopped") {
-      showMorphFlash("stopped", 2000);
-      prevSessionPhase = phase;
-      prevTaskRunning = taskActive;
-      return;
-    }
-
-    // v1.0.6 1.6: surface "loaded from cache" so the user knows the
-    // conversation history is local and the CLI hasn't been spawned yet.
-    if (phase === "cached" && prevSessionPhase !== "cached") {
-      showMorphFlash("cached", 2200);
-      prevSessionPhase = phase;
-      prevTaskRunning = taskActive;
-      return;
-    }
-
-    if (taskActive !== prevTaskRunning) {
-      if (taskActive) {
-        showMorphFlash("running", 1500);
-      } else if (phase !== "stopped" && phase !== "failed") {
-        showMorphFlash("done", 2000);
-      }
-      prevTaskRunning = taskActive;
-    }
-
-    prevSessionPhase = phase;
+    processMorphTransition(morph, run?.id ?? null, taskRunning, sessionPhase);
+    morphFlash = morph.morphFlash;
   });
 
   // ── Compact indicator (context bar only — does NOT expand tier 2) ──

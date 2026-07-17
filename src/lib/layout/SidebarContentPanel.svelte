@@ -18,7 +18,6 @@
   // 5 drops shorthand props when the target is `Component<any>`, and that
   // silent drop surfaces as a `$$props.filteredTeams.length` TypeError
   // on the receiver. See memory/svelte5-dynamic-component-shorthand.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type SidebarBodyComponent = Component<any>;
 
   interface Props {

@@ -3,7 +3,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import {
     resourceGovernorStore,
-    type GovernorStatus,
+    type _GovernorStatus,
   } from "$lib/stores/resource-governor-store.svelte";
 
   onMount(() => {

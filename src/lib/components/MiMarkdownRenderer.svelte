@@ -14,11 +14,11 @@
   import { renderMarkdown } from "$lib/utils/markdown";
   import { extractToc, type TocEntry } from "$lib/utils/markdown-outline";
   import { t } from "$lib/i18n/index.svelte";
-  import { onMount } from "svelte";
+  import { onMount as _onMount } from "svelte";
 
   let {
     text = "",
-    basePath = "",
+    basePath: _basePath = "",
     class: className = "",
     showToc = false,
     onFileClick,

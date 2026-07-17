@@ -7,7 +7,7 @@
  * frontends can call before invoking a slash command, plus a captured
  * env snapshot persisted per-run for later inspection.
  */
-import { dbg, dbgWarn } from "$lib/utils/debug";
+import { dbgWarn } from "$lib/utils/debug";
 
 export interface ShellEnvSnapshot {
   /** Detected shell path (e.g. /bin/zsh) */

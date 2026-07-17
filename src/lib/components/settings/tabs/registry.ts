@@ -49,7 +49,7 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
 const ICON_EYE = "M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5Zm6 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z";
 const ICON_PALETTE =
   "M12 3a9 9 0 0 0 0 18 2 2 0 0 0 1.4-3.9 1 1 0 0 0-.7-1.3l-1-.7a1 1 0 0 1 .5-1.7 4 4 0 0 0 4-4 9 9 0 0 0-4.2-7.4ZM6.5 7a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm5 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm5 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z";
-const ICON_KEY =
+const _ICON_KEY =
   "M14 7a4 4 0 1 0-3.5 6.6L8 16.1V19h2.9l2.5-2.5V19h2.9v-2.9h2.4L21 13.5l-3.6-3.6A4 4 0 0 0 14 7Zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z";
 const ICON_MOBILE =
   "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm0 4v12h10V6H7Z";

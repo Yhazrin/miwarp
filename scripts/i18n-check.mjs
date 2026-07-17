@@ -21,6 +21,11 @@ const UNTRANSLATED_ALLOWLIST_PREFIXES = [
   "nav_",      // Short nav labels may match across languages
   "app_name",
   "cmd_versionContent", // Technical version string
+  "runtime_claude_",     // Product name — brand
+  "runtime_mimo_",       // Product name — brand
+  "runtime_gemini_",     // Product name — brand
+  "runtime_qwen_",       // Product name — brand
+  "hooks_mcpInput",      // JSON template — code, not translatable
 ];
 
 /** Whether a key matches the allowlist (prefix-based). */

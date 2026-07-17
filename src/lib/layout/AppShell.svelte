@@ -238,7 +238,7 @@
     needsLayoutContentPanel,
     selectedScheduledTaskId,
   } = $derived(pageInfo);
-  let pageName = $derived(resolvePageName(currentPath));
+  let _pageName = $derived(resolvePageName(currentPath));
   let selectedRunId = $derived($page.url.searchParams.get("run") ?? "");
 
   const attentionQueueBadgeCount = $derived(
@@ -409,6 +409,7 @@
     return "default";
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in template
   let resizeCleanup: (() => void) | null = null;
   function startResize(e: PointerEvent) {
     e.preventDefault();
@@ -458,7 +459,7 @@
     return cwd === "" ? "uncategorized" : `cwd:${cwd}`;
   }
 
-  function applySessionDropHighlight(
+  function _applySessionDropHighlight(
     target: { type: string; folderId?: string; workspaceKey?: string } | null,
   ) {
     dragOverFolderId = target?.type === "folder" ? (target.folderId ?? null) : null;
@@ -685,7 +686,7 @@
   }
 
   /** Open the move-to-folder dialog for the selected conversation group(s). */
-  function requestMoveToFolder(conv: import("$lib/utils/sidebar-groups").ConversationGroup): void {
+  function _requestMoveToFolder(conv: import("$lib/utils/sidebar-groups").ConversationGroup): void {
     sfs.requestMove(conv.runs.map((r) => r.id));
   }
 
@@ -713,7 +714,7 @@
   }
 
   /** CLI import ran a run; navigate to the chat. */
-  async function loadRuns(): Promise<void> {
+  async function _loadRuns(): Promise<void> {
     await rss.loadRuns();
   }
 

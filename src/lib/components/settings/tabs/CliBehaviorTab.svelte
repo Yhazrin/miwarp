@@ -54,7 +54,7 @@
     return key in projectCliConfig;
   }
 
-  function lk(key: string): string {
+  function _lk(key: string): string {
     return t(key as MessageKey);
   }
 

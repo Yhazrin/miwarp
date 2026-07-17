@@ -16,7 +16,6 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import type {
     PermissionCoordinator,
-    PermissionDecision,
     PermissionEvent,
     PermissionSnapshot,
   } from "$lib/chat/permission-coordinator";

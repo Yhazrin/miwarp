@@ -69,7 +69,7 @@ export interface TimelineStateHandle {
 // ── Composable ──
 
 export function useTimelineState(ctx: TimelineStateContext): TimelineStateHandle {
-  const { store, burstCollapse, getChatAreaRef, getProcessVisibility, loadMoreEarlier } = ctx;
+  const { store, burstCollapse, getChatAreaRef: _getChatAreaRef, getProcessVisibility, loadMoreEarlier: _loadMoreEarlier } = ctx;
 
   // ── Mutable state ──
 

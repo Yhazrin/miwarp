@@ -8,7 +8,7 @@
   import { agentToRuntimeId } from "$lib/runtime/registry";
 
   let {
-    defaultAgent = "claude",
+    defaultAgent: _defaultAgent = "claude",
   }: {
     defaultAgent?: string;
   } = $props();
@@ -64,7 +64,7 @@
     return lk("runtime_freshness_seconds").replace("{seconds}", String(ageSec));
   }
 
-  function mapRuntimeId(snapshot: RuntimeSnapshot): string {
+  function _mapRuntimeId(snapshot: RuntimeSnapshot): string {
     return (
       agentToRuntimeId(snapshot.runtimeId.replace("-code", "").replace("-agent", "")) ??
       snapshot.runtimeId

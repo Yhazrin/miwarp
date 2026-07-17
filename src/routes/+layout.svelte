@@ -26,7 +26,7 @@
 -->
 <script lang="ts">
   import "../app.css";
-  import { initLocale, currentLocale, LOCALE_REGISTRY, switchLocale } from "$lib/i18n/index.svelte";
+  import { initLocale } from "$lib/i18n/index.svelte";
   initLocale();
 
   import { themeStore } from "$lib/stores/theme-store.svelte";
@@ -39,8 +39,6 @@
   import { get } from "svelte/store";
   import { goto, replaceState } from "$app/navigation";
   import { afterNavigate } from "$app/navigation";
-  import { getTransport } from "$lib/transport";
-  import { untrack } from "svelte";
   import { dbg } from "$lib/utils/debug";
 
   import AppShell from "$lib/layout/AppShell.svelte";
@@ -62,8 +60,6 @@
     EVT_SHOW_WIZARD,
     EVT_EXPLORER_FILE_SELECTED,
   } from "$lib/utils/bus-events";
-  import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
-  import { normalizeCwd } from "$lib/utils/sidebar-groups";
   import { getChatTimelineResetHandle } from "$lib/chat/chat-timeline-reset-registry";
   import { createBootstrapDemandController } from "$lib/layout/layout-bootstrap-demand";
   import { useKeybindingShortcuts } from "$lib/layout/use-keybinding-shortcuts.svelte";
@@ -73,7 +69,6 @@
   import { KeybindingStore } from "$lib/stores/keybindings.svelte";
   import { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
   import { applyZoom, applyVisualPerformance } from "$lib/services/window-display";
-  import { showToast } from "$lib/stores/toast-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
 
   import {

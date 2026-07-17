@@ -12,13 +12,13 @@
   import Card from "$lib/components/Card.svelte";
 
   let {
-    settings,
+    settings: _settings,
     notifEnabled = true,
-    notifRunCompleted = true,
-    notifRunFailed = true,
-    notifApprovalRequired = true,
-    notifScheduleCompleted = true,
-    notifTeamCompleted = true,
+    notifRunCompleted: _notifRunCompleted = true,
+    notifRunFailed: _notifRunFailed = true,
+    notifApprovalRequired: _notifApprovalRequired = true,
+    notifScheduleCompleted: _notifScheduleCompleted = true,
+    notifTeamCompleted: _notifTeamCompleted = true,
     notifMinDuration = 10,
     soundFeedbackLevel = "minimal",
     feishuWebhookUrl = "",
@@ -154,7 +154,7 @@
       type="url"
       value={feishuWebhookUrl}
       placeholder={lk("settings_feishu_urlPlaceholder")}
-      onblur={(e) => onSaveFeishuSettings()}
+      onblur={(_e) => onSaveFeishuSettings()}
       class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
     />
     <div class="flex flex-wrap gap-1">

@@ -12,7 +12,7 @@
 
   let {
     remoteHosts = [] as RemoteHost[],
-    editingRemote = null as RemoteHost | null,
+    editingRemote: _editingRemote = null as RemoteHost | null,
     onStartEdit = (_host: RemoteHost | null) => {},
     onDeleteHost = async (_name: string) => {},
   }: {

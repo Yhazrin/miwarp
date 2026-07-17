@@ -79,7 +79,7 @@
     chatAreaRef = $bindable<HTMLDivElement | undefined>(),
     // Local UI state
     showChatScrollHint,
-    isChatAutoScroll = true,
+    isChatAutoScroll: _isChatAutoScroll = true,
     readingHistory = false,
     // Snippets
     heroMetaFooter,

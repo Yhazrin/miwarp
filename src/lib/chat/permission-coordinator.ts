@@ -24,7 +24,7 @@
  * input, path/command arguments, prompts, deny messages, or raw
  * permission-suggestion payloads.
  */
-import { dbg, dbgWarn } from "$lib/utils/debug";
+import { dbg } from "$lib/utils/debug";
 import {
   classifyFailure,
   isPermissionError,

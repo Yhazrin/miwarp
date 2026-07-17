@@ -106,7 +106,7 @@ export function transitionToResolved(
   ctx: TransitionContext,
   record: InFlightPermissionRecord,
   state: "allowed" | "denied",
-  request: PermissionRequest,
+  _request: PermissionRequest,
 ): void {
   if (record.settled) return;
   record.settled = true;
@@ -145,7 +145,7 @@ export function transitionToFailed(
   ctx: TransitionContext,
   record: InFlightPermissionRecord,
   failure: PermissionFailure,
-  request: PermissionRequest,
+  _request: PermissionRequest,
 ): void {
   if (record.settled) return;
   record.settled = true;

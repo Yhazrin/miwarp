@@ -7,7 +7,7 @@
   import type { MemoryFileCandidate } from "$lib/types";
   import { filterVisibleCandidates } from "$lib/utils/memory-helpers";
   import Spinner from "./Spinner.svelte";
-  import Icon from "./Icon.svelte";
+
   import { t } from "$lib/i18n/index.svelte";
 
   let {

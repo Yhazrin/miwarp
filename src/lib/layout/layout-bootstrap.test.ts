@@ -4,7 +4,7 @@
  * (vitest default), so we install a tiny in-memory localStorage shim before
  * importing the module under test.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 class MemoryStorage {
   private map = new Map<string, string>();

@@ -12,7 +12,7 @@
   import Card from "$lib/components/Card.svelte";
 
   let {
-    settings,
+    settings: _settings,
     platformCredentials = [] as PlatformCredential[],
     selectedPlatformId = null as string | null,
     authMode = "cli",

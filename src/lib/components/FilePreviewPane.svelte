@@ -79,6 +79,7 @@
   let editorMode = $state<"edit" | "rendered">("edit");
   let fileSize = $state(0);
   /** True when we resolved the image via the browser fetch fallback (non-Tauri). */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in template
   let imageBrowserFallback = $state(false);
 
   /** Files larger than this are not auto-previewed (CodeMirror init becomes very slow). */

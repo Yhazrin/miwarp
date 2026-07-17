@@ -203,7 +203,7 @@
     safePermissionRespond(tool.permission_request_id, "allow", undefined, updatedInput);
   }
 
-  function submitMultiSelectPermission() {
+  function _submitMultiSelectPermission() {
     if (submitting || !tool.permission_request_id) return;
     let selected = Object.keys(multiChecked).filter((k) => multiChecked[k]);
     const otherVal = otherActive[askQuestion] && otherText[askQuestion]?.trim();
@@ -496,7 +496,7 @@
     />
     {#if hasMultipleQuestions}
       <div class="space-y-3 mb-3">
-        {#each parsedQuestions as pq, qi}
+        {#each parsedQuestions as pq, _qi}
           <div class="rounded-md border border-border/20 bg-muted/10 px-3 py-2">
             {#if pq.header}<div class="text-[10px] font-medium text-muted-foreground mb-1">
                 {pq.header}

@@ -5,7 +5,7 @@
    * Uses MiDialog for narrow-screen safe display.
    */
   import MiDialog from "$lib/ui/MiDialog.svelte";
-  import { t } from "$lib/i18n/index.svelte";
+  import { t as _t } from "$lib/i18n/index.svelte";
   import Icon from "$lib/components/Icon.svelte";
 
   type DiagnosticEntry = {

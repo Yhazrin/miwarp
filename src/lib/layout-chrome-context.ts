@@ -1,4 +1,5 @@
 import type { TaskRun, UserSettings } from "$lib/types";
+import { dbg } from "$lib/utils/debug";
 
 /** Left titlebar actions shared between layout toolbar and SessionStatusBar tier 2. */
 export type LayoutChromeContext = {
@@ -71,14 +72,15 @@ export async function resolveLayoutCachedRuns(
   opts: { timeoutMs?: number } = {},
 ): Promise<TaskRun[] | null> {
   const t0 = performance.now();
-  console.log("[resolveLayoutCachedRuns] start", {
+  dbg("layout-chrome", "resolveLayoutCachedRuns start", {
     hasCache: !!cache,
     cacheRunsLen: cache?.runs.length,
   });
   if (!cache) return null;
   if (cache.runs.length > 0) {
-    console.log(
-      "[resolveLayoutCachedRuns] fast path, runs=",
+    dbg(
+      "layout-chrome",
+      "resolveLayoutCachedRuns fast path, runs=",
       cache.runs.length,
       "in",
       (performance.now() - t0).toFixed(1),
@@ -91,7 +93,7 @@ export async function resolveLayoutCachedRuns(
   // the consumer forever. The consumer falls back to its own IPC when we
   // return null.
   const timeoutMs = opts.timeoutMs ?? 8_000;
-  console.log("[resolveLayoutCachedRuns] awaiting gate with timeoutMs=", timeoutMs);
+  dbg("layout-chrome", "resolveLayoutCachedRuns awaiting gate with timeoutMs=", timeoutMs);
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
   const timeoutPromise = new Promise<TaskRun[] | null>((resolve) => {
     timeoutHandle = setTimeout(() => {
@@ -101,8 +103,9 @@ export async function resolveLayoutCachedRuns(
   });
   try {
     const result = await Promise.race([cache.whenReady(), timeoutPromise]);
-    console.log(
-      "[resolveLayoutCachedRuns] resolved in",
+    dbg(
+      "layout-chrome",
+      "resolveLayoutCachedRuns resolved in",
       (performance.now() - t0).toFixed(1),
       "ms, count=",
       result?.length ?? null,
