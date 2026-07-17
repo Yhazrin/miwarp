@@ -19,7 +19,7 @@
     getCliCurrentModel,
     loadCliVersionInfo,
   } from "$lib/stores";
-  import type { UserSettings, AgentSettings, SessionMode, TimelineEntry } from "$lib/types";
+  import type { UserSettings, SessionMode, TimelineEntry } from "$lib/types";
   import Icon from "$lib/components/Icon.svelte";
   import { useToolBurstCollapse } from "$lib/chat/use-tool-burst-collapse.svelte";
   import { useTimelineState } from "$lib/chat/use-timeline-state.svelte";
@@ -45,22 +45,17 @@
   import { registerSessionIslandNotify } from "$lib/stores/session-island-notify.svelte";
   import { registerToastListener } from "$lib/stores/toast-store.svelte";
   import { workspacesStore } from "$lib/stores/workspaces-store.svelte";
-  import { getTransport } from "$lib/transport";
+  // getTransport managed by folder picker composable
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { perfMarkAsync } from "$lib/utils/perf";
   import { setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
   import { shouldTriggerAutoTitle, deriveAutoName } from "$lib/utils/auto-name";
   import { generateRunTitle } from "$lib/api";
   import { normalizeCwd } from "$lib/utils/sidebar-groups";
-  import {
-    normalizeProcessVisibility,
-    getCachedProcessVisibility,
-    type ProcessVisibility,
-  } from "$lib/utils/process-visibility";
+  // ProcessVisibility type managed by chatState composable
   import {
     normalizeSessionIslandAlignment,
     SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT,
-    type SessionIslandAlignment,
   } from "$lib/utils/session-island-alignment";
   import {
     handleVirtualCommand as execVirtualCommand,
@@ -108,9 +103,9 @@
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import HtmlReportPreview from "$lib/components/insight/HtmlReportPreview.svelte";
   import { getPresets } from "$lib/services/team-dispatcher";
-  import { } from "./use-chat-state.svelte";
-  import { } from "./use-scroll.svelte";
-  import { } from "./use-folder-picker.svelte";
+  import { createChatState } from "./use-chat-state.svelte";
+  import { createScrollState } from "./use-scroll.svelte";
+  import { createFolderPicker } from "./use-folder-picker.svelte";
   import { chatViewCache,
     saveChatViewState,
     updateLastChatHref,
@@ -143,12 +138,24 @@
   const store = sessionStore;
   const middleware = getEventMiddleware();
 
+  // ── Composables ──
+  const chatState = createChatState();
+  const scrollState = createScrollState(
+    () => store,
+    () => chatAreaRef,
+  );
+  const fp = createFolderPicker(
+    () => store,
+    (v: string) => {
+      folderCwdOverride = v;
+    },
+    (opts) => fp.openFolderPicker(opts),
+  );
+
   // ── UI-only state (not in store) ──
   let middlewareReady = $state(false);
-  let settings = $state<UserSettings | null>(null);
   let xtermRef: XTerminal | undefined = $state();
   let promptRef: PromptInput | undefined = $state();
-  let sidebarCollapsed = $state(chatViewCache.sidebarCollapsed);
 
   // Publish the prompt input handle so deep descendants (MermaidInteractive's
   // popover, future slash-menu extras, etc.) can route actions through the
@@ -180,49 +187,24 @@
     return () => setChatTimelineResetHandle(undefined);
   });
 
-  /** Use server settings when loaded; until then last-known cache avoids a dev-mode flash for Output users.
-   *  Modeled as $state + $effect (rather than $derived) so the dependency on
-   *  `settings.process_visibility` is established unconditionally — the
-   *  ternary `$derived` would skip that branch on first evaluation when
-   *  `settings` is still null, leaving the picker stuck on its initial value
-   *  after the user switches modes. */
-  let processVisibility = $state<ProcessVisibility>(getCachedProcessVisibility());
+  // ── Sync process visibility when settings change ──
   $effect(() => {
-    const s = settings;
-    processVisibility =
-      s != null ? normalizeProcessVisibility(s.process_visibility) : getCachedProcessVisibility();
+    const s = chatState.settings;
+    chatState.syncProcessVisibility(s);
   });
 
-  let sessionIslandAlignmentOverride = $state<SessionIslandAlignment | null>(null);
-
-  const sessionIslandAlignment = $derived(
-    sessionIslandAlignmentOverride ??
-      (settings != null
-        ? normalizeSessionIslandAlignment(settings.session_island_alignment)
-        : "center"),
-  );
-
   $effect(() => {
-    if (processVisibility === "output") {
-      sidebarCollapsed = true;
+    if (chatState.processVisibility === "output") {
+      chatState.sidebarCollapsed = true;
     }
   });
   /** Reactive cwd override for new-chat-in-folder (cleared when a run is loaded) */
   let folderCwdOverride = $state("");
   let chatAreaRef: HTMLDivElement | undefined = $state();
-  let isChatAutoScroll = $state(true);
-  /** Latched when user leaves bottom — keeps full layout + overflow-anchor while reading history. */
-  let readingHistory = $state(false);
-  /** Non-reactive flag: suppresses auto-scroll reset during search scroll-to navigation. */
-  let _scrollToInFlight = false;
-  /** Non-reactive flag: suppresses auto-scroll during scroll restoration from cache. */
-  let restoringScroll = false;
-  let showChatScrollHint = $state(false);
-  let showScrollButton = $derived(!isChatAutoScroll && store.timeline.length > 0);
-  let agentSettings = $state<AgentSettings | null>(null);
-  let resuming = $state(false);
-  /** Suppress "Session ended" flash during tool approval restart cycle. */
-  let approving = $state(false);
+  // scrollState.isChatAutoScroll, scrollState.readingHistory, scrollState.showChatScrollHint,
+  // scrollState.showScrollButton are managed by use-scroll composable
+  // scrollState.scrollToInFlight, scrollState.restoringScroll are non-reactive flags
+  // agentSettings, resuming, approving managed by chatState composable
   // (pendingResumeText removed — auto-resume uses atomic resume+send via initialMessage)
   /** Most recent run with a session_id — for "Continue last session" on welcome screen. */
   let lastContinuableRun = $state<import("$lib/types").TaskRun | null>(null);
@@ -231,58 +213,9 @@
   /** Auth overview for AuthSourceBadge. */
   let authOverview = $state<import("$lib/types").AuthOverview | null>(null);
 
-  /** Folder picker state — resolves a Promise on confirm/cancel. */
-  let folderPickerOpen = $state(false);
-  let folderPickerInitialHost = $state<string | null>(null);
-  let folderPickerInitialPath = $state("");
-  let folderPickerHideTarget = $state(false);
-  let folderPickerResolve: ((v: { hostName: string | null; path: string } | null) => void) | null =
-    null;
-  function openFolderPicker(opts: {
-    initialHost?: string | null;
-    initialPath?: string;
-    hideTargetSelector?: boolean;
-  }): Promise<{ hostName: string | null; path: string } | null> {
-    folderPickerInitialHost = opts.initialHost ?? null;
-    folderPickerInitialPath = opts.initialPath ?? "";
-    folderPickerHideTarget = opts.hideTargetSelector ?? false;
-    folderPickerOpen = true;
-    return new Promise((resolve) => {
-      folderPickerResolve = resolve;
-    });
-  }
-  /** Open the system folder picker (Tauri native on desktop, FolderPicker modal
-   *  on web) and register the chosen path as a new sidebar workspace. Reuses
-   *  the same pipeline as `newChatInFolder` in the layout: writing
-   *  ocv:project-cwd + dispatching ocv:cwd-changed triggers the layout's
-   *  $effect that pins the cwd into pinnedCwds, refreshes enrichedProjectFolders,
-   *  and — via the workspacesStore mirror we just added — also makes the new
-   *  workspace appear in the welcome picker and select it as the active cwd. */
-  async function addWorkspaceFromPicker() {
-    let cwd: string | null = null;
-    if (getTransport().isDesktop()) {
-      const result = await getTransport().openDialog({
-        directory: true,
-        multiple: false,
-        title: t("chat_addWorkspaceTitle"),
-      });
-      cwd = typeof result === "string" ? result : null;
-    } else {
-      const picked = await openFolderPicker({ initialHost: null });
-      cwd = picked?.path ?? null;
-    }
-    if (!cwd) return;
-    const normalized = normalizeCwd(cwd);
-    if (!normalized) return;
-    try {
-      localStorage.setItem("ocv:project-cwd", normalized);
-    } catch {
-      // localStorage may fail in restricted contexts
-    }
-    window.dispatchEvent(new Event("ocv:cwd-changed"));
-    folderCwdOverride = normalized;
-    store.sessionCwd = normalized;
-  }
+  // folderPickerOpen, folderPickerInitialHost, folderPickerInitialPath,
+  // folderPickerHideTarget, folderPickerResolve managed by folder picker composable
+
   /** Preloaded skill details from filesystem (has descriptions). */
   let preloadedSkills = $state<import("$lib/types").StandaloneSkill[]>([]);
   /** Preloaded agent definitions from filesystem. */
@@ -341,23 +274,22 @@
     setSplitWorkspaceXtermRef(() => xtermRef);
     void reconcileSplitFromUrl(get(page).url.searchParams);
 
-    registerSessionIslandNotify(pushPermissionStatus);
+    registerSessionIslandNotify(chatState.pushPermissionStatus);
 
     // Route toast notifications through SessionStatusBar overlay.
     registerToastListener((toast) => {
-      toastOverlay = toast;
-      toastOverlayVersion = Date.now();
+      chatState.toastOverlay = toast;
+      chatState.toastOverlayVersion = Date.now();
     });
 
     const onSessionIslandAlignmentChanged = (event: Event) => {
       const detail = (event as CustomEvent<{ alignment?: unknown }>).detail;
-      sessionIslandAlignmentOverride = normalizeSessionIslandAlignment(detail?.alignment);
+      chatState.sessionIslandAlignmentOverride = normalizeSessionIslandAlignment(detail?.alignment);
     };
     const onUserSettingsChanged = (event: Event) => {
       const detail = (event as CustomEvent<UserSettings>).detail;
       if (!detail) return;
-      settings = detail;
-      sessionIslandAlignmentOverride = null;
+      chatState.settings = detail;
     };
     window.addEventListener(
       SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT,
@@ -441,55 +373,13 @@
   }>({ active: false, btwId: null, question: "", answer: "", error: null, loading: false });
 
   // ── Shortcut help panel ──
-  let shortcutHelpOpen = $state(false);
-  let statusBarRef: SessionStatusBar | undefined = $state();
-  let stashedInput: PromptInputSnapshot | null = $state(null);
-  let sidebarRequestedTab = $state<ToolActivityPanelTab | null>(null);
-  /**
-   * Permission-mode notifications are surfaced through the unified
-   * SessionStatusBar overlay (same channel as send-status), not via the
-   * standalone ToastHost capsule. Bumping the `version` key on each push
-   * guarantees the overlay swaps to the new payload even when the text
-   * is identical to a previous one.
-   */
-  let permissionStatusOverlay = $state<{
-    payload: import("$lib/chat/send-status-presentation").PermissionStatusInput;
-    version: number;
-  } | null>(null);
-  function pushPermissionStatus(
-    payload: import("$lib/chat/send-status-presentation").PermissionStatusInput,
-  ): void {
-    // Leave `transient` unset so SessionStatusBar's auto-dismiss timer
-    // (default 2400ms) clears the overlay and calls back to wipe our
-    // local mirror — no sticky banner.
-    permissionStatusOverlay = { payload, version: Date.now() };
-  }
-  function clearPermissionStatusOverlay(): void {
-    permissionStatusOverlay = null;
-  }
+  // shortcutHelpOpen, statusBarRef, stashedInput, sidebarRequestedTab managed by chatState
+  // permissionStatusOverlay, toastOverlay managed by chatState
 
-  /**
-   * Toast notifications are routed through the unified SessionStatusBar
-   * overlay (replaces the standalone ToastHost capsule). The toast store
-   * listener pushes toasts here; SessionStatusBar auto-dismisses them.
-   */
-  let toastOverlay = $state<import("$lib/stores/toast-store.svelte").Toast | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in template
-  let toastOverlayVersion = $state(0);
-  function clearToastOverlay(): void {
-    toastOverlay = null;
-  }
-
-  let toolPanelActiveTab = $state<ToolActivityPanelTab>(chatViewCache.toolPanelActiveTab);
-  let toolPanelIndicators = $state({ context: false, files: false, tasks: false });
-  let requestedPreviewPath = $state<string | null>(chatViewCache.requestedPreviewPath);
-  let requestedPreviewUrl = $state<string | null>(null);
+  // toolPanelActiveTab, toolPanelIndicators, requestedPreviewPath, requestedPreviewUrl managed by chatState
 
   function openPreviewForPath(path: string) {
-    if (!path) return;
-    requestedPreviewPath = path;
-    sidebarRequestedTab = "files";
-    if (sidebarCollapsed) sidebarCollapsed = false;
+    chatState.openPreviewForPath(path, toggleSidebar);
   }
 
   // Clear preview when run changes (defense-in-depth; ToolActivity also clears via its runId effect)
@@ -498,7 +388,7 @@
     const id = store.run?.id ?? "";
     if (id !== _lastPreviewClearRunId) {
       _lastPreviewClearRunId = id;
-      requestedPreviewPath = null;
+      chatState.requestedPreviewPath = null;
     }
   });
 
@@ -525,7 +415,7 @@
   const tl = useTimelineState({
     store,
     burstCollapse,
-    getProcessVisibility: () => processVisibility,
+    getProcessVisibility: () => chatState.processVisibility,
     getChatAreaRef: () => chatAreaRef,
     loadMoreEarlier: () => loadMoreEarlierRef(),
   });
@@ -542,7 +432,7 @@
   // ── Session-derived state (composable) ──
   const sd = createSessionDerived({
     store,
-    getSettings: () => settings,
+    getSettings: () => chatState.settings,
     getAuthOverview: () => authOverview,
     getVisibleTimeline: () => tl.visibleTimeline,
     getPreloadedSkills: () => preloadedSkills,
@@ -550,16 +440,12 @@
   });
 
   // ── MCP panel ──
-  let mcpPanelOpen = $state(false);
+  // mcpPanelOpen managed by chatState
 
   // ── CLI session browser ──
 
   // Track status bar expansion for MCP panel offset
-  let statusBarExpanded = $state(
-    typeof window !== "undefined"
-      ? localStorage.getItem("ocv:statusbar-expanded") !== "false"
-      : true,
-  );
+  // statusBarExpanded managed by chatState
 
   let currentEffort = $state("");
 
@@ -615,7 +501,7 @@
   // ── Model guard (composable) ──
   const modelGuard = createModelGuard({
     store,
-    getSettings: () => settings,
+    getSettings: () => chatState.settings,
     getCliCurrentModel,
   });
 
@@ -795,12 +681,12 @@
       cwd: store.effectiveCwd ?? "",
       draft: buildDraftFromPrompt(),
       toolFilter: tl.toolFilter,
-      processVisibility,
+      processVisibility: chatState.processVisibility,
       anchor: currentAnchor,
       inspector: {
-        toolPanelActiveTab,
-        requestedPreviewPath: requestedPreviewPath ?? null,
-        sidebarCollapsed,
+        toolPanelActiveTab: chatState.toolPanelActiveTab,
+        requestedPreviewPath: chatState.requestedPreviewPath ?? null,
+        sidebarCollapsed: chatState.sidebarCollapsed,
       },
     };
   }
@@ -870,10 +756,10 @@
     void store.effectiveCwd;
     void tl.toolFilter;
     void tl.renderLimit;
-    void toolPanelActiveTab;
-    void sidebarCollapsed;
-    void requestedPreviewPath;
-    void processVisibility;
+    void chatState.toolPanelActiveTab;
+    void chatState.sidebarCollapsed;
+    void chatState.requestedPreviewPath;
+    void chatState.processVisibility;
     void currentAnchor;
     continuityController.scheduleSave(id);
   });
@@ -919,9 +805,9 @@
     // Inspector (right-side panel) — direct assignments; the cache
     // single-source-of-truth pattern still works because these are
     // local $state.
-    toolPanelActiveTab = restore.inspector.toolPanelActiveTab;
-    requestedPreviewPath = restore.inspector.requestedPreviewPath;
-    sidebarCollapsed = restore.inspector.sidebarCollapsed;
+    chatState.toolPanelActiveTab = restore.inspector.toolPanelActiveTab;
+    chatState.requestedPreviewPath = restore.inspector.requestedPreviewPath;
+    chatState.sidebarCollapsed = restore.inspector.sidebarCollapsed;
     // Anchor: wait for the timeline to populate, then expand renderLimit
     // and scroll. `scrollToMessage` already calls `expandRenderLimitTo`
     // internally; we just need to wait for store.timeline to contain the
@@ -935,8 +821,8 @@
         attempts++;
         const match = store.timeline.find((e) => e.id === anchor.entryId);
         if (match) {
-          isChatAutoScroll = false;
-          readingHistory = true;
+          scrollState.isChatAutoScroll = false;
+          scrollState.readingHistory = true;
           scrollToMessage(anchor.entryId).catch((e) => {
             dbgWarn("chat", "continuity.anchor.scroll.failed", { error: String(e) });
           });
@@ -949,8 +835,8 @@
           // Anchor not found — fall back to bottom.
           requestAnimationFrame(() => {
             if (chatAreaRef) chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
-            isChatAutoScroll = true;
-            readingHistory = false;
+            scrollState.isChatAutoScroll = true;
+            scrollState.readingHistory = false;
           });
         }
       };
@@ -1000,7 +886,7 @@
       // Strongest guard: resume operation in progress — don't interfere.
       // Check both store guard (set inside resumeSession) and local flag
       // (set at handleResume entry, before store guard is acquired).
-      if (store.resumeInFlight || resuming) {
+      if (store.resumeInFlight || chatState.resuming) {
         dbg("effect", "skip loadRun — resume in progress");
         return;
       }
@@ -1035,29 +921,29 @@
           dbg("effect", "restoring chat state from store", { runId: store.run.id });
           // Restore UI state from cache
           const cachedTab = chatViewCache.toolPanelActiveTab;
-          if (cachedTab) toolPanelActiveTab = cachedTab;
+          if (cachedTab) chatState.toolPanelActiveTab = cachedTab;
           const cachedCollapsed = chatViewCache.sidebarCollapsed;
-          sidebarCollapsed = cachedCollapsed;
+          chatState.sidebarCollapsed = cachedCollapsed;
           const cachedPreview = chatViewCache.requestedPreviewPath;
           if (cachedPreview) {
-            requestedPreviewPath = cachedPreview;
-            sidebarRequestedTab = "files";
+            chatState.requestedPreviewPath = cachedPreview;
+            chatState.sidebarRequestedTab = "files";
           }
           const cachedRenderLimit = getCachedRenderLimit(store.run.id);
           if (cachedRenderLimit !== undefined) {
             tl.setRenderLimit(cachedRenderLimit);
           }
           // Restore scroll position
-          restoringScroll = true;
-          isChatAutoScroll = false;
-          readingHistory = true;
+          scrollState.restoringScroll = true;
+          scrollState.isChatAutoScroll = false;
+          scrollState.readingHistory = true;
           tick().then(() => {
             requestAnimationFrame(() => {
               if (chatAreaRef) {
                 const cachedScroll = getCachedScrollTop(store.run!.id);
                 chatAreaRef.scrollTop = cachedScroll;
               }
-              restoringScroll = false;
+              scrollState.restoringScroll = false;
             });
           });
           // Re-attach the controller to the in-memory run (navigation
@@ -1144,18 +1030,18 @@
     if (!scrollTo) return;
     untrack(() => {
       // loadRunProgressive handles scrollTo during run loading — don't double-scroll
-      if (_scrollToInFlight) return;
+      if (scrollState.scrollToInFlight) return;
       if (store.phase === "loading") return;
       if (store.run?.id !== runId) return;
 
       dbg("effect", "same-run scrollTo", { scrollTo, runId });
-      _scrollToInFlight = true;
+      scrollState.scrollToInFlight = true;
       const clean = new URL($page.url);
       clean.searchParams.delete("scrollTo");
       replaceState(clean, {});
       tick().then(() => {
         scrollToMessage(scrollTo);
-        _scrollToInFlight = false;
+        scrollState.scrollToInFlight = false;
       });
     });
   });
@@ -1179,24 +1065,22 @@
   });
 
   // Auto-scroll chat (only when user is near bottom)
-  let prevTl = 0;
-  let prevSt = 0;
 
   $effect(() => {
     if (store.useStreamSession && chatAreaRef) {
       const tl = store.timeline.length;
       const st = store.streamingText.length;
       const _rid = store.run?.id;
-      const tlChanged = tl !== prevTl;
-      const stChanged = st !== prevSt;
-      prevTl = tl;
-      prevSt = st;
+      const tlChanged = tl !== scrollState.prevTl;
+      const stChanged = st !== scrollState.prevSt;
+      scrollState.prevTl = tl;
+      scrollState.prevSt = st;
       if (!tlChanged && !stChanged) return;
 
-      if (isChatAutoScroll && !readingHistory) {
+      if (scrollState.isChatAutoScroll && !scrollState.readingHistory) {
         if (tlChanged) {
           requestAnimationFrame(() => {
-            if (chatAreaRef && isChatAutoScroll && !readingHistory) {
+            if (chatAreaRef && scrollState.isChatAutoScroll && !scrollState.readingHistory) {
               pinChatToBottom();
             }
           });
@@ -1204,7 +1088,7 @@
           followChatBottom();
         }
       } else {
-        showChatScrollHint = true;
+        scrollState.showChatScrollHint = true;
       }
     }
   });
@@ -1212,17 +1096,13 @@
   // Reset scroll state on run change
   $effect(() => {
     void store.run?.id;
-    // _scrollToInFlight is non-reactive (plain let): reading it doesn't create a dependency.
-    // When a search scroll-to navigation is in progress, suppress auto-scroll so
-    // scrollToMessage isn't overridden by the auto-scroll $effect.
-    // restoringScroll is also non-reactive — don't override it during cache restoration.
-    if (!restoringScroll) {
-      isChatAutoScroll = !_scrollToInFlight;
-      readingHistory = false;
+    if (!scrollState.restoringScroll) {
+      scrollState.isChatAutoScroll = !scrollState.scrollToInFlight;
+      scrollState.readingHistory = false;
     }
-    showChatScrollHint = false;
-    prevTl = 0;
-    prevSt = 0;
+    scrollState.showChatScrollHint = false;
+    scrollState.prevTl = 0;
+    scrollState.prevSt = 0;
   });
 
   // ── Terminal helpers ──
@@ -1236,27 +1116,24 @@
   }
 
   // ── Permission pending auto-scroll (inline cards in timeline) ──
-  let prevPermissionRunId = "";
-  let prevHadPermission = false;
-
   $effect(() => {
     const runId = store.run?.id ?? "";
     const needsApproval = store.hasPendingPermission;
 
-    if (runId !== prevPermissionRunId) {
-      prevPermissionRunId = runId;
-      prevHadPermission = false;
+    if (runId !== scrollState.prevPermissionRunId) {
+      scrollState.prevPermissionRunId = runId;
+      scrollState.prevHadPermission = false;
     }
 
-    if (needsApproval && !prevHadPermission) {
-      if (!chatAreaRef || readingHistory) return;
+    if (needsApproval && !scrollState.prevHadPermission) {
+      if (!chatAreaRef || scrollState.readingHistory) return;
       requestAnimationFrame(() => {
-        if (!readingHistory) scrollChatToBottom();
+        if (!scrollState.readingHistory) scrollChatToBottom();
       });
       dbg("chat", "permission pending -> autoscroll to inline card", { runId });
     }
 
-    prevHadPermission = needsApproval;
+    scrollState.prevHadPermission = needsApproval;
   });
 
   // ── Pending tool permission log ──
@@ -1316,7 +1193,7 @@
   const handlePermissionModeChange = createPermissionModeHandler({
     store,
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
-    showPermissionStatus: pushPermissionStatus,
+    showPermissionStatus: chatState.pushPermissionStatus,
     getPermModeLabel,
   });
 
@@ -1335,7 +1212,7 @@
       return tl.timelineIdIndex;
     },
     setApproving: (v: boolean) => {
-      approving = v;
+      chatState.approving = v;
     },
     goto,
     tick,
@@ -1349,7 +1226,7 @@
     handlePlatformChange,
   } = createPlatformHandlers({
     store,
-    getSettings: () => settings,
+    getSettings: () => chatState.settings,
     getCurrentEffort: () => currentEffort,
     setCurrentEffort: (v: string) => {
       currentEffort = v;
@@ -1372,7 +1249,7 @@
     getVisibleTimeline: () => tl.visibleTimeline,
     getToolBursts: () => tl.toolBursts,
     burstCollapse,
-    getProcessVisibility: () => processVisibility,
+    getProcessVisibility: () => chatState.processVisibility,
     getRenderLimit: () => tl.renderLimit,
     setRenderLimit: tl.setRenderLimit,
     getToolFilter: () => tl.toolFilter,
@@ -1384,22 +1261,22 @@
     getLoadMoreArmed: () => tl.loadMoreArmed,
     setLoadMoreArmed: tl.setLoadMoreArmed,
     setIsChatAutoScroll: (v: boolean) => {
-      isChatAutoScroll = v;
+      scrollState.isChatAutoScroll = v;
     },
-    getIsChatAutoScroll: () => isChatAutoScroll,
+    getIsChatAutoScroll: () => scrollState.isChatAutoScroll,
     setShowChatScrollHint: (v: boolean) => {
-      showChatScrollHint = v;
+      scrollState.showChatScrollHint = v;
     },
-    getScrollToInFlight: () => _scrollToInFlight,
+    getScrollToInFlight: () => scrollState.scrollToInFlight,
     setScrollToInFlight: (v: boolean) => {
-      _scrollToInFlight = v;
+      scrollState.scrollToInFlight = v;
     },
     getSuppressLoadMoreRearm: () => _suppressLoadMoreRearm,
     setSuppressLoadMoreRearm: (v: boolean) => {
       _suppressLoadMoreRearm = v;
     },
     setReadingHistory: (v: boolean) => {
-      readingHistory = v;
+      scrollState.readingHistory = v;
     },
     setFolderCwdOverride: (v: string) => {
       folderCwdOverride = v;
@@ -1436,19 +1313,18 @@
       verbose.verboseEnabled = v;
     },
     setRequestedPreviewUrl: (v) => {
-      requestedPreviewUrl = v;
+      chatState.requestedPreviewUrl = v;
     },
     setSidebarRequestedTab: (v) => {
-      sidebarRequestedTab = v;
+      chatState.sidebarRequestedTab = v;
     },
-    getSidebarCollapsed: () => sidebarCollapsed,
+    getSidebarCollapsed: () => chatState.sidebarCollapsed,
     setSidebarCollapsed: (v) => {
-      sidebarCollapsed = v;
+      chatState.sidebarCollapsed = v;
     },
-    getSettings: () => settings,
+    getSettings: () => chatState.settings,
     setSettings: (v) => {
-      settings = v;
-      sessionIslandAlignmentOverride = null;
+      chatState.settings = v;
     },
     getPromptRef: () => promptRef,
   });
@@ -1472,9 +1348,9 @@
     middleware,
     goto,
     loadRunProgressive,
-    getResuming: () => resuming,
+    getResuming: () => chatState.resuming,
     setResuming: (v: boolean) => {
-      resuming = v;
+      chatState.resuming = v;
     },
     getForkOverlay: () => fork.forkOverlay,
     setForkOverlay: (v) => {
@@ -1528,16 +1404,16 @@
       openPreviewInSidebar,
       toggleSidebar,
       get sidebarCollapsed() {
-        return sidebarCollapsed;
+        return chatState.sidebarCollapsed;
       },
       set sidebarCollapsed(v: boolean) {
-        sidebarCollapsed = v;
+        chatState.sidebarCollapsed = v;
       },
       get sidebarRequestedTab() {
-        return sidebarRequestedTab;
+        return chatState.sidebarRequestedTab;
       },
       set sidebarRequestedTab(v: unknown) {
-        sidebarRequestedTab = v as ToolActivityPanelTab | null;
+        chatState.sidebarRequestedTab = v as ToolActivityPanelTab | null;
       },
       goto,
       projectCommands,
@@ -1550,17 +1426,17 @@
     saveChatViewState({
       runId: store.run?.id ?? "",
       scrollTop: chatAreaRef?.scrollTop ?? 0,
-      toolPanelActiveTab,
-      sidebarCollapsed,
-      requestedPreviewPath,
+      toolPanelActiveTab: chatState.toolPanelActiveTab,
+      sidebarCollapsed: chatState.sidebarCollapsed,
+      requestedPreviewPath: chatState.requestedPreviewPath,
       renderLimit: tl.renderLimit,
     });
     // Flush the continuity capsule so the next reload sees the latest
     // draft / anchor / inspector state. Synchronous localStorage write
     // is fine here — the page is about to be torn down.
     continuityController.flush("beforeNavigate");
-    if (to?.url.pathname.startsWith("/settings") && settings) {
-      snapshotChatBootstrap(settings, agentSettings);
+    if (to?.url.pathname.startsWith("/settings") && chatState.settings) {
+      snapshotChatBootstrap(chatState.settings, chatState.agentSettings);
     }
     // Leaving chat entirely: exit split mode so the next entry sees a clean
     // store. When staying inside chat (e.g. switching run within the same
@@ -1583,17 +1459,17 @@
     thinking,
     getRemoteHosts: () => remoteHosts,
     showToast: _showToast,
-    openFolderPicker,
+    openFolderPicker: fp.openFolderPicker,
     handleResume,
     loadCliVersionInfo,
     promptInputRef: () => promptRef,
     getPromptRef: () => promptRef,
     goto,
     setIsChatAutoScroll: (v) => {
-      isChatAutoScroll = v;
+      scrollState.isChatAutoScroll = v;
     },
     setShowChatScrollHint: (v) => {
-      showChatScrollHint = v;
+      scrollState.showChatScrollHint = v;
     },
     setTeamDispatchPrompt: (v) => {
       team.setTeamDispatchPrompt(v);
@@ -1660,7 +1536,7 @@
   }
 
   function toggleSidebar() {
-    sidebarCollapsed = !sidebarCollapsed;
+    chatState.sidebarCollapsed = !chatState.sidebarCollapsed;
   }
 
   async function handleToolAnswer(toolUseId: string, answer: string) {
@@ -1693,10 +1569,9 @@
     // v1.0.10 perf: forward the layout-cached settings handle so init()
     // can skip the cold getUserSettings() IPC when layout already loaded.
     getSettingsCache: () => settingsCache,
-    getSettings: () => settings,
+    getSettings: () => chatState.settings,
     setSettings: (v) => {
-      settings = v;
-      sessionIslandAlignmentOverride = null;
+      chatState.settings = v;
     },
     setRemoteHosts: (v) => {
       remoteHosts = v;
@@ -1705,9 +1580,9 @@
       authOverview = v;
     },
     checkAllLocalProxies,
-    getAgentSettings: () => agentSettings,
+    getAgentSettings: () => chatState.agentSettings,
     setAgentSettings: (v) => {
-      agentSettings = v;
+      chatState.agentSettings = v;
     },
     setCurrentEffort: (v) => {
       currentEffort = v;
@@ -1721,25 +1596,25 @@
     setLastKnownGoodModel: modelGuard.setLastKnownGoodModel,
     checkProjectInit,
     reloadProjectData,
-    getShortcutHelpOpen: () => shortcutHelpOpen,
+    getShortcutHelpOpen: () => chatState.shortcutHelpOpen,
     setShortcutHelpOpen: (v) => {
-      shortcutHelpOpen = v;
+      chatState.shortcutHelpOpen = v;
     },
-    getStatusBarRef: () => statusBarRef,
-    getStashedInput: () => stashedInput,
+    getStatusBarRef: () => chatState.statusBarRef,
+    getStashedInput: () => chatState.stashedInput,
     setStashedInput: (v) => {
-      stashedInput = v;
+      chatState.stashedInput = v;
     },
     getPromptRef: () => promptRef,
     setStatusBarExpanded: (v) => {
-      statusBarExpanded = v;
+      chatState.statusBarExpanded = v;
     },
-    getSidebarCollapsed: () => sidebarCollapsed,
+    getSidebarCollapsed: () => chatState.sidebarCollapsed,
     setSidebarCollapsed: (v) => {
-      sidebarCollapsed = v;
+      chatState.sidebarCollapsed = v;
     },
     setSidebarRequestedTab: (v) => {
-      sidebarRequestedTab = v;
+      chatState.sidebarRequestedTab = v;
     },
     setShowChatToast: _showToast,
     setPageDragActive: (v) => {
@@ -1802,10 +1677,10 @@
 {#snippet chatInputDock()}
   <ChatInputDock
     {store}
-    {settings}
+    settings={chatState.settings}
     inputVm={{
-      processVisibility,
-      agentSettings,
+      processVisibility: chatState.processVisibility,
+      agentSettings: chatState.agentSettings,
       effectiveModels: sd.effectiveModels,
       folderCwdOverride,
       welcomeVisible,
@@ -1846,8 +1721,8 @@
       showChatToast: _showToast,
     }}
     sendBusy={send.inFlight}
-    bind:stashedInput
-    bind:shortcutHelpOpen
+    bind:stashedInput={chatState.stashedInput}
+    bind:shortcutHelpOpen={chatState.shortcutHelpOpen}
     bind:promptRef
   />
 {/snippet}
@@ -1868,7 +1743,7 @@
   >
     <!-- Status bar -->
     <SessionStatusBar
-      bind:this={statusBarRef}
+      bind:this={chatState.statusBarRef}
       running={store.sessionAlive}
       taskRunning={store.isRunning}
       taskWaiting={store.taskWaiting}
@@ -1891,7 +1766,7 @@
         : undefined}
       cwd={store.effectiveCwd}
       mcpServers={store.mcpServers}
-      onMcpToggle={() => (mcpPanelOpen = !mcpPanelOpen)}
+      onMcpToggle={() => (chatState.mcpPanelOpen = !chatState.mcpPanelOpen)}
       cliVersion={store.cliVersion}
       permissionMode={store.permissionMode}
       platformModels={sd.platformModels}
@@ -1916,24 +1791,24 @@
       authSourceCategory={store.authSourceCategory}
       apiKeySource={store.apiKeySource}
       onStatusClick={() => {
-        if (sidebarCollapsed) sidebarCollapsed = false;
-        sidebarRequestedTab = "info";
+        if (chatState.sidebarCollapsed) chatState.sidebarCollapsed = false;
+        chatState.sidebarRequestedTab = "info";
       }}
       onSummarize={store.run ? () => void handleSummarize() : undefined}
       onShare={store.run ? () => void insight.generate() : undefined}
       fuseToolRailCapsule={true}
-      {toolPanelActiveTab}
+      toolPanelActiveTab={chatState.toolPanelActiveTab}
       onToolPanelTabChange={(tab) => {
-        if (tab === toolPanelActiveTab && !sidebarCollapsed) {
-          sidebarCollapsed = true;
+        if (tab === chatState.toolPanelActiveTab && !chatState.sidebarCollapsed) {
+          chatState.sidebarCollapsed = true;
         } else {
-          toolPanelActiveTab = tab;
-          if (sidebarCollapsed) sidebarCollapsed = false;
+          chatState.toolPanelActiveTab = tab;
+          if (chatState.sidebarCollapsed) chatState.sidebarCollapsed = false;
         }
       }}
-      {toolPanelIndicators}
-      {processVisibility}
-      alignment={sessionIslandAlignment}
+      toolPanelIndicators={chatState.toolPanelIndicators}
+      processVisibility={chatState.processVisibility}
+      alignment={chatState.sessionIslandAlignment}
       onProcessVisibilityChange={handleProcessVisibilityChange}
       layoutSidebarOpen={layoutChrome.state.sidebarOpen}
       onToggleLayoutSidebar={layoutChrome.toggleSidebar}
@@ -1944,17 +1819,17 @@
       onToggleSplitMode={() => void toggleSplitWorkspace()}
       sendCoordinator={send.coordinator}
       onSendRetry={(event) => handleSendRetry(event)}
-      permissionStatus={permissionStatusOverlay?.payload ?? null}
-      onPermissionStatusDismiss={clearPermissionStatusOverlay}
-      toastNotification={toastOverlay}
-      onToastDismiss={clearToastOverlay}
+      permissionStatus={chatState.permissionStatusOverlay?.payload ?? null}
+      onPermissionStatusDismiss={chatState.clearPermissionStatusOverlay}
+      toastNotification={chatState.toastOverlay}
+      onToastDismiss={chatState.clearToastOverlay}
     />
 
     <!-- MCP panel (floating below status bar) -->
-    {#if mcpPanelOpen && store.mcpServers.length > 0}
+    {#if chatState.mcpPanelOpen && store.mcpServers.length > 0}
       <div
         class="absolute right-3 z-30"
-        style="top: {statusBarExpanded
+        style="top: {chatState.statusBarExpanded
           ? 'var(--session-statusbar-offset-expanded)'
           : 'var(--session-statusbar-offset-rest)'}"
       >
@@ -1962,7 +1837,7 @@
           runId={store.run?.id ?? ""}
           mcpServers={store.mcpServers}
           sessionAlive={store.sessionAlive}
-          onClose={() => (mcpPanelOpen = false)}
+          onClose={() => (chatState.mcpPanelOpen = false)}
           onServersUpdate={(servers) => {
             store.updateMcpServers(servers);
           }}
@@ -1988,8 +1863,8 @@
         {#snippet activePaneBody()}
           <ChatConversationStage
             {store}
-            {settings}
-            {processVisibility}
+            settings={chatState.settings}
+            processVisibility={chatState.processVisibility}
             timelineVm={{
               visibleTimeline: tl.visibleTimeline,
               filteredTimeline: tl.filteredTimeline,
@@ -2038,13 +1913,13 @@
               thinkingVisible: thinking.thinkingVisible,
               spinnerVerb: thinking.spinnerVerb,
               processingSlashCmd: thinking.processingSlashCmd,
-              approving,
+              approving: chatState.approving,
               sending,
             }}
             forkVm={{
               forkOverlay: fork.forkOverlay,
               forkElapsed: fork.forkElapsed,
-              resuming,
+              resuming: chatState.resuming,
             }}
             handlers={{
               goto,
@@ -2075,7 +1950,7 @@
                 window.dispatchEvent(new Event("ocv:cwd-changed"));
               },
               onAddWorkspace: () => {
-                void addWorkspaceFromPicker();
+                void fp.addWorkspaceFromPicker();
               },
               handleChatScroll,
               handleChatWheel,
@@ -2092,9 +1967,9 @@
               setLastTarget,
             }}
             bind:thinkingExpanded={thinking.thinkingExpanded}
-            {showChatScrollHint}
-            {isChatAutoScroll}
-            {readingHistory}
+            showChatScrollHint={scrollState.showChatScrollHint}
+            isChatAutoScroll={scrollState.isChatAutoScroll}
+            readingHistory={scrollState.readingHistory}
             bind:xtermRef
             bind:chatAreaRef
           >
@@ -2117,8 +1992,8 @@
       <div class="flex flex-1 min-h-0 flex-col" class:hidden={!!workspaceOverviewCwd}>
       <ChatConversationStage
         {store}
-        {settings}
-        {processVisibility}
+        settings={chatState.settings}
+        processVisibility={chatState.processVisibility}
         timelineVm={{
           visibleTimeline: tl.visibleTimeline,
           filteredTimeline: tl.filteredTimeline,
@@ -2168,13 +2043,13 @@
           thinkingVisible: thinking.thinkingVisible,
           spinnerVerb: thinking.spinnerVerb,
           processingSlashCmd: thinking.processingSlashCmd,
-          approving,
+          approving: chatState.approving,
           sending,
         }}
         forkVm={{
           forkOverlay: fork.forkOverlay,
           forkElapsed: fork.forkElapsed,
-          resuming,
+          resuming: chatState.resuming,
         }}
         handlers={{
           goto,
@@ -2205,7 +2080,7 @@
             window.dispatchEvent(new Event("ocv:cwd-changed"));
           },
           onAddWorkspace: () => {
-            void addWorkspaceFromPicker();
+            void fp.addWorkspaceFromPicker();
           },
           handleChatScroll,
           handleChatWheel,
@@ -2222,9 +2097,9 @@
           setLastTarget,
         }}
         bind:thinkingExpanded={thinking.thinkingExpanded}
-        {showChatScrollHint}
-        {isChatAutoScroll}
-        {readingHistory}
+        showChatScrollHint={scrollState.showChatScrollHint}
+        isChatAutoScroll={scrollState.isChatAutoScroll}
+        readingHistory={scrollState.readingHistory}
         bind:xtermRef
         bind:chatAreaRef
       >
@@ -2236,7 +2111,7 @@
       </div>
     {/if}
 
-    {#if showScrollButton}
+    {#if scrollState.showScrollButton}
       <button
         type="button"
         transition:fly={{ y: 10, duration: 200 }}
@@ -2264,21 +2139,21 @@
       contextHistory={sd.contextHistory}
       persistedFiles={store.persistedFiles}
       sessionInfo={sd.currentSessionInfo}
-      collapsed={sidebarCollapsed}
-      bind:activeTab={toolPanelActiveTab}
-      bind:panelIndicators={toolPanelIndicators}
+      collapsed={chatState.sidebarCollapsed}
+      bind:activeTab={chatState.toolPanelActiveTab}
+      bind:panelIndicators={chatState.toolPanelIndicators}
       underUnifiedCapsule={true}
       onToggle={toggleSidebar}
       onScrollToTool={scrollToTool}
       onScrollToTurn={(anchorId) => scrollToMessage(anchorId)}
-      bind:requestedTab={sidebarRequestedTab}
+      bind:requestedTab={chatState.sidebarRequestedTab}
       backgroundTasks={store.taskNotifications}
       activeBackgroundTasks={store.activeBackgroundTasks}
       cwd={store.effectiveCwd}
       runId={store.run?.id ?? ""}
       isRemote={store.isRemote}
-      bind:requestedPreviewPath
-      bind:requestedPreviewUrl
+      bind:requestedPreviewPath={chatState.requestedPreviewPath}
+      bind:requestedPreviewUrl={chatState.requestedPreviewUrl}
     />
   {/if}
 
@@ -2312,7 +2187,7 @@
     }}
   />
 
-  <ShortcutHelpPanel bind:open={shortcutHelpOpen} />
+  <ShortcutHelpPanel bind:open={chatState.shortcutHelpOpen} />
 
   {#if insight.insightPreviewOpen && insight.insightHtml}
     <HtmlReportPreview
@@ -2323,18 +2198,18 @@
   {/if}
 
   <FolderPicker
-    bind:open={folderPickerOpen}
-    initialHost={folderPickerInitialHost}
-    initialPath={folderPickerInitialPath}
-    hideTargetSelector={folderPickerHideTarget}
+    bind:open={fp.folderPickerOpen}
+    initialHost={fp.folderPickerInitialHost}
+    initialPath={fp.folderPickerInitialPath}
+    hideTargetSelector={fp.folderPickerHideTarget}
     onConfirm={(result) => {
-      const fn = folderPickerResolve;
-      folderPickerResolve = null;
+      const fn = fp.folderPickerResolve;
+      fp.folderPickerResolve = null;
       fn?.(result);
     }}
     onCancel={() => {
-      const fn = folderPickerResolve;
-      folderPickerResolve = null;
+      const fn = fp.folderPickerResolve;
+      fp.folderPickerResolve = null;
       fn?.(null);
     }}
   />
