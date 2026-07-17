@@ -9,7 +9,7 @@
 use crate::models::{AgentRuntimeKind, BusEvent};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use super::state::ProtocolState;
+use crate::models::protocol_state::ProtocolState;
 
     pub fn map_event(&mut self, run_id: &str, raw: &Value) -> Vec<BusEvent> {
         // Dispatch to MiMo protocol if runtime_kind is MiMoCode

@@ -7,58 +7,9 @@
 //! Also supports MiMo-Code JSON protocol via runtime_kind dispatch.
 
 use crate::models::{AgentRuntimeKind, BusEvent};
+use crate::models::protocol_state::{MimoToolStartInfo, ParserStats, ProtocolState};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use super::types::ParserStats;
-
-pub struct ProtocolState {
-    /// Map tool_use_id → tool_name for reliable ToolEnd association
-    emitted_tool_ids: HashMap<String, String>,
-    /// Accumulate partial JSON input per tool_use_id
-    input_json_accum: HashMap<String, String>,
-    /// Track the most recently started tool_use_id (HashMap has no iteration order)
-    last_tool_use_id: Option<String>,
-    /// Whether a `result` event already emitted a terminal RunState
-    pub got_result_event: bool,
-    /// The `subtype` from the last `result` event (e.g. "error_max_turns", "error_input_too_long")
-    pub result_subtype: Option<String>,
-    /// Resume/continue/fork session — first system/init should emit RunState(idle)
-    /// because the CLI is waiting for stdin input, not processing a prompt.
-    is_resume: bool,
-    /// Whether we've seen the first system/init. After the first one, subsequent
-    /// system/init events (in multi-turn sessions) should NOT emit RunState at all —
-    /// send_session_message already emits running, and result emits idle.
-    seen_first_init: bool,
-    /// Pending slash command (e.g. "/cost", "/context") — set by session_actor.
-    /// If CLI doesn't emit `<local-command-stdout>` (cf6 bug), a friendly hint
-    /// is emitted as CommandOutput on `result`.
-    pending_slash_command: Option<String>,
-    /// Parsing statistics — accumulated per-session, never reset.
-    pub stats: ParserStats,
-    /// Log the first stream_event unwrap only (avoid log spam).
-    seen_stream_event_envelope: bool,
-    /// Current streaming assistant message id (from message_start).
-    current_message_id: Option<String>,
-    /// Accumulated text for the current assistant message (from text_delta).
-    current_message_text: String,
-    /// Model for the current assistant message.
-    current_message_model: Option<String>,
-    /// message_ids that already emitted MessageComplete this turn.
-    emitted_message_ids: HashSet<String>,
-    /// When true, map_event panics on unknown/invalid events instead of degrading gracefully.
-    /// Only available in test builds — production always degrades.
-    #[cfg(test)]
-    strict_mode: bool,
-    /// Which runtime backend this protocol state is for.
-    /// Determines event dispatch in map_event.
-    runtime_kind: AgentRuntimeKind,
-    /// MiMo: track tool calls by callID for duration calc.
-    mimo_tool_starts: HashMap<String, MimoToolStartInfo>,
-    /// MiMo: extracted session ID from events.
-    mimo_session_id: Option<String>,
-    /// Cursor Agent CLI stream-json parser.
-    cursor_parser: crate::agent::protocol::cursor::CursorProtocolParser,
-}
 
 /// Extract text content between simple XML tags: `<tag>content</tag>`.
 /// Returns `None` if tag not found or content is empty — callers use

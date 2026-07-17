@@ -3,7 +3,7 @@
 //! Reads Claude CLI transcript files (~/.claude/projects/*/*.jsonl) and converts
 //! them into MiWarp run format (~/.miwarp/runs/{run-id}/).
 
-use crate::agent::claude_protocol::{validate_bus_event, ProtocolState};
+use crate::models::protocol_state::{validate_bus_event, ProtocolState};
 use crate::models::{BusEvent, ImportWatermark, RunMeta, RunSource, RunStatus};
 use crate::storage::events::{is_replayable, EventWriter};
 use crate::storage::shared;

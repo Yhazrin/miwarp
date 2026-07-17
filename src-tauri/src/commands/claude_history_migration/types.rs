@@ -3,7 +3,7 @@
 //! Exports Claude Code history sessions from `~/.claude/projects/**/*.jsonl` as a portable
 //! zip archive, and imports such archives into MiWarp without writing back to `~/.claude/projects/`.
 
-use crate::agent::claude_protocol::{validate_bus_event, ProtocolState};
+use crate::models::protocol_state::{validate_bus_event, ProtocolState};
 use crate::models::{
     BusEvent, ConversationRef, ExecutionPath, ImportWatermark, RunMeta, RunSource, RunStatus,
 };

@@ -3,7 +3,7 @@
 //! Maps Claude CLI stream-json events to MiWarp BusEvents.
 
 use super::{ParseResult, ParserStats, ProtocolParser};
-use crate::agent::claude_protocol::ProtocolState;
+use crate::models::protocol_state::ProtocolState;
 
 /// Claude Code protocol parser.
 /// Wraps the existing `ProtocolState` from claude_protocol.rs.

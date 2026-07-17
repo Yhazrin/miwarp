@@ -9,6 +9,7 @@ pub mod fleet;
 pub mod project;
 pub mod plugin_skill;
 pub mod misc;
+pub mod protocol_state;
 
 // Re-exports for backward compatibility
 pub use run::RunStatus;
@@ -141,6 +142,12 @@ pub use misc::RunSearchResult;
 pub use misc::FacetCount;
 pub use misc::RunSearchFacets;
 pub use misc::RunSearchResponse;
+
+// Protocol state types (moved from agent::claude_protocol for dependency-direction compliance)
+pub use protocol_state::ParserStats;
+pub use protocol_state::ValidationWarn;
+pub use protocol_state::validate_bus_event;
+pub use protocol_state::ProtocolState;
 
 // Utility functions
 pub fn now_iso() -> String {

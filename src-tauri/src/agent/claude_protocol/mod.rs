@@ -5,12 +5,12 @@ pub mod state;
 pub mod map_event;
 pub mod map_event_other;
 
-// Re-exports for backward compatibility
-pub use types::ParserStats;
-pub use types::ValidationWarn;
-pub use validation::validate_bus_event;
+// Re-exports for backward compatibility — canonical types now live in `models::protocol_state`.
+pub use crate::models::protocol_state::ParserStats;
+pub use crate::models::protocol_state::ValidationWarn;
+pub use crate::models::protocol_state::validate_bus_event;
+pub use crate::models::protocol_state::ProtocolState;
 pub use validation::validate_strict;
-pub use state::ProtocolState;
 
 // Tests
 #[cfg(test)]
