@@ -22,6 +22,8 @@
     const root = container;
     if (!root) return;
 
+    // XSS-safe: buildVisualBlockPlaceholder uses escapeHtml() on all user-provided strings
+    // (kind, source, lang). The function is in render-placeholder.ts.
     root.innerHTML = buildVisualBlockPlaceholder({ kind, source, lang });
     let unmountVisual: (() => void) | undefined;
     try {

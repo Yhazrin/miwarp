@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
+  import { onDestroy } from "svelte";
   import { fmtTime, fmtDateTime } from "$lib/i18n/format";
   import MarkdownContent from "./MarkdownContent.svelte";
   import FileAttachment from "./FileAttachment.svelte";
@@ -53,6 +54,7 @@
 
   let hovered = $state(false);
   let copied = $state(false);
+  let copyTimer: ReturnType<typeof setTimeout> | undefined;
   let collapsed = $state(true);
   let thinkingCollapsed = $state(true);
 
@@ -109,11 +111,15 @@
     try {
       await navigator.clipboard.writeText(message.content);
       copied = true;
-      setTimeout(() => (copied = false), 1500);
+      if (copyTimer) clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => (copied = false), 1500);
     } catch {
       // Silently fail
     }
   }
+  onDestroy(() => {
+    if (copyTimer) clearTimeout(copyTimer);
+  });
 </script>
 
 <div

@@ -10,6 +10,7 @@
   import { statusDotClass, statusLabel, parseServersFromResponse } from "$lib/utils/mcp";
   import { relativeTime } from "$lib/utils/format";
   import type { LucideIconName } from "$lib/lucide-icon";
+  import { onDestroy } from "svelte";
 
   let {
     runId,
@@ -41,6 +42,7 @@
   let servers = $state<McpServerInfo[]>([]);
   let error = $state("");
   let successMsg = $state("");
+  let successTimer: ReturnType<typeof setTimeout> | undefined;
   let expandedServer = $state<string | null>(null);
 
   // Health metrics per server
@@ -197,7 +199,8 @@
       const result = await api.toggleMcpServerConfig(serverName, newEnabled, scope);
       if (result.success) {
         successMsg = result.message;
-        setTimeout(() => (successMsg = ""), 3000);
+        if (successTimer) clearTimeout(successTimer);
+        successTimer = setTimeout(() => (successMsg = ""), 3000);
       } else {
         error = result.message;
       }
@@ -231,6 +234,9 @@
     if (history.length === 0) return null;
     return Math.round(history.reduce((a, b) => a + b, 0) / history.length);
   }
+  onDestroy(() => {
+    if (successTimer) clearTimeout(successTimer);
+  });
 </script>
 
 /** * McpStatusPanel - Enhanced MCP server status panel with health monitoring * * Features: * -

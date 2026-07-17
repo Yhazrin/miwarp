@@ -13,6 +13,7 @@
 
   import { portal } from "$lib/utils/portal";
   import Icon from "$lib/components/Icon.svelte";
+  import { onDestroy } from "svelte";
   import { scale } from "svelte/transition";
 
   export interface MenuItem {
@@ -232,6 +233,9 @@
         return null;
     }
   }
+  onDestroy(() => {
+    if (typeAheadTimer) clearTimeout(typeAheadTimer);
+  });
 </script>
 
 <svelte:window onkeydown={handleKeydown} onclick={handleClickOutside} />

@@ -16,6 +16,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import { slide } from "svelte/transition";
+  import { onDestroy } from "svelte";
   import { buildDoctorReport } from "$lib/utils/doctor";
 
   let { onComplete }: { onComplete: () => void } = $props();
@@ -313,6 +314,9 @@
 
   let availableMethods = $derived(installMethods.filter((m) => m.available));
   let unavailableMethods = $derived(installMethods.filter((m) => !m.available));
+  onDestroy(() => {
+    if (doneTimer) clearTimeout(doneTimer);
+  });
 </script>
 
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-background">

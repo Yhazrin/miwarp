@@ -126,6 +126,8 @@
           bq.classList.add("callout", `callout-${type.toLowerCase()}`);
           const firstP = bq.querySelector("p");
           if (firstP) {
+            // XSS-safe: icon is a hardcoded emoji, type is constrained by regex to known callout names,
+            // firstP.innerHTML is existing markdown-parsed DOM content (already sanitized by markdown-it).
             firstP.innerHTML = `<span class="callout-icon">${icon}</span> <strong>${type}:</strong> ${firstP.innerHTML.replace(/^\[!(NOTE|WARNING|TIP|IMPORTANT|CAUTION)\]\s*/i, "")}`;
           }
         }

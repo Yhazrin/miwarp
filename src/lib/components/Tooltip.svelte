@@ -1,5 +1,6 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
+  import { onDestroy } from "svelte";
 
   let {
     text = "",
@@ -22,6 +23,10 @@
     if (timeout) clearTimeout(timeout);
     show = false;
   }
+
+  onDestroy(() => {
+    if (timeout) clearTimeout(timeout);
+  });
 </script>
 
 <div
