@@ -108,8 +108,10 @@
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import HtmlReportPreview from "$lib/components/insight/HtmlReportPreview.svelte";
   import { getPresets } from "$lib/services/team-dispatcher";
-  import {
-    chatViewCache,
+  import { } from "./use-chat-state.svelte";
+  import { } from "./use-scroll.svelte";
+  import { } from "./use-folder-picker.svelte";
+  import { chatViewCache,
     saveChatViewState,
     updateLastChatHref,
     getCachedScrollTop,

@@ -45,6 +45,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import { fade } from "svelte/transition";
   import type {
+
     MarketplacePlugin,
     StandaloneSkill,
     MarketplaceInfo,
