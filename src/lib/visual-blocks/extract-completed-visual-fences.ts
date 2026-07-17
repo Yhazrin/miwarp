@@ -3,13 +3,13 @@ import { isValidVisualBlock } from "./parse";
 import { resolveVisualBlockLang } from "./registry";
 import type { VisualBlockKind } from "./types";
 
-type StreamingTextSegment {
+export type StreamingTextSegment = {
   type: "text";
   key: string;
   text: string;
 };
 
-type StreamingVisualSegment {
+export type StreamingVisualSegment = {
   type: "visual";
   key: string;
   kind: VisualBlockKind;

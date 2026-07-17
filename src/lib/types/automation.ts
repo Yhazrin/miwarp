@@ -32,9 +32,9 @@ export type StepType =
   | "upload_file"
   | "select_option";
 
-type ErrorStrategy "continue" | "stop" | "retry";
+export type ErrorStrategy = "continue" | "stop" | "retry";
 
-interface StepParams {
+export interface StepParams {
   // Navigation
   url?: string;
 
@@ -76,7 +76,7 @@ interface StepParams {
   index?: number;
 }
 
-interface RetryPolicy {
+export interface RetryPolicy {
   maxAttempts: number;
   backoffMs: number;
   exponential?: boolean;
@@ -94,14 +94,14 @@ export interface AutomationStep {
   enabled: boolean;
 }
 
-interface LoopConfig {
+export interface LoopConfig {
   type: "for" | "while" | "until";
   iterations?: number;
   condition?: string;
   steps: AutomationStep[];
 }
 
-interface ErrorConfig {
+export interface ErrorConfig {
   maxRetries: number;
   retryDelay: number;
   continueOnError: boolean;
@@ -166,7 +166,7 @@ export interface RecordingSession {
   status: "recording" | "paused" | "stopped";
 }
 
-interface RecordedStep {
+export interface RecordedStep {
   type: StepType;
   params: StepParams;
   timestamp: number;

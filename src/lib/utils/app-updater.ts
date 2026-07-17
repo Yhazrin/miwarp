@@ -2,7 +2,7 @@ import { checkForUpdates } from "$lib/api";
 import type { UpdateInfo } from "$lib/types";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
-type AppUpdatePhase
+export type AppUpdatePhase =
   | "idle"
   | "checking"
   | "downloading"
@@ -39,7 +39,7 @@ async function isDesktopTauri(): Promise<boolean> {
 }
 
 /** Prefer signed in-app updater; fall back to GitHub release download page. */
-async function discoverAppUpdate(): Promise<AppUpdateOffer | null> {
+export async function discoverAppUpdate(): Promise<AppUpdateOffer | null> {
   if (await isDesktopTauri()) {
     try {
       const { check } = await import("@tauri-apps/plugin-updater");

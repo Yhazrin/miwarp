@@ -107,7 +107,7 @@ export function estimateRenderWork(
 }
 
 /** Legacy baseline: mount entire timeline on open (pre-v1.0.9 guided/developer). */
-function legacyInitialRenderLimit(
+export function legacyInitialRenderLimit(
   mode: ProcessVisibility,
   timeline: TimelineEntry[],
 ): number {

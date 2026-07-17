@@ -27,15 +27,15 @@
  *     old persist cannot overwrite a newer mode (see
  *     `use-permission-mode.ts`).
  */
-const APP_NAMES = ["ask", "auto_read", "auto_all", "plan", "auto", "dont_ask"] as const;
+export const APP_NAMES = ["ask", "auto_read", "auto_all", "plan", "auto", "dont_ask"] as const;
 
-type AppPermissionMode (typeof APP_NAMES)[number];
+export type AppPermissionMode = (typeof APP_NAMES)[number];
 
 /**
  * CLI permission-mode names. These are what the Claude CLI accepts
  * (matches `set_permission_mode` control_request).
  */
-const CLI_NAMES = [
+export const CLI_NAMES = [
   "default",
   "acceptEdits",
   "bypassPermissions",
@@ -44,13 +44,13 @@ const CLI_NAMES = [
   "dontAsk",
 ] as const;
 
-type CliPermissionMode (typeof CLI_NAMES)[number];
+export type CliPermissionMode = (typeof CLI_NAMES)[number];
 
 /**
  * UI labels for `AppPermissionMode`. The labelKey is stable across
  * locales; the visible text lives in `messages/{locale}.json`.
  */
-interface AppModeMeta {
+export interface AppModeMeta {
   app: AppPermissionMode;
   cli: CliPermissionMode;
   /** Stable label key used by `prompt_permAskLabel` etc. */
@@ -60,7 +60,7 @@ interface AppModeMeta {
   dangerous: boolean;
 }
 
-const APP_MODE_META: ReadonlyArray<AppModeMeta> = [
+export const APP_MODE_META: ReadonlyArray<AppModeMeta> = [
   {
     app: "ask",
     cli: "default",
@@ -120,7 +120,7 @@ const CLI_TO_APP: Record<CliPermissionMode, AppPermissionMode> = APP_MODE_META.r
  * are returned as-is (pass-through) and surfaced with a debug breadcrumb
  * so we can spot drift early.
  */
-function mapAppToCli(mode: string): string {
+export function mapAppToCli(mode: string): string {
   if (mode in APP_TO_CLI) return APP_TO_CLI[mode as AppPermissionMode];
   return mode;
 }
@@ -135,7 +135,7 @@ export function mapCliToApp(mode: string): string {
 }
 
 /** Whether a mode is considered dangerous (auto-all / dont-ask). */
-function isDangerousMode(mode: string): boolean {
+export function isDangerousMode(mode: string): boolean {
   const meta = APP_MODE_META.find((m) => m.app === mode || m.cli === mode);
   return meta?.dangerous ?? false;
 }
@@ -144,7 +144,7 @@ function isDangerousMode(mode: string): boolean {
  * Whether a tool is in `NEVER_ALLOW_TOOLS` (permanent allow denied).
  * Mirrors `storage::shared::NEVER_ALLOW_TOOLS` in Rust.
  */
-const NEVER_ALLOW_TOOLS: ReadonlyArray<string> = ["ExitPlanMode", "EnterPlanMode"];
+export const NEVER_ALLOW_TOOLS: ReadonlyArray<string> = ["ExitPlanMode", "EnterPlanMode"];
 
 export function isPermanentAllowBlocked(toolName: string): boolean {
   return NEVER_ALLOW_TOOLS.includes(toolName);

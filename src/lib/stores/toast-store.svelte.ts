@@ -50,7 +50,7 @@ export function registerToastListener(listener: ToastListener | null): void {
   _listener = listener;
 }
 
-function getCurrentToast(): Toast | null {
+export function getCurrentToast(): Toast | null {
   return _current;
 }
 
@@ -105,17 +105,17 @@ export function showToast(
   return id;
 }
 
-function dismissToast(): void {
+export function dismissToast(): void {
   clearTimer();
   _current = null;
 }
 
-function clearAllToasts(): void {
+export function clearAllToasts(): void {
   clearTimer();
   _current = null;
 }
 
 /** @deprecated Use {@link getCurrentToast} — the store is now a single slot. */
-function getToasts(): Toast[] {
+export function getToasts(): Toast[] {
   return _current ? [_current] : [];
 }

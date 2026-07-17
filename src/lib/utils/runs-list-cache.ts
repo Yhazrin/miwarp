@@ -232,4 +232,4 @@ async function evictIfNeeded(): Promise<void> {
 }
 
 /** Internal envelope type — exported for tests only. */
-;
+export type { RunListEnvelope };

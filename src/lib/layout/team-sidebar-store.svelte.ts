@@ -17,7 +17,7 @@
  */
 import type { TeamStore } from "$lib/stores/team-store.svelte";
 
-class TeamSidebarStore {
+export class TeamSidebarStore {
   teamStoreSearchQuery = $state<string>("");
 
   /**

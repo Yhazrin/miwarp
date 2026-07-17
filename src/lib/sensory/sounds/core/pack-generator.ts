@@ -66,7 +66,7 @@ export function generateSoundPack(
  * @param baseInstrument - The base instrument for the pack
  * @param overrides - Partial instrument configs keyed by sound role
  */
-function generateCustomSoundPack(
+export function generateCustomSoundPack(
   baseInstrument: InstrumentConfig,
   overrides?: Partial<Record<SoundRole, Partial<InstrumentConfig>>>,
 ): Record<SoundRole, SoundSynthesizer> {

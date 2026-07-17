@@ -3,7 +3,7 @@
  * Encapsulates auto-scroll state, reading history tracking,
  * and scroll-related effects.
  */
-interface ScrollState {
+export interface ScrollState {
   isChatAutoScroll: boolean;
   readingHistory: boolean;
   showChatScrollHint: boolean;
@@ -85,4 +85,4 @@ export function createScrollState(getStore: () => { timeline: { length: number }
   };
 }
 
-type ChatScrollState ReturnType<typeof createScrollState>;
+export type ChatScrollState = ReturnType<typeof createScrollState>;

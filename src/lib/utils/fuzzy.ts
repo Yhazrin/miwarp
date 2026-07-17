@@ -206,7 +206,7 @@ export function multiFieldFuzzyMatch(
 /**
  * Sort items by fuzzy match score (highest first).
  */
-function sortByFuzzyMatch<T>(
+export function sortByFuzzyMatch<T>(
   items: T[],
   query: string,
   getSearchFields: (item: T) => Record<string, string>,

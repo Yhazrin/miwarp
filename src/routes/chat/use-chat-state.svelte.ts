@@ -133,4 +133,4 @@ export function createChatState() {
   };
 }
 
-type ChatState ReturnType<typeof createChatState>;
+export type ChatState = ReturnType<typeof createChatState>;

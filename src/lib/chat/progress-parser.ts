@@ -10,7 +10,7 @@
  * Progress tab.
  */
 
-type TodoStatus "pending" | "in_progress" | "completed" | "failed";
+export type TodoStatus = "pending" | "in_progress" | "completed" | "failed";
 
 export interface ProgressTodo {
   id: string;

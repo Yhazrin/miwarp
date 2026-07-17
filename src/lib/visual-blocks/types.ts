@@ -11,7 +11,7 @@ export type VisualBlockTone = "default" | "on-primary";
 
 export type ProgressItemStatus = "pending" | "active" | "done" | "failed";
 
-interface MiwarpProgressItem {
+export interface MiwarpProgressItem {
   label: string;
   status?: ProgressItemStatus;
   /** 0–100 when present */
@@ -28,7 +28,7 @@ export interface MiwarpProgressSpec {
 export type KpiTrend = "up" | "down" | "flat";
 export type KpiItemStatus = "success" | "warning" | "error" | "neutral";
 
-interface MiwarpKpiItem {
+export interface MiwarpKpiItem {
   label: string;
   value: string;
   trend?: KpiTrend;
@@ -43,7 +43,7 @@ export interface MiwarpKpiSpec {
 
 export type TimelineItemState = "pending" | "active" | "done" | "failed";
 
-interface MiwarpTimelineItem {
+export interface MiwarpTimelineItem {
   title: string;
   date?: string;
   state?: TimelineItemState;

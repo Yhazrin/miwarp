@@ -147,7 +147,7 @@ const LUCIDE_ICON_SET = new Set<string>([
 ]);
 
 /** Map legacy emoji (and aliases) to Lucide icon names. */
-const EMOJI_TO_LUCIDE: Record<string, LucideIconName> = {
+export const EMOJI_TO_LUCIDE: Record<string, LucideIconName> = {
   "⚡": "zap",
   "🔧": "wrench",
   "🤖": "bot",
@@ -223,7 +223,7 @@ const EMOJI_TO_LUCIDE: Record<string, LucideIconName> = {
   "🔴": "circle-dot",
 };
 
-function isLucideIconName(value: string): value is LucideIconName {
+export function isLucideIconName(value: string): value is LucideIconName {
   return LUCIDE_ICON_SET.has(value);
 }
 

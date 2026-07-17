@@ -34,7 +34,7 @@ export function clearMorphFlash(state: MorphState): void {
   clearTimeout(state.morphFlashTimer);
 }
 
-function showMorphFlash(
+export function showMorphFlash(
   state: MorphState,
   kind: Exclude<MorphFlash, "none">,
   durationMs: number,

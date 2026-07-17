@@ -6,20 +6,20 @@ import { getTransport } from "$lib/transport";
 import type { AgentSettings, UserSettings } from "$lib/types";
 
 /** Tabs that may trigger subprocess / network heavy work when activated. */
-const HEAVY_SETTINGS_TABS = [
+export const HEAVY_SETTINGS_TABS = [
   "devices",
   "cli-behavior",
   "runtimes",
   "updates",
 ] as const satisfies readonly SettingsTabId[];
 
-type HeavySettingsTab (typeof HEAVY_SETTINGS_TABS)[number];
+export type HeavySettingsTab = (typeof HEAVY_SETTINGS_TABS)[number];
 
-function isHeavySettingsTab(tab: SettingsTabId): tab is HeavySettingsTab {
+export function isHeavySettingsTab(tab: SettingsTabId): tab is HeavySettingsTab {
   return (HEAVY_SETTINGS_TABS as readonly SettingsTabId[]).includes(tab);
 }
 
-type WebServerStatus {
+export type WebServerStatus = {
   enabled: boolean;
   running: boolean;
   port: number;
@@ -57,7 +57,7 @@ export type SettingsTabLoaderDeps = {
   readProjectCwd: () => string;
 };
 
-const defaultSettingsTabLoaderDeps = (): SettingsTabLoaderDeps => ({
+export const defaultSettingsTabLoaderDeps = (): SettingsTabLoaderDeps => ({
   getUserSettings: api.getUserSettings,
   getWebServerStatus: api.getWebServerStatus,
   getWebServerToken: api.getWebServerToken,

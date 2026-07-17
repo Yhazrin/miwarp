@@ -1,0 +1,106 @@
+<script lang="ts">
+  import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
+  import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
+
+  type Indicators = { context: boolean; files: boolean; tasks: boolean };
+
+  let {
+    active = "workspace",
+    onSelect,
+    indicators = { context: false, files: false, tasks: false },
+  }: {
+    active: ToolActivityPanelTab;
+    onSelect: (tab: ToolActivityPanelTab) => void;
+    indicators?: Indicators;
+  } = $props();
+
+  const primaryTabs: ToolActivityPanelTab[] = [
+    "workspace",
+    "tools",
+    "files",
+    "preview",
+    "scheduled-tasks",
+  ];
+
+  function label(tab: ToolActivityPanelTab): string {
+    switch (tab) {
+      case "workspace":
+        return t("sessionControl_panelWorkspace");
+      case "tools":
+        return t("sessionControl_panelActivity");
+      case "context":
+        return t("sessionControl_panelUsage");
+      case "files":
+        return t("sessionControl_panelFiles");
+      case "preview":
+        return t("sessionControl_panelPreview");
+      case "info":
+        return t("sessionControl_panelInfo");
+      case "tasks":
+        return t("sessionControl_panelTasks");
+      case "scheduled-tasks":
+        return t("sessionControl_panelScheduledTasks");
+      default:
+        return tab;
+    }
+  }
+
+  function chip(activeTab: boolean): string {
+    return activeTab
+      ? "bg-muted/70 text-foreground shadow-sm ring-1 ring-border/45"
+      : "text-muted-foreground hover:bg-muted/45 hover:text-foreground";
+  }
+
+  function pick(tab: ToolActivityPanelTab) {
+    onSelect(tab);
+  }
+</script>
+
+<div class="flex h-9 min-w-0 max-w-full items-center gap-0.5 sm:max-w-[min(20rem,100%)]">
+  <div
+    class="flex min-h-0 min-w-0 flex-1 items-center gap-0.5 overflow-x-auto pr-0.5 [scrollbar-width:thin]"
+    role="tablist"
+    aria-label={t("sessionControl_panelTabsAria")}
+  >
+    {#each primaryTabs as tab (tab)}
+      <button
+        type="button"
+        role="tab"
+        aria-selected={active === tab}
+        aria-label={label(tab)}
+        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors {chip(
+          active === tab,
+        )}"
+        onclick={() => pick(tab)}
+        title={label(tab)}
+      >
+        {#if tab === "workspace"}
+          <Icon name="home" size="md" class="shrink-0 opacity-90" />
+        {:else if tab === "tools"}
+          <Icon name="wrench" size="md" class="shrink-0 opacity-90" />
+        {:else if tab === "files"}
+          <span class="relative inline-flex shrink-0">
+            <Icon name="file" size="sm" class="opacity-90" />
+            {#if indicators.files}
+              <span
+                class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
+              ></span>
+            {/if}
+          </span>
+        {:else if tab === "preview"}
+          <svg
+            class="h-4 w-4 shrink-0 opacity-90"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            ><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg
+          >
+        {:else if tab === "scheduled-tasks"}
+          <Icon name="clock" size="md" class="shrink-0 opacity-90" />
+        {/if}
+      </button>
+    {/each}
+  </div>
+</div>

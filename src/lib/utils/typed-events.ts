@@ -65,7 +65,7 @@ import {
  *
  * `void` means the event has no `detail` (dispatched via `new Event(name)`).
  */
-interface AppEventMap {
+export interface AppEventMap {
   [EVT_RUNS_CHANGED]: void;
   [EVT_FOCUS_PENDING_TOOL]: { toolUseId: string };
   [EVT_CWD_CHANGED]: void;

@@ -29,7 +29,7 @@ import { buildSyntheticTimeline, compareOpenBudgets } from "$lib/chat/render-wor
 import { createRecorderForced, DEFAULT_THRESHOLDS, PERF_CONTRACT_SCHEMA_VERSION } from "./contract";
 import type { InteractionMetric, PerfContract, ScenarioId, SpanHandle } from "./contract";
 
-interface ScenarioContext {
+export interface ScenarioContext {
   iter: number;
   cold: boolean;
   /** Override the start time for tests; defaults to performance.now(). */
@@ -316,7 +316,7 @@ export interface RunnerOptions {
   only?: readonly ScenarioId[];
 }
 
-interface RunnerSummary {
+export interface RunnerSummary {
   contract: PerfContract;
   byScenario: Array<{
     scenario: ScenarioId;
@@ -488,7 +488,7 @@ export function createHarness(opts: RunnerOptions = {}): HarnessHandle {
 
 /** Convenience: default lazy singleton for window.__mwPerf injection. */
 let _defaultHarness: HarnessHandle | null = null;
-function getDefaultHarness(): HarnessHandle {
+export function getDefaultHarness(): HarnessHandle {
   if (!_defaultHarness) _defaultHarness = createHarness();
   return _defaultHarness;
 }
@@ -508,7 +508,7 @@ export function installWindowHarness(build?: string): HarnessHandle | null {
 }
 
 /** TypeScript surface declaration so consumers can `window.__mwPerf.runAll`. */
-interface MwPerfGlobal {
+export interface MwPerfGlobal {
   runScenario: HarnessHandle["runScenario"];
   runAll: HarnessHandle["runAll"];
   exportContract: HarnessHandle["exportContract"];

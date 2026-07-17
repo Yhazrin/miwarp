@@ -86,19 +86,19 @@ export interface InsightReport {
   appendix: AppendixSection;
 }
 
-interface ProcessStep {
+export interface ProcessStep {
   phase: string;
   description: string;
   timestamp?: string;
 }
 
-interface FileImpact {
+export interface FileImpact {
   path: string;
   type: "created" | "modified" | "deleted";
   responsibility: string;
 }
 
-interface AppendixSection {
+export interface AppendixSection {
   toolCallSummary: { name: string; count: number }[];
   keyCommands: string[];
   errorsAndFixes: { error: string; fix: string }[];

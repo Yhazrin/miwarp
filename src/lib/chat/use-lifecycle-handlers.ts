@@ -38,7 +38,12 @@ import { disarmChatSettingsHop, isChatSettingsHop } from "$lib/utils/chat-settin
 import { resolveLayoutCachedSettings } from "$lib/layout-chrome-context";
 import { readRunsListCache } from "$lib/utils/runs-list-cache";
 
-export type {LifecycleHandlerContext}from "$lib/chat/lifecycle-context";;
+export type {
+  XTerminalRef,
+  PromptInputRef,
+  StatusBarRef,
+  LifecycleHandlerContext,
+} from "$lib/chat/lifecycle-context";
 
 import type { LifecycleHandlerContext } from "$lib/chat/lifecycle-context";
 

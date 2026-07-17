@@ -110,4 +110,4 @@ function readSessionOverride(): SessionRuntimeOverride | null {
   }
 }
 
-const runtimeControlPlaneStore = new RuntimeControlPlaneStore();
+export const runtimeControlPlaneStore = new RuntimeControlPlaneStore();

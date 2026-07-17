@@ -6,7 +6,7 @@
  * - summary: only significant tool calls visible (hides intermediate Read/Grep/Glob etc.)
  */
 
-type ViewMode "verbose" | "summary";
+export type ViewMode = "verbose" | "summary";
 
 class ViewModeStore {
   mode = $state<ViewMode>("summary");

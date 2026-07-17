@@ -23,7 +23,7 @@ const SNAPSHOT_VERSION = 3;
 /** Max cached snapshots. Evicts least-recently-accessed when exceeded. */
 const MAX_ENTRIES = 200;
 
-interface SnapshotRecord {
+export interface SnapshotRecord {
   runId: string; // primary key
   version: number; // SNAPSHOT_VERSION
   runStatus: string; // terminal status at save time

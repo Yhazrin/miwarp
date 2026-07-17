@@ -18,7 +18,7 @@ export function totalTokens(usage: UsageState): number {
   return usage.inputTokens + usage.outputTokens + usage.cacheReadTokens + usage.cacheWriteTokens;
 }
 
-interface ModelUsageEntryLike {
+export interface ModelUsageEntryLike {
   context_window?: number;
 }
 
@@ -39,7 +39,7 @@ export function contextWindow(usage: UsageState): number {
  * the latest-turn token usage with a per-turn delta fallback for
  * cumulative reports that exceed the window.
  */
-function contextUtilization(usage: UsageState, turnUsages: TurnUsage[]): number {
+export function contextUtilization(usage: UsageState, turnUsages: TurnUsage[]): number {
   if (usage.contextWindowUsedPercentage != null) {
     const pct = usage.contextWindowUsedPercentage;
     const normalized = pct > 1 ? pct / 100 : pct;
@@ -66,9 +66,9 @@ function contextUtilization(usage: UsageState, turnUsages: TurnUsage[]): number 
   return Math.min(used / cw, 1);
 }
 
-type ContextWarningLevel "none" | "moderate" | "high" | "critical";
+export type ContextWarningLevel = "none" | "moderate" | "high" | "critical";
 
-function contextWarningLevel(utilization: number): ContextWarningLevel {
+export function contextWarningLevel(utilization: number): ContextWarningLevel {
   if (utilization >= 0.9) return "critical";
   if (utilization >= 0.75) return "high";
   if (utilization >= 0.5) return "moderate";
@@ -76,7 +76,7 @@ function contextWarningLevel(utilization: number): ContextWarningLevel {
 }
 
 /** Duration of extended thinking in seconds (0 if no thinking happened). */
-function thinkingDurationSec(
+export function thinkingDurationSec(
   thinkingStartMs: number,
   thinkingEndMs: number,
   now: number = Date.now(),

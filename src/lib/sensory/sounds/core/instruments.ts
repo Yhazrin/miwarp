@@ -14,7 +14,7 @@
 // Instrument Types
 // ---------------------------------------------------------------------------
 
-type OscillatorWaveform "sine" | "square" | "sawtooth" | "triangle";
+export type OscillatorWaveform = "sine" | "square" | "sawtooth" | "triangle";
 
 /**
  * Simplified instrument config based on FeelParams.
@@ -133,7 +133,7 @@ export const CRISP_INSTRUMENT: InstrumentConfig = {
 // Instrument Presets Map
 // ---------------------------------------------------------------------------
 
-const INSTRUMENTS = {
+export const INSTRUMENTS = {
   soft: SOFT_INSTRUMENT,
   aero: AERO_INSTRUMENT,
   arcade: ARCADE_INSTRUMENT,
@@ -145,7 +145,7 @@ const INSTRUMENTS = {
   crisp: CRISP_INSTRUMENT,
 } as const;
 
-type InstrumentName keyof typeof INSTRUMENTS;
+export type InstrumentName = keyof typeof INSTRUMENTS;
 
 // ---------------------------------------------------------------------------
 // Synthesis Helpers
@@ -154,7 +154,7 @@ type InstrumentName keyof typeof INSTRUMENTS;
 /**
  * Create white/pink/brown noise buffer
  */
-function createNoiseBuffer(
+export function createNoiseBuffer(
   ctx: AudioContext,
   duration: number,
   type: "white" | "pink" | "brown" = "white",
@@ -212,7 +212,7 @@ export function applyDecayToBuffer(buffer: AudioBuffer, decayRate: number = 0.3)
 /**
  * Create oscillator with instrument settings
  */
-function createOscillator(
+export function createOscillator(
   ctx: AudioContext,
   freq: number,
   instrument: InstrumentConfig,
@@ -226,7 +226,7 @@ function createOscillator(
 /**
  * Create gain with envelope
  */
-function createEnvelopedGain(
+export function createEnvelopedGain(
   ctx: AudioContext,
   time: number,
   volume: number,
@@ -247,7 +247,7 @@ function createEnvelopedGain(
 /**
  * Create filter for noise-based sounds
  */
-function createFilter(
+export function createFilter(
   ctx: AudioContext,
   freq: number,
   q: number,

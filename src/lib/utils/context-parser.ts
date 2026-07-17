@@ -6,13 +6,13 @@ import { dbg } from "$lib/utils/debug";
 
 // ── Types ──
 
-interface ContextCategory {
+export interface ContextCategory {
   name: string;
   tokens: string;
   percentage: number;
 }
 
-interface SubTable {
+export interface SubTable {
   title: string;
   headers: string[];
   rows: string[][];

@@ -463,7 +463,7 @@ export function getQuickActions(allCommands: CliCommand[]): CliCommand[] {
 
 export type SlashCategory = "session" | "coding" | "config" | "help" | "skills" | "other";
 
-const SLASH_CATEGORY_ORDER: readonly SlashCategory[] = [
+export const SLASH_CATEGORY_ORDER: readonly SlashCategory[] = [
   "session",
   "coding",
   "config",
@@ -533,7 +533,7 @@ const COMMAND_CATEGORY_MAP: Record<string, SlashCategory> = {
   "release-notes": "help",
 };
 
-interface SlashCommandGroup {
+export interface SlashCommandGroup {
   category: SlashCategory;
   commands: CliCommand[];
   /** Index of this group's first command in the flatOrder array */

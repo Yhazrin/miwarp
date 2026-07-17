@@ -35,7 +35,7 @@ import { normalizeCwd } from "$lib/utils/sidebar-groups";
 import { dbg } from "$lib/utils/debug";
 import { EVT_PROJECT_CHANGED } from "$lib/utils/bus-events";
 
-type FolderKey string;
+export type FolderKey = string;
 
 function safePersist(key: string, value: string): void {
   if (typeof window === "undefined") return;
@@ -60,7 +60,7 @@ function safeRemove(key: string): void {
  * tears it down with `dispose()`. Svelte 5 runes on a class instance work
  * with `$state` because the layout reads fields via `store.field`.
  */
-class ProjectSelectionStore {
+export class ProjectSelectionStore {
   projectCwd = $state<string>("");
   pinnedCwds = $state<string[]>([]);
   removedCwds = $state<string[]>([]);

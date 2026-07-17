@@ -86,4 +86,4 @@ export class RunJournalStore {
   }
 }
 
-const runJournalStore = new RunJournalStore();
+export const runJournalStore = new RunJournalStore();

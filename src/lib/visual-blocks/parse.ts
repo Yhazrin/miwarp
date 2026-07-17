@@ -296,4 +296,5 @@ export function parseVisualBlock(kind: VisualBlockKind, source: string): VisualP
 export function isValidVisualBlock(kind: VisualBlockKind, source: string): boolean {
   return parseVisualBlock(kind, source).ok;
 }
-;
+
+export type { VisualBlockSpec };

@@ -19,7 +19,7 @@
 import { t } from "$lib/i18n/index.svelte";
 import { routeNeedsLayoutContentPanel } from "$lib/layout-chrome-context";
 
-type NavItemGroup "core" | "workspace" | "collaboration" | "extensions" | "system";
+export type NavItemGroup = "core" | "workspace" | "collaboration" | "extensions" | "system";
 
 export type NavItem = {
   path: string;
@@ -76,7 +76,7 @@ export function pathIsChatOrSettingsTransition(from: string, to: string): boolea
   return (pathIsChat(from) && pathIsSettings(to)) || (pathIsSettings(from) && pathIsChat(to));
 }
 
-function pathStartsWithHub(pathname: string, prefix: string): boolean {
+export function pathStartsWithHub(pathname: string, prefix: string): boolean {
   return pathname.startsWith(prefix);
 }
 

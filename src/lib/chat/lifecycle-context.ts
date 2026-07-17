@@ -24,12 +24,12 @@ import type { BtwStateData } from "$lib/chat/use-chat-actions";
 
 // ── Component ref types (minimum interface needed by lifecycle handlers) ──
 
-interface XTerminalRef {
+export interface XTerminalRef {
   writeText(s: string): void;
   clear(): void;
 }
 
-interface PromptInputRef {
+export interface PromptInputRef {
   focus(): void;
   triggerSend(): void;
   getInputSnapshot(): import("$lib/types").PromptInputSnapshot | null;
@@ -40,7 +40,7 @@ interface PromptInputRef {
   addPathRefs(refs: { path: string; name: string; isDir: boolean }[]): void;
 }
 
-interface StatusBarRef {
+export interface StatusBarRef {
   openModelDropdown(): void;
 }
 

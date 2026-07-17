@@ -14,7 +14,7 @@ import type {
 import { LS_AUTOMATION_SCRIPTS } from "$lib/utils/storage-keys";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
-interface AutomationState {
+export interface AutomationState {
   scripts: AutomationScript[];
   activeScriptId: string | null;
   isRecording: boolean;
@@ -24,7 +24,7 @@ interface AutomationState {
   error: string | null;
 }
 
-type AutomationAction
+export type AutomationAction =
   | { type: "ADD_SCRIPT"; script: AutomationScript }
   | { type: "UPDATE_SCRIPT"; script: AutomationScript }
   | { type: "DELETE_SCRIPT"; scriptId: string }

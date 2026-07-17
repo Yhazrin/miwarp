@@ -38,9 +38,9 @@ import type { TurnUsage } from "$lib/stores/types";
 export type PaneId = string;
 export type LayoutMode = "single" | "dual" | "triple" | "quad";
 export type PaneLoadState = "idle" | "loading" | "ready" | "error";
-type PaneRuntimeState "active" | "inactive";
+export type PaneRuntimeState = "active" | "inactive";
 
-interface PaneScrollState {
+export interface PaneScrollState {
   /** Max entries to render at once; consumed by `SplitPaneTimelineView`. */
   renderLimit: number;
 }
@@ -349,6 +349,6 @@ export class SplitWorkspaceStore {
 export const splitWorkspaceStore = new SplitWorkspaceStore();
 
 /** Cheap uuid-ish id (good enough for in-memory pane tracking). */
-function makePaneId(): PaneId {
+export function makePaneId(): PaneId {
   return `pane_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }

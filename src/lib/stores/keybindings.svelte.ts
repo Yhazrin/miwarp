@@ -32,7 +32,7 @@ export const RESERVED_KEYS = new Set([
 
 // ── Default App keybindings ──
 
-const APP_DEFAULTS: KeyBinding[] = [
+export const APP_DEFAULTS: KeyBinding[] = [
   {
     command: "app:toggleSidebar",
     label: t("keybind_toggleSidebar"),
@@ -180,7 +180,7 @@ const APP_DEFAULTS: KeyBinding[] = [
 
 // ── Default CLI keybindings (read-only, best-effort) ──
 
-const CLI_DEFAULTS: KeyBinding[] = [
+export const CLI_DEFAULTS: KeyBinding[] = [
   {
     command: "cli:interrupt",
     label: t("keybind_interrupt"),

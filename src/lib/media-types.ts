@@ -1,6 +1,6 @@
 import type { MediaArtifactKind } from "$lib/types";
 
-const IMAGE_EXTENSIONS = new Set([
+export const IMAGE_EXTENSIONS = new Set([
   "png",
   "jpg",
   "jpeg",
@@ -28,7 +28,7 @@ const MEDIA_EXTENSIONS = new Set([
   ...PDF_EXTENSIONS,
 ]);
 
-function getMediaKind(ext: string): MediaArtifactKind {
+export function getMediaKind(ext: string): MediaArtifactKind {
   const e = ext.toLowerCase();
   if (IMAGE_EXTENSIONS.has(e)) return "image";
   if (VIDEO_EXTENSIONS.has(e)) return "video";

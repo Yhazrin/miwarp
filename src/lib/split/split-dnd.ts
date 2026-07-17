@@ -14,21 +14,21 @@
  * only reacts when `SPLIT_DRAG_MIME` is present in the dataTransfer types.
  */
 
-const SPLIT_DRAG_MIME = "application/x-miwarp-split-pane";
-const RUN_DRAG_MIME = "application/x-miwarp-run";
+export const SPLIT_DRAG_MIME = "application/x-miwarp-split-pane";
+export const RUN_DRAG_MIME = "application/x-miwarp-run";
 
 /** Active sidebar session drag (HTML5 path). Pointer drags use session-drag-state instead. */
 let activeSplitDragRunId: string | null = null;
 
-function beginSplitDrag(runId: string): void {
+export function beginSplitDrag(runId: string): void {
   activeSplitDragRunId = runId;
 }
 
-function endSplitDrag(): void {
+export function endSplitDrag(): void {
   activeSplitDragRunId = null;
 }
 
-function getActiveSplitDragRunId(): string | null {
+export function getActiveSplitDragRunId(): string | null {
   return activeSplitDragRunId;
 }
 

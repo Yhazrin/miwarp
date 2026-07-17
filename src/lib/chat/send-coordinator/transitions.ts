@@ -181,7 +181,7 @@ const STALE_GENERATION_FAILURE: SendFailure = {
 };
 
 /** Cancel every queued record whose captured generation is older than the live one. */
-function cancelStaleQueued(ctx: TransitionContext, currentGeneration: number): number {
+export function cancelStaleQueued(ctx: TransitionContext, currentGeneration: number): number {
   if (currentGeneration <= 0) return 0;
   let cancelled = 0;
   for (const [clientId, record] of Array.from(ctx.maps.queued.entries())) {
@@ -195,7 +195,7 @@ function cancelStaleQueued(ctx: TransitionContext, currentGeneration: number): n
 }
 
 /** Cancel every in-flight record whose captured generation is older than the live one. */
-function cancelStaleInFlight(ctx: TransitionContext, currentGeneration: number): number {
+export function cancelStaleInFlight(ctx: TransitionContext, currentGeneration: number): number {
   if (currentGeneration <= 0) return 0;
   let cancelled = 0;
   for (const [clientId, record] of Array.from(ctx.maps.inFlight.entries())) {
@@ -366,4 +366,4 @@ export function snapshotPending(maps: BoundedMapState): {
 }
 
 /** Re-export `RetryableRecord` so consumers can import from one place. */
-export type {InFlightRecord};
+export type { InFlightRecord, RetryableRecord };

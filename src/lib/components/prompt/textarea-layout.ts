@@ -15,7 +15,7 @@ export const MAX_COMPOSER_CONTENT_HEIGHT_PX = 4 * CAPSULE_LINE_HEIGHT_PX;
  * keeps the same right rail so soft-wrap width does not jump on newline.
  * 11.5rem ≈ 184px clears the compact right cluster with a small gap.
  */
-const COMPOSER_TEXTAREA_INSET_X = "pl-3 pr-[11.5rem]";
+export const COMPOSER_TEXTAREA_INSET_X = "pl-3 pr-[11.5rem]";
 
 export interface TextareaLayoutInput {
   contentHeight: number;

@@ -9,11 +9,11 @@ export type TaskStatus =
   | "failed"
   | "archived";
 
-type TaskRunRole "primary" | "worktree" | "verification" | "review" | "followup";
+export type TaskRunRole = "primary" | "worktree" | "verification" | "review" | "followup";
 
-type TaskEventSource "user" | "runtime" | "system";
+export type TaskEventSource = "user" | "runtime" | "system";
 
-type TaskEventKind
+export type TaskEventKind =
   | { type: "created" }
   | { type: "status_transition"; from: TaskStatus; to: TaskStatus }
   | { type: "run_linked"; run_id: string; role: TaskRunRole }
@@ -57,13 +57,13 @@ export type TaskPriority = "low" | "medium" | "high" | "critical";
 
 export type TaskMergeDecisionKind = "pending" | "merge" | "keep_branch" | "discard";
 
-interface TaskRunLink {
+export interface TaskRunLink {
   run_id: string;
   role: TaskRunRole;
   linked_at: string;
 }
 
-interface TaskArtifactLink {
+export interface TaskArtifactLink {
   artifact_id: string;
   kind: string;
   run_id?: string | null;
@@ -71,25 +71,25 @@ interface TaskArtifactLink {
   linked_at: string;
 }
 
-interface TaskCheckpointRef {
+export interface TaskCheckpointRef {
   checkpoint_id: string;
   run_id?: string | null;
   created_at: string;
 }
 
-interface TaskVerificationCommand {
+export interface TaskVerificationCommand {
   command: string;
   cwd?: string | null;
 }
 
-interface TaskVerificationResult {
+export interface TaskVerificationResult {
   command: string;
   status: QualityGateVerdict;
   artifact_id?: string | null;
   completed_at: string;
 }
 
-interface TaskDevServerRef {
+export interface TaskDevServerRef {
   id: string;
   url?: string | null;
   port?: number | null;

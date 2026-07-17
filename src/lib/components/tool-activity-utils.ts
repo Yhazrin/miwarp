@@ -109,7 +109,7 @@ export function categorizeHookStatus(status: string | undefined): StatusCategory
   }
 }
 
-function categorizeTool(name: string): "read" | "search" | "bash" | "write" | "other" {
+export function categorizeTool(name: string): "read" | "search" | "bash" | "write" | "other" {
   if (READ_TOOLS.has(name)) return "read";
   if (SEARCH_TOOLS.has(name)) return "search";
   if (BASH_TOOLS.has(name)) return "bash";
@@ -118,7 +118,7 @@ function categorizeTool(name: string): "read" | "search" | "bash" | "write" | "o
 }
 
 /** Build a tree from TimelineEntries, preserving parent→child hierarchy. */
-function buildToolTree(entries: TimelineEntry[], seen: Set<string>): ToolNode[] {
+export function buildToolTree(entries: TimelineEntry[], seen: Set<string>): ToolNode[] {
   const result: ToolNode[] = [];
   for (const entry of entries) {
     if (entry.kind === "tool" && !seen.has(entry.tool.tool_use_id)) {

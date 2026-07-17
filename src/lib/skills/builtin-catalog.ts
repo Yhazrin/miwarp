@@ -35,7 +35,7 @@ const DEFINITIONS = (manifest.skills as BuiltInManifestEntry[]).map((entry) => (
   content: CONTENT_BY_NAME[entry.name] ?? "",
 }));
 
-const BUILTIN_SKILLS_MANIFEST_VERSION = manifest.version;
+export const BUILTIN_SKILLS_MANIFEST_VERSION = manifest.version;
 
 export function createBuiltInSkills(): Skill[] {
   return DEFINITIONS.map((definition) => ({

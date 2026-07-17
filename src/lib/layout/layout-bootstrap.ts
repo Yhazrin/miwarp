@@ -101,7 +101,7 @@ export function loadSavedProjectCwd(): string {
 }
 
 /** Defensive parser for `LS_EXPANDED_PROJECTS` (string[] only). */
-function loadExpandedProjects(): Set<string> {
+export function loadExpandedProjects(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
     const raw = localStorage.getItem("ocv:expanded-projects");
@@ -176,7 +176,7 @@ export async function applyUserSettings(settings: UserSettings): Promise<Applied
  * Idempotent: returns silently if `platform_credentials` is already
  * populated. Only mutates the persisted settings when migration succeeds.
  */
-async function migrateCredentialsIfNeeded(settings: UserSettings): Promise<void> {
+export async function migrateCredentialsIfNeeded(settings: UserSettings): Promise<void> {
   if (settings.platform_credentials && settings.platform_credentials.length > 0) return;
   if (!settings.anthropic_api_key) return;
 
@@ -270,4 +270,5 @@ export function applySettingsChanged(settings: UserSettings): void {
     /* ignore */
   }
 }
-;
+
+export { USER_SETTINGS_CHANGED_EVENT };

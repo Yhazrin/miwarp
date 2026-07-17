@@ -13,7 +13,7 @@
 // ---------------------------------------------------------------------------
 
 // Note frequencies (Hz)
-const NOTES = {
+export const NOTES = {
   // Octave 3
   C3: 130.81,
   D3: 146.83,
@@ -48,7 +48,7 @@ const NOTES = {
 // Tune Types
 // ---------------------------------------------------------------------------
 
-type TuneType
+export type TuneType =
   | "click" // Short percussive transient
   | "pop" // Brief tonal burst with attack
   | "toggle" // State change indicator
@@ -361,7 +361,7 @@ export const HERO_TUNES: Record<string, BaseTune> = {
 // Extended Sound Tunes (Additional UI sounds)
 // ---------------------------------------------------------------------------
 
-const EXTENDED_TUNES: Record<string, BaseTune> = {
+export const EXTENDED_TUNES: Record<string, BaseTune> = {
   /** Pop - brief attention-getter */
   pop: {
     type: "pop",
@@ -498,7 +498,7 @@ const EXTENDED_TUNES: Record<string, BaseTune> = {
 // All Tunes Combined
 // ---------------------------------------------------------------------------
 
-const ALL_TUNES = {
+export const ALL_TUNES = {
   interaction: INTERACTION_TUNES,
   overlay: OVERLAY_TUNES,
   navigation: NAVIGATION_TUNES,
@@ -507,4 +507,4 @@ const ALL_TUNES = {
   extended: EXTENDED_TUNES,
 } as const;
 
-type TuneCategory keyof typeof ALL_TUNES;
+export type TuneCategory = keyof typeof ALL_TUNES;

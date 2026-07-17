@@ -36,14 +36,14 @@ export function dropOldestQueued(state: BoundedMapState): InFlightRecord | undef
 }
 
 /** Drop the oldest retryable entry if the retryable map is at capacity. */
-function evictOldestRetryableIfFull(state: BoundedMapState, maxRetryable: number): void {
+export function evictOldestRetryableIfFull(state: BoundedMapState, maxRetryable: number): void {
   if (state.retryable.size < maxRetryable) return;
   const oldestKey = state.retryable.keys().next().value as string | undefined;
   if (oldestKey !== undefined) state.retryable.delete(oldestKey);
 }
 
 /** Drop the oldest acknowledged id if the acknowledged map is at capacity. */
-function evictOldestAcknowledgedIfFull(
+export function evictOldestAcknowledgedIfFull(
   state: BoundedMapState,
   maxAcknowledged: number,
 ): void {

@@ -9,7 +9,7 @@ import { yieldToMain } from "$lib/utils/yield";
 /**
  * Renders the insight report as a single-file HTML string.
  */
-function renderInsightHtml(report: InsightReport, context: InsightContext): string {
+export function renderInsightHtml(report: InsightReport, context: InsightContext): string {
   const { session } = context;
 
   const escapedTitle = escapeHtml(report.title);
@@ -571,7 +571,7 @@ export function redactSensitiveData(context: InsightContext): InsightContext {
 /**
  * Builds the prompt for the AI model to generate the insight report content.
  */
-function buildInsightPrompt(context: InsightContext): string {
+export function buildInsightPrompt(context: InsightContext): string {
   const promptContext = buildInsightPromptContext(context);
 
   return `You are generating a structured HTML session insight report for MiWarp.

@@ -10,7 +10,7 @@ import { dbg, dbgWarn } from "$lib/utils/debug";
 
 // ── Trigger detection ──
 
-type TeamTrigger "@team" | "@团队" | "/team" | "/团队";
+export type TeamTrigger = "@team" | "@团队" | "/team" | "/团队";
 
 export interface TeamTriggerResult {
   prompt: string;
@@ -28,7 +28,7 @@ export function detectTeamTrigger(input: string): TeamTriggerResult | null {
 }
 
 /** Detect @team or @团队 prefix (legacy compat). Returns the prompt text, or null. */
-function detectTeamTag(input: string): string | null {
+export function detectTeamTag(input: string): string | null {
   const result = detectTeamTrigger(input);
   if (!result) return null;
   // Only match @-prefixed triggers for legacy compat

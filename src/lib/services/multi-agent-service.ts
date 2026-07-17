@@ -9,7 +9,7 @@ export interface MultiAgentConfig {
   agents: AgentDefinition[];
 }
 
-interface AgentDefinition {
+export interface AgentDefinition {
   id: string;
   name: string;
   prompt: string;

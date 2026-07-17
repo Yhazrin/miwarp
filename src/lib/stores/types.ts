@@ -53,7 +53,7 @@ export const TERMINAL_PHASES: readonly string[] = [
 ];
 
 /** Run statuses that are still actively executing and should block sidebar delete. */
-const DELETE_BLOCKED_RUN_STATUSES: readonly string[] = ["pending", "running"];
+export const DELETE_BLOCKED_RUN_STATUSES: readonly string[] = ["pending", "running"];
 
 /** Whether a run can be deleted from the sidebar right now. */
 export function canDeleteRun(status: string): boolean {
@@ -196,7 +196,7 @@ export function getResumeWarning(
 
 // ── Error classification ──
 
-type ErrorCategory
+export type ErrorCategory =
   | "context_limit"
   | "budget_limit"
   | "auth_issue"

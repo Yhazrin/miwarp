@@ -21,8 +21,8 @@ import {
 } from "$lib/utils/layout-timings";
 import type { TeamStore } from "$lib/stores/team-store.svelte";
 
-type TeamUpdatePayload { team_name: string; change: string };
-type TaskUpdatePayload { team_name: string; task_id: string; change: string };
+export type TeamUpdatePayload = { team_name: string; change: string };
+export type TaskUpdatePayload = { team_name: string; task_id: string; change: string };
 
 export type TeamSubscription = {
   dispose: () => void;

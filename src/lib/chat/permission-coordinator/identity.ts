@@ -18,12 +18,12 @@ import type { PermissionSuggestion } from "$lib/types";
  * in the IPC layer, not here, so the coordinator remains transport
  * agnostic.
  */
-interface DecisionWire {
+export interface DecisionWire {
   behavior: PermissionBehavior;
   updatedPermissions?: PermissionSuggestion[];
 }
 
-function decisionToWire(decision: PermissionDecision): DecisionWire {
+export function decisionToWire(decision: PermissionDecision): DecisionWire {
   switch (decision.kind) {
     case "allow-once":
       return { behavior: "allow" };
@@ -50,7 +50,7 @@ export function isDenyDecision(decision: PermissionDecision): boolean {
 }
 
 /** Whether a decision stops the agent in addition to denying. */
-function isInterruptDecision(decision: PermissionDecision): boolean {
+export function isInterruptDecision(decision: PermissionDecision): boolean {
   return decision.kind === "deny-stop";
 }
 
@@ -58,7 +58,7 @@ function isInterruptDecision(decision: PermissionDecision): boolean {
  * Whether the decision's `updatedPermissions` carry a setMode suggestion.
  * Used to drive `pendingPermissionModeOverride` on the store.
  */
-function hasSetMode(decision: PermissionDecision): PermissionSuggestion | null {
+export function hasSetMode(decision: PermissionDecision): PermissionSuggestion | null {
   if (decision.kind !== "allow-with-rules" && decision.kind !== "allow-set-mode") return null;
   return decision.rules.find((p) => p?.type === "setMode" && !!p.mode) ?? null;
 }

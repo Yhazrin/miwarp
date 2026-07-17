@@ -8,7 +8,7 @@
 import type { Skill } from "$lib/types/skill";
 import { dbg } from "$lib/utils/debug";
 
-interface PreviewStep {
+export interface PreviewStep {
   order: number;
   description: string;
   icon: string;
@@ -28,7 +28,7 @@ export interface SkillPreview {
   prerequisites: string[];
 }
 
-interface ExecutionEstimate {
+export interface ExecutionEstimate {
   duration: string;
   complexity: "simple" | "moderate" | "complex";
   tokensEstimate: string;
@@ -436,14 +436,14 @@ function estimateDuration(steps: PreviewStep[]): string {
 /**
  * Create a simple execution preview
  */
-function createQuickPreview(skill: Skill): string {
+export function createQuickPreview(skill: Skill): string {
   return `/${skill.name} - ${skill.description}`;
 }
 
 /**
  * Check if skill has prerequisites
  */
-function checkPrerequisites(
+export function checkPrerequisites(
   skill: Skill,
   installedSkills: Skill[],
 ): { satisfied: boolean; missing: string[] } {
@@ -466,7 +466,7 @@ function checkPrerequisites(
   };
 }
 
-const skillPreview = {
+export const skillPreview = {
   generate: generateSkillPreview,
   quickPreview: createQuickPreview,
   checkPrerequisites,

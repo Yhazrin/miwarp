@@ -35,7 +35,7 @@ export interface TaskExecutionMonitor {
   metadata?: Record<string, unknown>;
 }
 
-type TaskExecutionStatus
+export type TaskExecutionStatus =
   | "queued"
   | "running"
   | "paused"
@@ -52,16 +52,16 @@ export interface ExecutionLog {
   source?: string;
 }
 
-type LogLevel "info" | "warn" | "error" | "debug";
+export type LogLevel = "info" | "warn" | "error" | "debug";
 
-interface ResourceUsage {
+export interface ResourceUsage {
   cpu: number; // percentage
   memory: number; // MB
   duration: number; // seconds
   tokensUsed?: number;
 }
 
-interface TaskError {
+export interface TaskError {
   code: string;
   message: string;
   stack?: string;
@@ -71,7 +71,7 @@ interface TaskError {
 /**
  * Step execution result
  */
-interface StepResult {
+export interface StepResult {
   stepId: string;
   success: boolean;
   output?: string;
@@ -83,7 +83,7 @@ interface StepResult {
 /**
  * Create a new execution monitor instance
  */
-function createExecutionMonitor(
+export function createExecutionMonitor(
   taskId: string,
   taskName: string,
   totalSteps: number = 1,
@@ -103,7 +103,7 @@ function createExecutionMonitor(
 /**
  * Add a log entry to the monitor
  */
-function addLog(
+export function addLog(
   monitor: TaskExecutionMonitor,
   level: LogLevel,
   message: string,
@@ -120,7 +120,7 @@ function addLog(
 /**
  * Update progress
  */
-function updateProgress(
+export function updateProgress(
   monitor: TaskExecutionMonitor,
   currentStep: number,
   progress: number,
@@ -132,7 +132,7 @@ function updateProgress(
 /**
  * Mark monitor as completed
  */
-function markCompleted(monitor: TaskExecutionMonitor): void {
+export function markCompleted(monitor: TaskExecutionMonitor): void {
   monitor.status = "completed";
   monitor.endTime = new Date().toISOString();
   monitor.progress = 100;
@@ -142,7 +142,7 @@ function markCompleted(monitor: TaskExecutionMonitor): void {
 /**
  * Mark monitor as failed
  */
-function markFailed(monitor: TaskExecutionMonitor, error: TaskError): void {
+export function markFailed(monitor: TaskExecutionMonitor, error: TaskError): void {
   monitor.status = "failed";
   monitor.endTime = new Date().toISOString();
   monitor.error = error;
@@ -152,7 +152,7 @@ function markFailed(monitor: TaskExecutionMonitor, error: TaskError): void {
 /**
  * Calculate execution statistics
  */
-function getExecutionStats(monitor: TaskExecutionMonitor): {
+export function getExecutionStats(monitor: TaskExecutionMonitor): {
   duration: number;
   avgStepTime: number;
   successRate: number;

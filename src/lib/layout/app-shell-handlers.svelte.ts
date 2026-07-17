@@ -15,7 +15,7 @@ import type { EnrichedProjectFolder } from "$lib/utils/sidebar-groups";
 
 // ── Drag handlers ──
 
-function handleSessionDragStart(
+export function handleSessionDragStart(
   setDrag: (runId: string, label: string, x: number, y: number) => void,
   runId: string,
   label: string,
@@ -25,14 +25,14 @@ function handleSessionDragStart(
   import("$lib/utils/session-drag-state").then((m) => m.setSessionDragActive(true));
 }
 
-function handleSessionDragMove(
+export function handleSessionDragMove(
   setPos: (x: number, y: number) => void,
   e: PointerEvent,
 ) {
   setPos(e.clientX, e.clientY);
 }
 
-async function handleSessionDragEnd(
+export async function handleSessionDragEnd(
   clearDrag: () => void,
   e: PointerEvent,
   _rss: RunsSidebarStore,
@@ -90,7 +90,7 @@ export async function executeFolderDrop(
 
 // ── Batch selection helpers ──
 
-function toggleSelectConversation(
+export function toggleSelectConversation(
   groupKey: string,
   e: MouseEvent,
   currentSelected: Set<string>,

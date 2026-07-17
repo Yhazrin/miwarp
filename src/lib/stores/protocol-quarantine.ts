@@ -2,7 +2,7 @@ import { isKnownBusEventType } from "$lib/bus/known-event-types";
 import { dbgWarn } from "$lib/utils/debug";
 
 /** Align with backend `PROTOCOL_DESYNC_THRESHOLD` (session_actor/constants.rs). */
-const PROTOCOL_ERROR_THRESHOLD = 5;
+export const PROTOCOL_ERROR_THRESHOLD = 5;
 
 /** Consecutive invariant errors before requesting a soft timeline recover. */
 export const PROTOCOL_RECOVER_THRESHOLD = PROTOCOL_ERROR_THRESHOLD;
@@ -14,13 +14,13 @@ export const PROTOCOL_FULL_RELOAD_THRESHOLD = PROTOCOL_ERROR_THRESHOLD + 3;
 export const PROTOCOL_TERMINATE_THRESHOLD = PROTOCOL_ERROR_THRESHOLD * 2;
 
 /** Backend-emitted recovery signals — always pass through to UI/store. */
-const PROTOCOL_RECOVERY_EVENT_TYPES = new Set([
+export const PROTOCOL_RECOVERY_EVENT_TYPES = new Set([
   "session_recovering",
   "session_recovered",
   "protocol_desync",
 ]);
 
-type ProtocolErrorCategory "ignorable" | "invariant" | "apply_failure";
+export type ProtocolErrorCategory = "ignorable" | "invariant" | "apply_failure";
 
 export type ProtocolErrorKind =
   | "malformed_json"
@@ -33,7 +33,7 @@ export type ProtocolErrorKind =
   | "consecutive_threshold"
   | "backend_desync";
 
-type ProtocolQuarantinePhase "healthy" | "degraded" | "quarantined" | "terminated";
+export type ProtocolQuarantinePhase = "healthy" | "degraded" | "quarantined" | "terminated";
 
 export type ProtocolQuarantineAction = "pass" | "drop" | "recover" | "full_reload" | "terminate";
 
@@ -66,18 +66,18 @@ export interface ProtocolInspectResult {
   state: RunProtocolQuarantineState;
 }
 
-interface ParsedBusEnvelope {
+export interface ParsedBusEnvelope {
   type: string;
   runId: string;
   seq: number;
 }
 
-interface ParseBusEnvelopeResult {
+export interface ParseBusEnvelopeResult {
   ok: true;
   envelope: ParsedBusEnvelope;
 }
 
-interface ParseBusEnvelopeError {
+export interface ParseBusEnvelopeError {
   ok: false;
   kind: ProtocolErrorKind;
   detail: string;
@@ -115,7 +115,7 @@ export function parseBusEnvelope(payload: unknown): ParseBusEnvelopeOutcome {
   return { ok: true, envelope: { type, runId, seq } };
 }
 
-function sanitizeProtocolEvidence(
+export function sanitizeProtocolEvidence(
   kind: ProtocolErrorKind,
   eventType: string,
   meta: Record<string, string | number> = {},

@@ -34,7 +34,7 @@ export interface RuntimeDetection {
 
 export type RuntimeDetectionMap = Partial<Record<SupportedRuntimeId, RuntimeDetection>>;
 
-type RuntimeStatus "available" | "unavailable" | "desktop" | "coming-soon";
+export type RuntimeStatus = "available" | "unavailable" | "desktop" | "coming-soon";
 
 export interface ResolvedRuntime extends RuntimeDescriptor {
   available: boolean;

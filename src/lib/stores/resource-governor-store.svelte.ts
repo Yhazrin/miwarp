@@ -130,5 +130,6 @@ export class ResourceGovernorStore {
   }
 }
 
-const resourceGovernorStore = new ResourceGovernorStore();
-;
+export const resourceGovernorStore = new ResourceGovernorStore();
+
+export { isoSecondsAgo };

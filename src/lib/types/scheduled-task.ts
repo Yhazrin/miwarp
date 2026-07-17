@@ -6,12 +6,12 @@ import { t } from "$lib/i18n/index.svelte";
 
 export type Agent = "claude" | "codex";
 export type ScheduleType = "cron" | "one-time" | "interval";
-type RunStatus "queued" | "running" | "completed" | "failed" | "cancelled";
+export type RunStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
 
 // Enhanced retry configuration
-type RetryBackoff "linear" | "exponential" | "fixed";
+export type RetryBackoff = "linear" | "exponential" | "fixed";
 
-interface RetryConfig {
+export interface RetryConfig {
   maxRetries: number;
   backoff: RetryBackoff;
   initialDelayMs?: number; // Default: 1000
@@ -19,13 +19,13 @@ interface RetryConfig {
 }
 
 // Task dependency configuration
-interface TaskDependency {
+export interface TaskDependency {
   taskId: string;
   type: "complete" | "failed" | "any";
 }
 
 // Event trigger configuration
-interface TaskEventTrigger {
+export interface TaskEventTrigger {
   type: "file_change" | "task_complete" | "schedule";
   pattern?: string; // File pattern for file_change
   sourceTaskId?: string; // For task_complete
@@ -81,7 +81,7 @@ export interface ScheduledTask {
 }
 
 // Execution statistics for monitoring
-interface TaskExecutionStats {
+export interface TaskExecutionStats {
   taskId: string;
   totalRuns: number;
   successfulRuns: number;
@@ -149,13 +149,13 @@ export interface ScheduledTaskPatch {
   notifications?: ScheduledTask["notifications"] | null;
 }
 
-interface CronPreset {
+export interface CronPreset {
   label: string;
   expression: string;
   description: string;
 }
 
-const CRON_PRESETS: CronPreset[] = [
+export const CRON_PRESETS: CronPreset[] = [
   { label: "Every minute", expression: "* * * * *", description: "Runs every minute" },
   { label: "Every 5 minutes", expression: "*/5 * * * *", description: "Runs every 5 minutes" },
   { label: "Every 15 minutes", expression: "*/15 * * * *", description: "Runs every 15 minutes" },
@@ -192,7 +192,7 @@ export const INTERVAL_PRESETS: { label: string; minutes: number }[] = [
 /**
  * Calculate delay for retry with backoff.
  */
-function calculateRetryDelay(attempt: number, config: RetryConfig): number {
+export function calculateRetryDelay(attempt: number, config: RetryConfig): number {
   const initialDelay = config.initialDelayMs || 1000;
   const maxDelay = config.maxDelayMs || 60000;
 
@@ -210,7 +210,7 @@ function calculateRetryDelay(attempt: number, config: RetryConfig): number {
 /**
  * Calculate execution statistics from runs.
  */
-function calculateTaskStats(runs: ScheduledTaskRun[]): TaskExecutionStats | null {
+export function calculateTaskStats(runs: ScheduledTaskRun[]): TaskExecutionStats | null {
   if (runs.length === 0) return null;
 
   const taskId = runs[0].taskId;
@@ -277,7 +277,7 @@ export const DEFAULT_TASK_TEMPLATES: {
 /**
  * Create default retry config.
  */
-const DEFAULT_RETRY_CONFIG: RetryConfig = {
+export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxRetries: 3,
   backoff: "exponential",
   initialDelayMs: 1000,

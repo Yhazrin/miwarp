@@ -16,7 +16,7 @@ export function getPermissionCoordinator(): PermissionCoordinator {
   return singleton;
 }
 
-function resetPermissionCoordinatorForTest(): void {
+export function resetPermissionCoordinatorForTest(): void {
   singleton?.dispose();
   singleton = null;
 }

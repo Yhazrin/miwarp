@@ -106,7 +106,7 @@ export function selectBrowser(deviceId: string): Promise<boolean> {
   );
 }
 
-function switchToBrowser(): Promise<boolean> {
+export function switchToBrowser(): Promise<boolean> {
   return withErrorLog("switchToBrowser", false, () =>
     mcp__Claude_in_Chrome__switch_browser().then(() => true),
   );
@@ -194,13 +194,13 @@ export function clickElement(coordinate: [number, number], tabId: number): Promi
   );
 }
 
-function doubleClick(coordinate: [number, number], tabId: number): Promise<boolean> {
+export function doubleClick(coordinate: [number, number], tabId: number): Promise<boolean> {
   return withErrorLog("doubleClick", false, () =>
     mcp__Claude_in_Chrome__computer({ action: "double_click", coordinate, tabId }).then(() => true),
   );
 }
 
-function rightClick(coordinate: [number, number], tabId: number): Promise<boolean> {
+export function rightClick(coordinate: [number, number], tabId: number): Promise<boolean> {
   return withErrorLog("rightClick", false, () =>
     mcp__Claude_in_Chrome__computer({ action: "right_click", coordinate, tabId }).then(() => true),
   );
@@ -212,13 +212,13 @@ export function typeText(text: string, tabId: number): Promise<boolean> {
   );
 }
 
-function pressKey(key: string, tabId: number): Promise<boolean> {
+export function pressKey(key: string, tabId: number): Promise<boolean> {
   return withErrorLog("pressKey", false, () =>
     mcp__Claude_in_Chrome__computer({ action: "key", text: key, tabId }).then(() => true),
   );
 }
 
-function scroll(
+export function scroll(
   direction: "up" | "down" | "left" | "right",
   coordinate: [number, number],
   scrollAmount: number = 3,
@@ -257,7 +257,7 @@ export function getPageContent(tabId: number): Promise<PageContent> {
   });
 }
 
-function readAccessibilityTree(tabId: number, depth: number = 15): Promise<string> {
+export function readAccessibilityTree(tabId: number, depth: number = 15): Promise<string> {
   return withErrorLog("readAccessibilityTree", "", async () => {
     const page = await mcp__Claude_in_Chrome__read_page({ depth, tabId });
     return JSON.stringify(page, null, 2);
@@ -286,7 +286,7 @@ export function takeScreenshot(
   });
 }
 
-function zoomRegion(
+export function zoomRegion(
   region: [number, number, number, number],
   tabId: number,
 ): Promise<ScreenshotResult | null> {
@@ -346,7 +346,7 @@ export function getConsoleMessages(
 
 // ── Web Fetch (Alternative to MCP WebFetch) ──
 
-function fetchUrl(url: string): Promise<{
+export function fetchUrl(url: string): Promise<{
   content: string;
   statusCode: number;
   headers: Record<string, string>;
@@ -364,7 +364,7 @@ function fetchUrl(url: string): Promise<{
 
 // ── Drag & Drop ──
 
-function dragDrop(
+export function dragDrop(
   start: [number, number],
   end: [number, number],
   tabId: number,
@@ -381,7 +381,7 @@ function dragDrop(
 
 // ── Hover ──
 
-function hover(coordinate: [number, number], tabId: number): Promise<boolean> {
+export function hover(coordinate: [number, number], tabId: number): Promise<boolean> {
   return withErrorLog("hover", false, () =>
     mcp__Claude_in_Chrome__computer({ action: "hover", coordinate, tabId }).then(() => true),
   );
@@ -389,7 +389,7 @@ function hover(coordinate: [number, number], tabId: number): Promise<boolean> {
 
 // ── Window Management ──
 
-function resizeWindow(width: number, height: number, tabId?: number): Promise<boolean> {
+export function resizeWindow(width: number, height: number, tabId?: number): Promise<boolean> {
   return withErrorLog("resizeWindow", false, async () => {
     const context = await mcp__Claude_in_Chrome__tabs_context_mcp({});
     const targetTabId = tabId ?? context.tabs[0]?.id ?? 0;

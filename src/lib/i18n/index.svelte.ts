@@ -16,7 +16,7 @@ import { dbg, dbgWarn } from "$lib/utils/debug";
 
 // ── Re-exports from registry ────────────────────────────────────
 export { LOCALE_REGISTRY, SUPPORTED_LOCALES, BASE_LOCALE, isLocale, getEntry };
-;
+export type { Locale };
 
 // ── Backward-compat aliases ─────────────────────────────────────
 export const baseLocale = BASE_LOCALE;

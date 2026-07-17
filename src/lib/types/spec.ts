@@ -24,7 +24,7 @@ export interface SpecPlanStep {
   linked_task_id?: string | null;
 }
 
-interface SpecClarification {
+export interface SpecClarification {
   id: string;
   question: string;
   answer?: string | null;

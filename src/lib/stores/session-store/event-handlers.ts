@@ -126,7 +126,7 @@ function getSeenTool(ctx: ReduceCtx | null, store: ReduceStore): Set<string> {
  * Handle message/streaming events: message_delta, thinking_delta, tool_input_delta,
  * message_complete. Returns true if the event was handled.
  */
-function reduceMessage(
+export function reduceMessage(
   ev: BusEvent,
   ctx: ReduceCtx | null,
   store: ReduceStore,
@@ -297,7 +297,7 @@ function reduceMessage(
 /**
  * Handle tool lifecycle events: tool_start, tool_end. Returns true if handled.
  */
-function reduceTool(
+export function reduceTool(
   ev: BusEvent,
   ctx: ReduceCtx | null,
   store: ReduceStore,
@@ -480,7 +480,7 @@ function reduceTool(
  * Handle events not covered by message/tool reducers or the registry.
  * This is the "default" branch of the original _reduce switch.
  */
-function reduceDefault(
+export function reduceDefault(
   ev: BusEvent,
   ctx: ReduceCtx | null,
   store: ReduceStore,

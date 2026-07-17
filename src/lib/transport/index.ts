@@ -12,9 +12,16 @@ import { dbg } from "$lib/utils/debug";
 import { TauriTransport } from "./tauri";
 import { WsTransport } from "./websocket";
 import { getInvokeTimeoutMs, type Transport } from "./contract";
-;
+
+export { getInvokeTimeoutMs };
 export type { Transport };
-export type {TauriWebview}from "./contract";;
+export type {
+  TauriWebview,
+  TauriWebviewModule,
+  TauriDpiModule,
+  DesktopWindowLike,
+  DesktopWebviewWindowLike,
+} from "./contract";
 
 let _instance: Transport | null = null;
 
@@ -39,20 +46,37 @@ export function getFileAssetUrl(path: string): string {
 }
 
 /** Reset the singleton (for testing). Disposes the current instance first. */
-function _resetTransport(): void {
+export function _resetTransport(): void {
   if (_instance) {
     _instance.dispose?.();
     _instance = null;
   }
 }
-;
-;
-;
-;
-;
-;
-;
-;
-;
-export type {TimeoutApi}from "./timer-api";;
+
+export type { WsTransportOptions } from "./websocket";
+export {
+  ConnectionState,
+  ConnectionStateMachine,
+  TransportError,
+  IpcTimeoutError,
+  ConnectionTimeoutError,
+  ConnectionFailedError,
+  ConnectionClosedError,
+  AuthFailureError,
+  DisposedError,
+  NotConnectedError,
+} from "./connection-state";
+export type { ConnectionStateListener, ConnectionStateValue } from "./connection-state";
+export { RequestRegistry, RequestTimeoutError } from "./request-registry";
+export type { RpcError, PendingEntry } from "./request-registry";
+export { RunSubscriptions } from "./run-subscriptions";
+export { ChunkAssembler } from "./chunk-assembler";
+export type { ChunkAssemblerOptions } from "./chunk-assembler";
+export {
+  CircuitBreaker,
+  CircuitOpenError,
+  CircuitState,
+  createTransportCircuitBreaker,
+} from "./circuit-breaker";
+export type { TimerApi, TimeoutApi } from "./timer-api";
 export { systemTimers } from "./timer-api";

@@ -17,7 +17,7 @@ export const MIWARP_STATUSBAR_MENU_CLASS =
 export const MIWARP_SELECT_ITEM_CLASS =
   "flex w-full cursor-default select-none items-center gap-2 rounded-xl px-3 py-2 text-xs outline-hidden transition-colors data-highlighted:bg-accent/20 data-[state=checked]:bg-accent/20 data-[state=checked]:font-medium";
 
-const MIWARP_SELECT_ITEM_STATUSBAR_CLASS =
+export const MIWARP_SELECT_ITEM_STATUSBAR_CLASS =
   "flex w-full cursor-default select-none items-start gap-2 rounded-[10px] px-2 py-2 text-left text-xs outline-hidden transition-colors data-highlighted:bg-muted/45 data-[state=checked]:bg-primary/12";
 
 /** Compact menus (auth badge, settings pickers). */
@@ -25,7 +25,7 @@ export const MIWARP_MENU_PANEL_CLASS =
   "z-[9999] max-h-80 w-72 overflow-y-auto rounded-md border border-border/35 bg-background/95 p-0 outline-hidden animate-fade-in backdrop-blur-xl";
 
 /** Anchored detail panels (context %, tool hints). */
-const MIWARP_DETAIL_POPOVER_CLASS =
+export const MIWARP_DETAIL_POPOVER_CLASS =
   "z-50 w-64 rounded-xl border border-border/60 bg-background/95 p-3 outline-hidden backdrop-blur-sm animate-fade-in";
 
 export const MIWARP_DIALOG_CONTENT_LG_CLASS =

@@ -14,7 +14,7 @@ export const DEFAULT_MAX_RETRYABLE = 16;
  * frontend only has to remember this for breadcrumb purposes; backend
  * remains the authority.
  */
-const NEVER_ALLOW_TOOLS_FRONTEND: ReadonlyArray<string> = ["ExitPlanMode", "EnterPlanMode"];
+export const NEVER_ALLOW_TOOLS_FRONTEND: ReadonlyArray<string> = ["ExitPlanMode", "EnterPlanMode"];
 
 /**
  * Compute the effective timeout (ms) honoring caller override.

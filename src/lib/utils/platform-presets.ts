@@ -315,7 +315,7 @@ export function compressModelsFromTiers(
 }
 
 /** Check if a platform_id represents a user-created custom endpoint. */
-function isCustomPlatform(platformId: string): boolean {
+export function isCustomPlatform(platformId: string): boolean {
   return platformId.startsWith("custom-");
 }
 

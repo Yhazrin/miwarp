@@ -1,4 +1,4 @@
-type RunStage
+export type RunStage =
   | "starting"
   | "understanding"
   | "planning"
@@ -9,17 +9,17 @@ type RunStage
   | "failed"
   | "stopped";
 
-type RunActionStatus "started" | "completed" | "failed" | "uncertain";
+export type RunActionStatus = "started" | "completed" | "failed" | "uncertain";
 
-type RunIdempotencyClass "read_only" | "idempotent_write" | "non_idempotent";
+export type RunIdempotencyClass = "read_only" | "idempotent_write" | "non_idempotent";
 
-type RecoveryAssessmentKind
+export type RecoveryAssessmentKind =
   | "no_action"
   | "safe_retry"
   | "manual_confirmation"
   | "impossible_resume";
 
-interface RunActionRecord {
+export interface RunActionRecord {
   action_id: string;
   tool_name: string;
   tool_use_id: string;
@@ -31,13 +31,13 @@ interface RunActionRecord {
   error?: string | null;
 }
 
-interface AcceptedUserMessage {
+export interface AcceptedUserMessage {
   client_message_id: string;
   accepted_at: string;
   text_preview?: string | null;
 }
 
-interface RecoveryCursor {
+export interface RecoveryCursor {
   cursor_seq: number;
   last_bus_seq: number;
   last_checkpoint_id?: string | null;
@@ -52,7 +52,7 @@ export interface RunCheckpoint {
   created_at: string;
 }
 
-interface PendingApproval {
+export interface PendingApproval {
   request_id: string;
   tool_name: string;
   tool_use_id: string;
@@ -60,7 +60,7 @@ interface PendingApproval {
   raised_at: string;
 }
 
-interface RecoveryAssessment {
+export interface RecoveryAssessment {
   kind: RecoveryAssessmentKind;
   reason: string;
   assessed_at: string;
@@ -86,7 +86,7 @@ export interface RunJournalSnapshot {
   updated_at: string;
 }
 
-type RunJournalEventKind
+export type RunJournalEventKind =
   | { type: "initialized"; objective: string; stage: RunStage }
   | {
       type: "user_message_accepted";

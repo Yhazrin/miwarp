@@ -1,0 +1,87 @@
+<script lang="ts">
+  import Modal from "./Modal.svelte";
+  import * as api from "$lib/api";
+  import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
+  import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
+  import Icon from "$lib/components/Icon.svelte";
+
+  let {
+    open = $bindable(false),
+    title = "Git Diff",
+  }: {
+    open: boolean;
+    title?: string;
+  } = $props();
+
+  let tab = $state<"unstaged" | "staged">("unstaged");
+  let diff = $state("");
+  let loading = $state(false);
+
+  async function loadDiff(staged: boolean) {
+    const cwd = typeof window !== "undefined" ? localStorage.getItem(LS_PROJECT_CWD) || "/" : "/";
+    loading = true;
+    try {
+      diff = await api.getGitDiff(cwd, staged);
+    } catch (e) {
+      diff = String(e);
+    } finally {
+      loading = false;
+    }
+  }
+
+  // Load diff when opened or tab changes
+  $effect(() => {
+    if (open) {
+      loadDiff(tab === "staged");
+    }
+  });
+</script>
+
+<Modal bind:open {title}>
+  <div class="space-y-3">
+    <div class="flex gap-1 border-b">
+      <button
+        type="button"
+        class="px-3 py-1.5 text-sm transition-colors {tab === 'unstaged'
+          ? 'border-b-2 border-primary font-medium'
+          : 'text-muted-foreground hover:text-foreground'}"
+        onclick={() => (tab = "unstaged")}
+      >
+        {t("diff_unstaged")}
+      </button>
+      <button
+        type="button"
+        class="px-3 py-1.5 text-sm transition-colors {tab === 'staged'
+          ? 'border-b-2 border-primary font-medium'
+          : 'text-muted-foreground hover:text-foreground'}"
+        onclick={() => (tab = "staged")}
+      >
+        {t("diff_staged")}
+      </button>
+    </div>
+
+    {#if loading}
+      <div class="flex items-center justify-center py-8">
+        <Spinner size="md" />
+      </div>
+    {:else if diff.trim()}
+      <pre
+        class="max-h-[60vh] overflow-auto rounded-lg bg-muted/50 p-4 text-xs font-mono leading-relaxed">{#each diff.split("\n") as line}{#if line.startsWith("+") && !line.startsWith("+++")}<span
+              class="text-miwarp-status-success">{line}</span
+            >
+          {:else if line.startsWith("-") && !line.startsWith("---")}<span
+              class="text-miwarp-status-error">{line}</span
+            >
+          {:else if line.startsWith("@@")}<span class="text-miwarp-status-info">{line}</span>
+          {:else if line.startsWith("diff ")}<span class="font-bold">{line}</span>
+          {:else}{line}
+          {/if}{/each}</pre>
+    {:else}
+      <div class="flex flex-col items-center gap-2 py-8 text-center">
+        <Icon name="check" size="lg" class="text-muted-foreground/40" />
+        <p class="text-sm text-muted-foreground">{t("diff_noChanges")}</p>
+      </div>
+    {/if}
+  </div>
+</Modal>

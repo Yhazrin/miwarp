@@ -38,7 +38,7 @@ import type { DirEntry } from "$lib/types";
  * `loaded` remains for backward compatibility with downstream consumers but
  * is now derived from `loadState === "ready"`.
  */
-type NodeLoadState "idle" | "loading" | "ready" | "error";
+export type NodeLoadState = "idle" | "loading" | "ready" | "error";
 
 export interface TreeNode {
   name: string;

@@ -2,7 +2,7 @@ import type { ConversationGroup } from "$lib/utils/sidebar-groups";
 import type { TaskRun } from "$lib/types";
 
 /** Phase 1 extension point: only `local` instances are emitted today. */
-type ExecutionTargetKind "local" | "remote";
+export type ExecutionTargetKind = "local" | "remote";
 
 export interface ExecutionTargetLocal {
   kind: "local";
@@ -10,14 +10,14 @@ export interface ExecutionTargetLocal {
 }
 
 /** Reserved for remote compute registration — not instantiated in Phase 1. */
-interface ExecutionTargetRemote {
+export interface ExecutionTargetRemote {
   kind: "remote";
   cwd: string;
   hostName?: string;
   remoteCwd?: string;
 }
 
-type ExecutionTarget ExecutionTargetLocal | ExecutionTargetRemote;
+export type ExecutionTarget = ExecutionTargetLocal | ExecutionTargetRemote;
 
 export interface WorkspaceListEntry {
   cwd: string;

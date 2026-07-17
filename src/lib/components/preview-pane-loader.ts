@@ -18,7 +18,7 @@
  */
 import { classifyPath, type PreviewKind } from "$lib/utils/preview-ext";
 
-type PaneLoadState
+export type PaneLoadState =
   | "idle"
   | "loading"
   | "ready"
@@ -106,6 +106,6 @@ export function shouldShowHighlightedCode(input: CodeEditorLoadInput): boolean {
  * Resolves the runtime kind for a path. Convenience wrapper for callers that
  * only have the path string (rather than the full input struct).
  */
-function kindOf(path: string): PreviewKind {
+export function kindOf(path: string): PreviewKind {
   return classifyPath(path);
 }
