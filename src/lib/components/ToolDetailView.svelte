@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg } from "$lib/utils/debug";
-  import { ansiToHtml, hasAnsiCodes, escapeHtml, stripAnsi } from "$lib/utils/ansi";
+  import { ansiToHtml, hasAnsiCodes, stripAnsi } from "$lib/utils/ansi";
   import { colorizeCommand } from "$lib/utils/shell-colorize";
   import type { BusToolItem } from "$lib/types";
   import {
@@ -14,29 +14,26 @@
     copyToClipboard,
   } from "$lib/utils/tool-rendering";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
-  import LinkCard from "$lib/components/LinkCard.svelte";
   import TeamToolDetail from "$lib/components/TeamToolDetail.svelte";
-  import { hljs } from "$lib/utils/hljs-init";
-
-  // Lazy-load the diff library (30KB) — cached at module level across instances
-  let _diffFn: typeof import("diff").structuredPatch | null = null;
-  const _diffPromise = import("diff").then((m) => {
-    _diffFn = m.structuredPatch;
-    return m.structuredPatch;
-  });
-  function diffLoaded(): boolean {
-    return _diffFn !== null;
-  }
-  function getDiffFn() {
-    return _diffFn!;
-  }
-
-  onMount(() => {
-    // Ensure diff module is loaded for this component instance
-    if (!_diffFn) {
-      _diffPromise.then(() => {});
-    }
-  });
+  import {
+    highlightBlock,
+    renderCodeWithLineNumbers,
+    countLines,
+    extractBashResult,
+    extractEditResult,
+    extractWriteResult,
+    extractGlobResult,
+    extractGrepResult,
+    extractWebFetchResult,
+    extractWebSearchResult,
+    extractTaskResult,
+    extractTodoResult,
+    extractSkillResult,
+    extractExitPlanResult,
+    extractNotebookResult,
+  } from "./tool-detail-utils";
+  import ToolDetailDiff from "./ToolDetailDiff.svelte";
+  import ToolDetailSearch from "./ToolDetailSearch.svelte";
 
   const TEAM_TOOLS = new Set([
     "TeamCreate",
@@ -64,148 +61,6 @@
     expertPayload?: boolean;
   } = $props();
 
-  // ── Helpers ──
-
-  /** Highlight entire code block — safe, never throws. */
-  function highlightBlock(code: string, lang: string): string {
-    if (!lang || !hljs.getLanguage(lang)) return escapeHtml(code);
-    try {
-      return hljs.highlight(code, { language: lang }).value;
-    } catch {
-      return escapeHtml(code);
-    }
-  }
-
-  /** Render code with line numbers. Highlights the whole block first for correct
-   *  multi-line syntax (block comments, strings, etc.), then splits by line. */
-  function renderCodeWithLineNumbers(code: string, lang: string, startLine = 1): string {
-    const lines = code.split("\n");
-    const skipHighlight = lines.length > 500 || code.length > 100_000;
-    const highlighted = skipHighlight ? escapeHtml(code) : highlightBlock(code, lang);
-    return highlighted
-      .split("\n")
-      .map((line, i) => {
-        const num = `<span class="tool-line-num">${startLine + i}</span>`;
-        return `${num}${line}`;
-      })
-      .join("\n");
-  }
-
-  /** Render a diff hunk as a <table> with line numbers, +/- markers, and syntax
-   *  highlighting. Table layout ensures perfect column alignment and full-width
-   *  row backgrounds that work with horizontal scrolling. */
-  function renderDiffHunk(hunk: PatchHunk, language: string): string {
-    // Strip diff prefixes to get clean code for highlighting
-    const cleanLines = hunk.lines.map((line) => {
-      if (line.startsWith("+") || line.startsWith("-")) return line.slice(1);
-      if (line.startsWith(" ")) return line.slice(1);
-      return line;
-    });
-
-    // Highlight as single block for correct multi-line syntax (comments, strings, etc.)
-    const highlighted = highlightBlock(cleanLines.join("\n"), language);
-    const hlLines = highlighted.split("\n");
-
-    // Build table rows
-    let oldLine = hunk.oldStart;
-    let newLine = hunk.newStart;
-
-    const rows = hunk.lines
-      .map((rawLine, i) => {
-        const content = hlLines[i] ?? escapeHtml(cleanLines[i]);
-
-        if (rawLine.startsWith("-")) {
-          const row =
-            `<tr class="diff-row-removed">` +
-            `<td class="diff-gutter">${oldLine}</td>` +
-            `<td class="diff-gutter"></td>` +
-            `<td class="diff-sign diff-sign-del">-</td>` +
-            `<td class="diff-code">${content}</td></tr>`;
-          oldLine++;
-          return row;
-        } else if (rawLine.startsWith("+")) {
-          const row =
-            `<tr class="diff-row-added">` +
-            `<td class="diff-gutter"></td>` +
-            `<td class="diff-gutter">${newLine}</td>` +
-            `<td class="diff-sign diff-sign-add">+</td>` +
-            `<td class="diff-code">${content}</td></tr>`;
-          newLine++;
-          return row;
-        } else {
-          const row =
-            `<tr class="diff-row-context">` +
-            `<td class="diff-gutter">${oldLine}</td>` +
-            `<td class="diff-gutter">${newLine}</td>` +
-            `<td class="diff-sign"> </td>` +
-            `<td class="diff-code">${content}</td></tr>`;
-          oldLine++;
-          newLine++;
-          return row;
-        }
-      })
-      .join("");
-
-    return `<table class="diff-table">${rows}</table>`;
-  }
-
-  /** Adjust hunk line numbers when they're 1-based but we know the real file position.
-   *  Uses originalFile + oldString to find the actual starting line. */
-  function adjustHunkLineNumbers(
-    hunks: PatchHunk[],
-    oldString: string | undefined,
-    originalFile: string | undefined,
-  ): PatchHunk[] {
-    if (!originalFile || !oldString || hunks.length === 0) return hunks;
-    const idx = originalFile.indexOf(oldString);
-    if (idx === -1) return hunks;
-    const realStartLine = originalFile.substring(0, idx).split("\n").length;
-    // If already correct, return as-is
-    if (hunks[0].oldStart === realStartLine) return hunks;
-    const offset = realStartLine - hunks[0].oldStart;
-    if (offset === 0) return hunks;
-    return hunks.map((h) => ({
-      ...h,
-      oldStart: h.oldStart + offset,
-      newStart: h.newStart + offset,
-    }));
-  }
-
-  /** Compute a unified diff from old_string + new_string, using the original file
-   *  content (if available) to determine real line numbers. Returns PatchHunk[].
-   *  Returns empty array if diff library not yet loaded. */
-  function computeFallbackPatch(
-    oldStr: string,
-    newStr: string,
-    originalFile: string | undefined = undefined,
-  ): PatchHunk[] {
-    if (!diffLoaded()) return [];
-
-    // Find real line offset by locating old_string in the original file
-    let lineOffset = 0;
-    if (originalFile) {
-      const idx = originalFile.indexOf(oldStr);
-      if (idx !== -1) {
-        lineOffset = originalFile.substring(0, idx).split("\n").length - 1;
-      }
-    }
-
-    const patch = getDiffFn()("", "", oldStr, newStr, "", "", { context: 3 });
-    // Adjust line numbers to real file positions
-    if (lineOffset > 0) {
-      for (const hunk of patch.hunks) {
-        hunk.oldStart += lineOffset;
-        hunk.newStart += lineOffset;
-      }
-    }
-    return patch.hunks as PatchHunk[];
-  }
-
-  /** Check if content area exceeds collapsed height and needs expand toggle. */
-  function countLines(text: string): number {
-    return text.split("\n").length;
-  }
-
   // ── Derived data ──
 
   let outputText = $derived(extractOutputText(tool.output));
@@ -214,16 +69,7 @@
   let lang = $derived(getLanguageFromPath(filePath));
   let isPlanFile = $derived(isPlanFilePath(filePath));
 
-  // Structured file result from tool_use_result (Read tool)
-  interface FileResultMeta {
-    filePath: string;
-    content: string;
-    numLines: number;
-    startLine: number;
-    totalLines: number;
-  }
-  let fileResult = $derived(tool.tool_use_result?.file as FileResultMeta | undefined);
-  // Prefer clean content from tool_use_result, fallback to extractOutputText
+  let fileResult = $derived(tool.tool_use_result?.file as import("./tool-detail-utils").FileResultMeta | undefined);
   let readContent = $derived(fileResult?.content ?? outputText);
   let readStartLine = $derived(fileResult?.startLine ?? 1);
   let readLineInfo = $derived(
@@ -232,35 +78,29 @@
       : "",
   );
 
-  // Structured Bash result from tool_use_result
-  interface BashResultMeta {
-    stdout: string;
-    stderr: string;
-    interrupted: boolean;
-    isImage: boolean;
-    noOutputExpected: boolean;
-  }
-  let bashResult = $derived(
-    tool.tool_use_result != null &&
-      typeof tool.tool_use_result === "object" &&
-      "stdout" in tool.tool_use_result
-      ? (tool.tool_use_result as unknown as BashResultMeta)
-      : undefined,
-  );
+  let bashResult = $derived(extractBashResult(tool));
+  let editResult = $derived(extractEditResult(tool));
+  let editHasPatches = $derived(editResult?.structuredPatch != null && editResult.structuredPatch.length > 0);
+  let writeResult = $derived(extractWriteResult(tool));
+  let writeHasPatches = $derived(writeResult?.structuredPatch != null && writeResult.structuredPatch.length > 0);
+  let globResult = $derived(extractGlobResult(tool));
+  let grepResult = $derived(extractGrepResult(tool));
+  let webFetchResult = $derived(extractWebFetchResult(tool));
+  let webSearchResult = $derived(extractWebSearchResult(tool));
+  let taskResult = $derived(extractTaskResult(tool));
+  let todoResult = $derived(extractTodoResult(tool));
+  let skillResult = $derived(extractSkillResult(tool));
+  let exitPlanResult = $derived(extractExitPlanResult(tool));
+  let notebookResult = $derived(extractNotebookResult(tool));
 
-  // ── Bash terminal rendering: colorize + ANSI → HTML + stripped plaintext ──
+  // ── Bash terminal rendering ──
 
-  // Command line syntax-colored HTML
   let commandHtml = $derived(
     tool.input?.command ? colorizeCommand(tool.input.command as string) : "",
   );
-
-  // Stripped plain text — computed once, reused by terminalPlainText
   let stdoutStripped = $derived(bashResult?.stdout ? stripAnsi(bashResult.stdout) : "");
   let stderrStripped = $derived(bashResult?.stderr ? stripAnsi(bashResult.stderr) : "");
   let outputStripped = $derived(outputText ? stripAnsi(outputText) : "");
-
-  // Unified plain text source for Bash (stripped of ANSI codes)
   let terminalPlainText = $derived(
     bashResult ? [stdoutStripped, stderrStripped].filter(Boolean).join("\n") : outputStripped,
   );
@@ -270,232 +110,28 @@
   function safeAnsiHtml(raw: string | undefined, label: string): string | null {
     if (!raw || !hasAnsiCodes(raw)) return null;
     if (raw.length > ANSI_SIZE_LIMIT) {
-      dbg("ToolDetailView", `ansi-skip-${label}`, {
-        len: raw.length,
-        reason: "size-limit",
-      });
+      dbg("ToolDetailView", `ansi-skip-${label}`, { len: raw.length, reason: "size-limit" });
       return null;
     }
     dbg("ToolDetailView", `ansi-${label}`, { len: raw.length });
     return ansiToHtml(raw);
   }
 
-  // stdout ANSI → HTML (only when completed, has ANSI, <200KB)
   let stdoutHtml = $derived.by(() => {
     if (tool.status === "running") return null;
     return safeAnsiHtml(bashResult?.stdout, "stdout");
   });
-
-  // stderr ANSI → HTML
   let stderrHtml = $derived.by(() => {
     if (tool.status === "running") return null;
     return safeAnsiHtml(bashResult?.stderr, "stderr");
   });
-
-  // fallback outputText ANSI → HTML (when no bashResult)
   let outputHtml = $derived.by(() => {
     if (bashResult || tool.status === "running") return null;
     return safeAnsiHtml(outputText, "fallback");
   });
 
-  // Structured Edit result from tool_use_result (structuredPatch)
-  interface PatchHunk {
-    oldStart: number;
-    oldLines: number;
-    newStart: number;
-    newLines: number;
-    lines: string[];
-  }
-  interface EditResultMeta {
-    filePath: string;
-    structuredPatch: PatchHunk[];
-    oldString?: string;
-    newString?: string;
-    originalFile?: string;
-    userModified?: boolean;
-    replaceAll?: boolean;
-  }
-  let editResult = $derived(
-    tool.tool_use_result != null &&
-      typeof tool.tool_use_result === "object" &&
-      "structuredPatch" in tool.tool_use_result
-      ? (tool.tool_use_result as unknown as EditResultMeta)
-      : undefined,
-  );
-  let editHasPatches = $derived(
-    editResult?.structuredPatch != null && editResult.structuredPatch.length > 0,
-  );
+  // ── Output expand/collapse ──
 
-  // Structured Glob result from tool_use_result
-  interface GlobResultMeta {
-    filenames: string[];
-    durationMs: number;
-    numFiles: number;
-    truncated: boolean;
-  }
-  let globResult = $derived(
-    tool.tool_use_result != null &&
-      typeof tool.tool_use_result === "object" &&
-      "filenames" in tool.tool_use_result
-      ? (tool.tool_use_result as unknown as GlobResultMeta)
-      : undefined,
-  );
-
-  // Structured Grep result from tool_use_result
-  interface GrepResultMeta {
-    mode: string;
-    numFiles: number;
-    filenames: string[];
-    content?: string;
-    numLines?: number;
-  }
-  let grepResult = $derived(
-    tool.tool_use_result != null &&
-      typeof tool.tool_use_result === "object" &&
-      "numFiles" in tool.tool_use_result
-      ? (tool.tool_use_result as unknown as GrepResultMeta)
-      : undefined,
-  );
-
-  // Structured WebFetch result from tool_use_result
-  interface WebFetchResultMeta {
-    bytes: number;
-    code: number;
-    codeText: string;
-    result: string;
-    durationMs: number;
-    url: string;
-  }
-  let webFetchResult = $derived(
-    tool.tool_use_result != null &&
-      typeof tool.tool_use_result === "object" &&
-      "code" in tool.tool_use_result &&
-      "bytes" in tool.tool_use_result &&
-      "codeText" in tool.tool_use_result
-      ? (tool.tool_use_result as unknown as WebFetchResultMeta)
-      : undefined,
-  );
-
-  // Structured WebSearch result from tool_use_result
-  interface WebSearchResultMeta {
-    query: string;
-    results: Array<
-      { tool_use_id: string; content: Array<{ title: string; url: string }> } | string
-    >;
-    durationSeconds: number;
-  }
-  let webSearchResult = $derived(
-    tool.tool_use_result != null &&
-      typeof tool.tool_use_result === "object" &&
-      "results" in tool.tool_use_result &&
-      Array.isArray((tool.tool_use_result as Record<string, unknown>).results)
-      ? (tool.tool_use_result as unknown as WebSearchResultMeta)
-      : undefined,
-  );
-
-  // Structured Task (subagent) result from tool_use_result
-  interface TaskResultMeta {
-    status: string;
-    totalToolUseCount?: number;
-    totalDurationMs?: number;
-    totalTokens?: number;
-    agentId?: string;
-    description?: string;
-    outputFile?: string;
-    prompt?: string;
-  }
-  let taskResult = $derived(
-    tool.tool_use_result != null &&
-      typeof tool.tool_use_result === "object" &&
-      "totalToolUseCount" in tool.tool_use_result
-      ? (tool.tool_use_result as unknown as TaskResultMeta)
-      : tool.tool_use_result != null &&
-          typeof tool.tool_use_result === "object" &&
-          (tool.tool_use_result as Record<string, unknown>).status === "async_launched"
-        ? (tool.tool_use_result as unknown as TaskResultMeta)
-        : undefined,
-  );
-
-  // Write: reuse editResult pattern for structuredPatch
-  let writeResult = $derived(
-    (tool.tool_name === "Write" || tool.tool_name === "write_file") &&
-      tool.tool_use_result != null &&
-      typeof tool.tool_use_result === "object" &&
-      "structuredPatch" in tool.tool_use_result
-      ? (tool.tool_use_result as unknown as EditResultMeta)
-      : undefined,
-  );
-  let writeHasPatches = $derived(
-    writeResult?.structuredPatch != null && writeResult.structuredPatch.length > 0,
-  );
-
-  // Structured TodoWrite result from tool_use_result
-  interface TodoItem {
-    content: string;
-    status: "pending" | "in_progress" | "completed";
-    activeForm: string;
-  }
-  interface TodoWriteResultMeta {
-    oldTodos: TodoItem[];
-    newTodos: TodoItem[];
-  }
-  let todoResult = $derived(
-    tool.tool_use_result != null &&
-      typeof tool.tool_use_result === "object" &&
-      "newTodos" in tool.tool_use_result
-      ? (tool.tool_use_result as unknown as TodoWriteResultMeta)
-      : undefined,
-  );
-
-  // Structured Skill result from tool_use_result
-  interface SkillResultMeta {
-    success: boolean;
-    commandName: string;
-    status?: string;
-    agentId?: string;
-    result?: string;
-  }
-  let skillResult = $derived(
-    tool.tool_use_result != null &&
-      typeof tool.tool_use_result === "object" &&
-      "commandName" in tool.tool_use_result
-      ? (tool.tool_use_result as unknown as SkillResultMeta)
-      : undefined,
-  );
-
-  // Structured ExitPlanMode result from tool_use_result
-  interface ExitPlanResultMeta {
-    plan?: string;
-    filePath?: string;
-    awaitingLeaderApproval?: boolean;
-  }
-  let exitPlanResult = $derived(
-    tool.tool_use_result != null &&
-      typeof tool.tool_use_result === "object" &&
-      "plan" in tool.tool_use_result
-      ? (tool.tool_use_result as unknown as ExitPlanResultMeta)
-      : undefined,
-  );
-
-  // Structured NotebookEdit result from tool_use_result
-  interface NotebookEditResultMeta {
-    new_source: string;
-    cell_type: string;
-    language: string;
-    edit_mode: string;
-    notebook_path: string;
-    cell_id?: string;
-    error?: string;
-  }
-  let notebookResult = $derived(
-    tool.tool_use_result != null &&
-      typeof tool.tool_use_result === "object" &&
-      "new_source" in tool.tool_use_result
-      ? (tool.tool_use_result as unknown as NotebookEditResultMeta)
-      : undefined,
-  );
-
-  // Output expand/collapse
   let outputExpanded = $state(false);
   let outputLineCount = $derived(
     tool.tool_name === "Bash" || tool.tool_name === "bash"
@@ -504,26 +140,21 @@
   );
   let needsExpand = $derived(outputLineCount > 20);
 
-  // Fallback overflow detection (for containers without line-count-based expand)
   let fallbackRef = $state<HTMLDivElement>();
   let fallbackNeedsExpand = $state(false);
 
   $effect(() => {
     const el = fallbackRef;
-    const isExpanded = outputExpanded; // reactive dependency
+    const isExpanded = outputExpanded;
     if (!el) return;
-
     function checkOverflow() {
       if (!outputExpanded) {
         fallbackNeedsExpand = el!.scrollHeight > el!.clientHeight;
       }
-      // expanded=true: preserve last value so "Collapse" button stays visible
     }
-
     if (!isExpanded) {
       queueMicrotask(checkOverflow);
     }
-
     if (typeof ResizeObserver !== "undefined") {
       const ro = new ResizeObserver(checkOverflow);
       ro.observe(el);
@@ -557,6 +188,17 @@
       copyTimeout = undefined;
     }
   });
+
+  // Detect which tool type for routing
+  let isDiffTool = $derived(
+    tool.tool_name === "Edit" || tool.tool_name === "edit_file" ||
+    tool.tool_name === "Write" || tool.tool_name === "write_file"
+  );
+  let isSearchTool = $derived(
+    tool.tool_name === "Grep" || tool.tool_name === "search_files" ||
+    tool.tool_name === "Glob" || tool.tool_name === "list_directory" ||
+    tool.tool_name === "WebFetch" || tool.tool_name === "WebSearch"
+  );
 </script>
 
 <div
@@ -572,7 +214,43 @@
       ></div>
     {/if}
   {/snippet}
-  {#if tool.tool_name === "Bash" || tool.tool_name === "bash"}
+
+  {#if isDiffTool}
+    <ToolDetailDiff
+      toolName={tool.tool_name}
+      toolInput={tool.input as Record<string, unknown> | undefined}
+      toolUseResult={tool.tool_use_result}
+      {filePath}
+      {lang}
+      {isPlanFile}
+      {editResult}
+      {editHasPatches}
+      {writeResult}
+      {writeHasPatches}
+      {outputText}
+      {outputExpanded}
+      {toggleOutputExpand}
+      {handleCopy}
+      {copyFeedback}
+      {onPreviewFile}
+    />
+  {:else if isSearchTool}
+    <ToolDetailSearch
+      toolName={tool.tool_name}
+      toolInput={tool.input as Record<string, unknown> | undefined}
+      {grepResult}
+      {globResult}
+      {webFetchResult}
+      {webSearchResult}
+      {outputText}
+      {outputExpanded}
+      {toggleOutputExpand}
+      {needsExpand}
+      {outputLineCount}
+      {handleCopy}
+      {copyFeedback}
+    />
+  {:else if tool.tool_name === "Bash" || tool.tool_name === "bash"}
     <!-- Bash: terminal-style rendering -->
     {#if tool.input?.command}
       <div
@@ -713,408 +391,6 @@
             : t("common_showAllLines", { count: String(countLines(readContent)) })}
         </button>
       {/if}
-    {/if}
-  {:else if tool.tool_name === "Edit" || tool.tool_name === "edit_file"}
-    <!-- Edit: diff view — structured patch (preferred) or old/new fallback -->
-    {#if filePath}
-      {#if onPreviewFile}
-        <button
-          type="button"
-          class="tool-file-header rounded-t w-full text-left hover:text-foreground hover:underline transition-colors"
-          onclick={() => onPreviewFile?.(filePath)}
-          title={t("toolDetail_previewFile") ?? filePath}>{filePath}</button
-        >
-      {:else}
-        <div class="tool-file-header rounded-t">{filePath}</div>
-      {/if}
-    {/if}
-    {#if editHasPatches}
-      <!-- Structured unified diff from tool_use_result (adjust line numbers if needed) -->
-      {@const adjustedEditHunks = adjustHunkLineNumbers(
-        editResult!.structuredPatch,
-        editResult!.oldString ?? (tool.input?.old_string as string | undefined),
-        editResult!.originalFile,
-      )}
-      <div
-        class="diff-section overflow-x-auto relative {outputExpanded
-          ? ''
-          : 'max-h-96 overflow-y-hidden'}"
-      >
-        {#each adjustedEditHunks as hunk}
-          <div
-            class="px-3 py-1 bg-muted/50 text-[10px] font-mono text-muted-foreground/60 border-b border-border/30"
-          >
-            @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@
-          </div>
-          {@html renderDiffHunk(hunk, lang)}
-        {/each}
-        {@render truncateOverlay(adjustedEditHunks.reduce((n, h) => n + h.lines.length, 0) > 20)}
-      </div>
-      {@const patchLineCount = adjustedEditHunks.reduce((n, h) => n + h.lines.length, 0)}
-      {#if patchLineCount > 20}
-        <button
-          type="button"
-          class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
-          onclick={toggleOutputExpand}
-        >
-          {outputExpanded
-            ? t("common_collapse")
-            : t("common_showAllLines", { count: String(patchLineCount) })}
-        </button>
-      {/if}
-    {:else if tool.input?.old_string != null || tool.input?.new_string != null}
-      <!-- Fallback: compute unified diff from old_string / new_string -->
-      {@const origFile = (tool.tool_use_result as Record<string, unknown> | undefined)
-        ?.originalFile as string | undefined}
-      {@const fallbackHunks = computeFallbackPatch(
-        String(tool.input?.old_string ?? ""),
-        String(tool.input?.new_string ?? ""),
-        origFile,
-      )}
-      <div
-        class="diff-section overflow-x-auto relative {outputExpanded
-          ? ''
-          : 'max-h-96 overflow-y-hidden'}"
-      >
-        {#each fallbackHunks as hunk}
-          <div
-            class="px-3 py-1 bg-muted/50 text-[10px] font-mono text-muted-foreground/60 border-b border-border/30"
-          >
-            @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@
-          </div>
-          {@html renderDiffHunk(hunk, lang)}
-        {/each}
-        {@render truncateOverlay(fallbackHunks.reduce((n, h) => n + h.lines.length, 0) > 20)}
-      </div>
-      {@const fallbackLineCount = fallbackHunks.reduce((n, h) => n + h.lines.length, 0)}
-      {#if fallbackLineCount > 20}
-        <button
-          type="button"
-          class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
-          onclick={toggleOutputExpand}
-        >
-          {outputExpanded
-            ? t("common_collapse")
-            : t("common_showAllLines", { count: String(fallbackLineCount) })}
-        </button>
-      {/if}
-    {/if}
-    {#if outputText}
-      <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
-        <div class="text-[10px] font-medium text-muted-foreground/60 mb-1 uppercase tracking-wider">
-          {t("tool_result")}
-        </div>
-        <pre
-          class="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">{outputText}</pre>
-      </div>
-    {/if}
-  {:else if tool.tool_name === "Write" || tool.tool_name === "write_file"}
-    <!-- Write: structuredPatch diff (overwrite) or content preview (new file) -->
-    {#if filePath}
-      {#if onPreviewFile}
-        <button
-          type="button"
-          class="tool-file-header rounded-t w-full text-left hover:text-foreground hover:underline transition-colors"
-          onclick={() => onPreviewFile?.(filePath)}
-          title={t("toolDetail_previewFile") ?? filePath}>{filePath}</button
-        >
-      {:else}
-        <div class="tool-file-header rounded-t">{filePath}</div>
-      {/if}
-    {/if}
-    <!-- Plan file (.claude/plans/*.md): render content as markdown instead of diff/code.
-         This intentionally takes priority over writeHasPatches — plan files are meant to be
-         read as formatted prose, not reviewed as code diffs. -->
-    {#if isPlanFile && typeof tool.input?.content === "string"}
-      {@const planText = tool.input.content as string}
-      <div
-        class="rounded bg-muted p-2 relative prose-chat {outputExpanded
-          ? ''
-          : 'max-h-96 overflow-hidden'}"
-      >
-        <MarkdownContent text={planText} />
-        {@render truncateOverlay(countLines(planText) > 20)}
-      </div>
-      {#if countLines(planText) > 20}
-        <button
-          type="button"
-          class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
-          onclick={toggleOutputExpand}
-        >
-          {outputExpanded
-            ? t("common_collapse")
-            : t("common_showAllLines", { count: String(countLines(planText)) })}
-        </button>
-      {/if}
-    {:else if writeHasPatches}
-      <!-- Overwrite: structured unified diff from tool_use_result -->
-      {@const adjustedWriteHunks = adjustHunkLineNumbers(
-        writeResult!.structuredPatch,
-        writeResult!.oldString ?? (tool.input?.old_string as string | undefined),
-        writeResult!.originalFile,
-      )}
-      <div
-        class="diff-section overflow-x-auto relative {outputExpanded
-          ? ''
-          : 'max-h-96 overflow-y-hidden'}"
-      >
-        {#each adjustedWriteHunks as hunk}
-          <div
-            class="px-3 py-1 bg-muted/50 text-[10px] font-mono text-muted-foreground/60 border-b border-border/30"
-          >
-            @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@
-          </div>
-          {@html renderDiffHunk(hunk, lang)}
-        {/each}
-        {@render truncateOverlay(adjustedWriteHunks.reduce((n, h) => n + h.lines.length, 0) > 20)}
-      </div>
-      {@const writePatchLines = adjustedWriteHunks.reduce((n, h) => n + h.lines.length, 0)}
-      {#if writePatchLines > 20}
-        <button
-          type="button"
-          class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
-          onclick={toggleOutputExpand}
-        >
-          {outputExpanded
-            ? t("common_collapse")
-            : t("common_showAllLines", { count: String(writePatchLines) })}
-        </button>
-      {/if}
-    {:else if tool.input?.content}
-      <!-- New file: content preview -->
-      {@const content = String(tool.input.content)}
-      {@const lines = content.split("\n")}
-      {@const truncated = lines.length > 20}
-      {@const displayContent =
-        !outputExpanded && truncated ? lines.slice(0, 20).join("\n") + "\n..." : content}
-      <div class="rounded bg-muted relative group/copy">
-        <pre
-          class="text-xs font-mono whitespace-pre-wrap p-2 leading-relaxed">{@html renderCodeWithLineNumbers(
-            displayContent,
-            lang,
-          )}</pre>
-        {#if truncated && !outputExpanded}
-          <div class="px-2 pb-1.5 text-[10px] text-muted-foreground">
-            {t("tool_linesTotal", { count: String(lines.length) })}
-          </div>
-        {/if}
-        {@render truncateOverlay(truncated)}
-        <button
-          type="button"
-          class="absolute top-1.5 right-1.5 text-[10px] text-muted-foreground hover:text-foreground opacity-0 group-hover/copy:opacity-100 transition-opacity"
-          onclick={() => handleCopy(content)}>{copyFeedback ?? t("common_copy")}</button
-        >
-      </div>
-      {#if truncated}
-        <button
-          type="button"
-          class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
-          onclick={() => (outputExpanded = !outputExpanded)}
-        >
-          {outputExpanded
-            ? t("common_collapse")
-            : t("common_showAllLines", { count: String(lines.length) })}
-        </button>
-      {/if}
-    {/if}
-    {#if outputText}
-      <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
-        <div class="text-[10px] font-medium text-muted-foreground/60 mb-1 uppercase tracking-wider">
-          {t("tool_result")}
-        </div>
-        <pre
-          class="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">{outputText}</pre>
-      </div>
-    {/if}
-  {:else if tool.tool_name === "Grep" || tool.tool_name === "search_files"}
-    <!-- Grep: pattern + path input, monospace results -->
-    <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
-      <div class="text-xs font-mono text-muted-foreground flex items-center gap-2">
-        <span>
-          {#if tool.input?.pattern}<span class="text-miwarp-accent-violet"
-              >/{tool.input.pattern}/</span
-            >{/if}
-          {#if tool.input?.path}<span class="text-muted-foreground/60 ml-2">{tool.input.path}</span
-            >{/if}
-          {#if tool.input?.glob}<span class="text-muted-foreground/60 ml-2"
-              >--glob {tool.input.glob}</span
-            >{/if}
-        </span>
-        {#if grepResult}
-          <span class="text-[10px] text-muted-foreground ml-auto shrink-0">
-            {grepResult.numFiles !== 1
-              ? t("tool_files", { count: String(grepResult.numFiles) })
-              : t("tool_file", { count: String(grepResult.numFiles) })}
-            {#if grepResult.numLines != null}, {grepResult.numLines !== 1
-                ? t("tool_matches", { count: String(grepResult.numLines) })
-                : t("tool_match", { count: String(grepResult.numLines) })}{/if}
-          </span>
-        {/if}
-      </div>
-    </div>
-    {#if outputText}
-      <div
-        class="rounded bg-muted p-2 relative group/copy {outputExpanded
-          ? ''
-          : 'max-h-96 overflow-hidden'}"
-      >
-        <pre
-          class="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">{outputText}</pre>
-        <button
-          type="button"
-          class="absolute top-1.5 right-1.5 text-[10px] text-muted-foreground hover:text-foreground opacity-0 group-hover/copy:opacity-100 transition-opacity"
-          onclick={() => handleCopy(outputText)}>{copyFeedback ?? t("common_copy")}</button
-        >
-        {@render truncateOverlay(needsExpand)}
-      </div>
-      {#if needsExpand}
-        <button
-          type="button"
-          class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
-          onclick={toggleOutputExpand}
-        >
-          {outputExpanded
-            ? t("common_collapse")
-            : t("common_showAllLines", { count: String(outputLineCount) })}
-        </button>
-      {/if}
-    {/if}
-  {:else if tool.tool_name === "Glob" || tool.tool_name === "list_directory"}
-    <!-- Glob: pattern + path input, file list -->
-    <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
-      <div class="text-xs font-mono text-muted-foreground flex items-center gap-2">
-        <span>
-          {#if tool.input?.pattern}<span class="text-miwarp-accent-violet"
-              >{tool.input.pattern}</span
-            >{/if}
-          {#if tool.input?.path}<span class="text-muted-foreground/60 ml-2"
-              >in {tool.input.path}</span
-            >{/if}
-        </span>
-        {#if globResult}
-          <span class="text-[10px] text-muted-foreground ml-auto shrink-0">
-            {globResult.numFiles !== 1
-              ? t("tool_files", { count: String(globResult.numFiles) })
-              : t("tool_file", { count: String(globResult.numFiles) })}
-            {#if globResult.truncated}<span class="text-[hsl(var(--miwarp-status-warning)/0.8)]">
-                {t("tool_truncated")}</span
-              >{/if}
-          </span>
-        {/if}
-      </div>
-    </div>
-    {#if outputText}
-      <div class="rounded bg-muted p-2 relative {outputExpanded ? '' : 'max-h-96 overflow-hidden'}">
-        <pre
-          class="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">{outputText}</pre>
-        {@render truncateOverlay(needsExpand)}
-      </div>
-      {#if needsExpand}
-        <button
-          type="button"
-          class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
-          onclick={toggleOutputExpand}
-        >
-          {outputExpanded
-            ? t("common_collapse")
-            : t("common_showAllLines", { count: String(outputLineCount) })}
-        </button>
-      {/if}
-    {/if}
-  {:else if tool.tool_name === "WebFetch"}
-    <!-- WebFetch: URL + HTTP status + response metadata -->
-    <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
-      <div class="text-xs font-mono text-muted-foreground flex items-center gap-2">
-        <span class="text-miwarp-status-info truncate">{tool.input?.url ?? ""}</span>
-        {#if webFetchResult}
-          <span class="ml-auto shrink-0 flex items-center gap-1.5 text-[10px]">
-            <span
-              class="px-1.5 py-0.5 rounded font-medium {webFetchResult.code < 400
-                ? 'bg-[hsl(var(--miwarp-status-success)/0.15)] text-miwarp-status-success'
-                : 'bg-[hsl(var(--miwarp-status-error)/0.15)] text-miwarp-status-error'}"
-            >
-              {webFetchResult.code}
-              {webFetchResult.codeText}
-            </span>
-            <span class="text-muted-foreground/50">
-              {webFetchResult.bytes < 1024
-                ? `${webFetchResult.bytes} B`
-                : `${(webFetchResult.bytes / 1024).toFixed(1)} KB`}
-            </span>
-          </span>
-        {/if}
-      </div>
-    </div>
-    {#if outputText}
-      <div
-        class="rounded bg-muted p-2 relative prose-chat {outputExpanded
-          ? ''
-          : 'max-h-96 overflow-hidden'}"
-      >
-        <MarkdownContent text={outputText} />
-        {@render truncateOverlay(needsExpand)}
-      </div>
-      {#if needsExpand}
-        <button
-          type="button"
-          class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
-          onclick={toggleOutputExpand}
-        >
-          {outputExpanded
-            ? t("common_collapse")
-            : t("common_showAllLines", { count: String(outputLineCount) })}
-        </button>
-      {/if}
-    {/if}
-  {:else if tool.tool_name === "WebSearch"}
-    <!-- WebSearch: query + structured result links -->
-    <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
-      <div class="text-xs font-mono text-muted-foreground truncate">
-        <span class="text-miwarp-status-info">{tool.input?.query ?? ""}</span>
-        {#if webSearchResult}
-          <span class="text-[10px] text-muted-foreground ml-2">
-            {t("tool_resultsCount", {
-              count: String(webSearchResult.results.filter((r) => typeof r !== "string").length),
-            })}
-          </span>
-        {/if}
-      </div>
-    </div>
-    {#if webSearchResult}
-      <div
-        class="rounded bg-muted p-2 relative space-y-1 {outputExpanded
-          ? ''
-          : 'max-h-96 overflow-hidden'}"
-      >
-        {#each webSearchResult.results as entry}
-          {#if typeof entry !== "string" && entry.content}
-            {#each entry.content as link}
-              <LinkCard title={link.title} url={link.url} />
-            {/each}
-          {/if}
-        {/each}
-        {@render truncateOverlay(needsExpand)}
-      </div>
-    {:else if outputText}
-      <div
-        class="rounded bg-muted p-2 relative prose-chat {outputExpanded
-          ? ''
-          : 'max-h-96 overflow-hidden'}"
-      >
-        <MarkdownContent text={outputText} />
-        {@render truncateOverlay(needsExpand)}
-      </div>
-    {/if}
-    {#if needsExpand}
-      <button
-        type="button"
-        class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
-        onclick={toggleOutputExpand}
-      >
-        {outputExpanded
-          ? t("common_collapse")
-          : t("common_showAllLines", { count: String(outputLineCount) })}
-      </button>
     {/if}
   {:else if tool.tool_name === "Task" || tool.tool_name === "Agent"}
     <!-- Task/Agent (subagent): prompt + type + usage stats -->

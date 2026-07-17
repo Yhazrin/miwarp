@@ -1,529 +1,11 @@
-mod tests {
-    use super::*;
-    use serde_json::json;
+use super::super::*;
+use serde_json::json;
 
-    const RUN: &str = "run-test";
+const RUN: &str = "run-test";
 
-    // ══════════════════════════════════════════════════════════════════
-    //  P1-4：覆盖 MiMo/CLI 已知事件类型，确保不被 unknown 分支吞掉
-    // ══════════════════════════════════════════════════════════════════
-
-    #[test]
-    fn test_p1_4_tool_result_standalone_completes_tool() {
-        let mut ps = ProtocolState::with_runtime(false, AgentRuntimeKind::MiMoCode);
-        // 先发 tool_use running
-        let running = json!({
-            "type": "tool_use",
-            "part": {
-                "tool": "Read",
-                "callID": "call-1",
-                "state": {
-                    "status": "running",
-                    "time": {"start": 100},
-                    "input": {"path": "/x"}
-                }
-            },
-            "timestamp": 100
-        });
-        ps.map_event(RUN, &running);
-        let standalone_result = json!({
-            "type": "tool_result",
-            "part": {
-                "callID": "call-1",
-                "status": "completed",
-                "output": "file contents"
-            }
-        });
-        let events = ps.map_event(RUN, &standalone_result);
-        assert_eq!(events.len(), 1, "应该单独发 ToolEnd");
-        match &events[0] {
-            BusEvent::ToolEnd {
-                tool_use_id,
-                status,
-                ..
-            } => {
-                assert_eq!(tool_use_id, "call-1");
-                assert_eq!(status, "completed");
-            }
-            other => panic!("expected ToolEnd, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_p1_4_usage_event_emits_usage_update() {
-        let mut ps = ProtocolState::with_runtime(false, AgentRuntimeKind::MiMoCode);
-        let raw = json!({
-            "type": "usage",
-            "part": {
-                "input": 100,
-                "output": 50,
-                "cache_read": 30,
-                "cost": 0.0123
-            }
-        });
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        match &events[0] {
-            BusEvent::UsageUpdate {
-                input_tokens,
-                output_tokens,
-                cache_read_tokens,
-                total_cost_usd,
-                ..
-            } => {
-                assert_eq!(*input_tokens, 100);
-                assert_eq!(*output_tokens, 50);
-                assert_eq!(*cache_read_tokens, Some(30));
-                assert!((total_cost_usd - 0.0123).abs() < 1e-9);
-            }
-            other => panic!("expected UsageUpdate, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_p1_4_progress_event_classified() {
-        let mut ps = ProtocolState::with_runtime(false, AgentRuntimeKind::MiMoCode);
-        let raw = json!({
-            "type": "progress",
-            "message": "compacting context..."
-        });
-        let before = ps.stats.unknown_event_count;
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        assert_eq!(
-            ps.stats.unknown_event_count, before,
-            "progress 不应该进 unknown 分支"
-        );
-    }
-
-    #[test]
-    fn test_p1_4_retry_event_classified() {
-        let mut ps = ProtocolState::with_runtime(false, AgentRuntimeKind::MiMoCode);
-        let raw = json!({
-            "type": "retry",
-            "attempt": 2,
-            "message": "rate limited"
-        });
-        let before = ps.stats.unknown_event_count;
-        let _ = ps.map_event(RUN, &raw);
-        assert_eq!(
-            ps.stats.unknown_event_count, before,
-            "retry 不应该进 unknown 分支"
-        );
-    }
-
-    #[test]
-    fn test_p1_4_init_event_emits_raw_without_unknown() {
-        let mut ps = ProtocolState::with_runtime(false, AgentRuntimeKind::MiMoCode);
-        let raw = json!({"type": "init", "model": "opus-4"});
-        let before = ps.stats.unknown_event_count;
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        assert_eq!(ps.stats.unknown_event_count, before);
-        assert!(matches!(&events[0], BusEvent::Raw { .. }));
-    }
-
-    // ══════════════════════════════════════════════════════════════════
-    //  Group A: Golden tests — one per event type, locks current behavior
-    // ══════════════════════════════════════════════════════════════════
-
-    #[test]
-    fn test_system_init_new_session() {
-        let mut ps = ProtocolState::new(false);
-        let raw = json!({
-            "type": "system",
-            "subtype": "init",
-            "model": "opus-4",
-            "tools": [{"name": "Bash"}, {"name": "Read"}],
-            "cwd": "/project",
-            "session_id": "ses-1"
-        });
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 2, "SessionInit + RunState(running)");
-        match &events[0] {
-            BusEvent::SessionInit {
-                model,
-                tools,
-                cwd,
-                session_id,
-                ..
-            } => {
-                assert_eq!(model.as_deref(), Some("opus-4"));
-                assert_eq!(tools, &vec!["Bash".to_string(), "Read".to_string()]);
-                assert_eq!(cwd, "/project");
-                assert_eq!(session_id.as_deref(), Some("ses-1"));
-            }
-            other => panic!("expected SessionInit, got {:?}", other),
-        }
-        match &events[1] {
-            BusEvent::RunState { state, .. } => assert_eq!(state, "running"),
-            other => panic!("expected RunState, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_system_init_resume_session() {
-        let mut ps = ProtocolState::new(true); // resume
-        let raw = json!({
-            "type": "system",
-            "subtype": "init",
-            "model": "opus-4",
-            "tools": [],
-            "cwd": "/project",
-            "session_id": "ses-2"
-        });
-        let events = ps.map_event(RUN, &raw);
-        // Resume: SessionInit only, no RunState (start_session emits synthetic idle)
-        assert_eq!(events.len(), 1, "resume: SessionInit only");
-        assert!(matches!(&events[0], BusEvent::SessionInit { .. }));
-    }
-
-    #[test]
-    fn test_system_init_second_call() {
-        let mut ps = ProtocolState::new(false);
-        let raw = json!({"type": "system", "subtype": "init", "model": "opus-4", "tools": [], "cwd": "/"});
-        let _first = ps.map_event(RUN, &raw);
-        // Second call: SessionInit emitted but NO RunState (seen_first_init=true)
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        assert!(matches!(&events[0], BusEvent::SessionInit { .. }));
-    }
-
-    #[test]
-    fn test_system_compact_boundary() {
-        let mut ps = ProtocolState::new(false);
-        let raw = json!({
-            "type": "system",
-            "subtype": "compact_boundary",
-            "compact_metadata": {"trigger": "manual", "pre_tokens": 50000}
-        });
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        match &events[0] {
-            BusEvent::CompactBoundary {
-                trigger,
-                pre_tokens,
-                ..
-            } => {
-                assert_eq!(trigger, "manual");
-                assert_eq!(*pre_tokens, Some(50000));
-            }
-            other => panic!("expected CompactBoundary, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_system_microcompact_boundary() {
-        let mut ps = ProtocolState::new(false);
-        let raw = json!({"type": "system", "subtype": "microcompact_boundary"});
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        match &events[0] {
-            BusEvent::CompactBoundary {
-                trigger,
-                pre_tokens,
-                ..
-            } => {
-                assert_eq!(trigger, "micro_auto");
-                assert_eq!(*pre_tokens, None);
-            }
-            other => panic!("expected CompactBoundary, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_system_status() {
-        let mut ps = ProtocolState::new(false);
-        let raw = json!({"type": "system", "subtype": "status", "status": "compacting"});
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        match &events[0] {
-            BusEvent::SystemStatus { status, .. } => {
-                assert_eq!(status.as_deref(), Some("compacting"));
-            }
-            other => panic!("expected SystemStatus, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_system_status_with_context_window_percentages() {
-        let mut ps = ProtocolState::new(false);
-        let raw = json!({
-            "type": "system",
-            "subtype": "status",
-            "status": "running",
-            "context_window": {
-                "used_percentage": 42.5,
-                "remaining_percentage": 57.5
-            }
-        });
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 2);
-        assert!(matches!(events[0], BusEvent::SystemStatus { .. }));
-        match &events[1] {
-            BusEvent::UsageUpdate {
-                input_tokens,
-                output_tokens,
-                context_window_used_percentage,
-                context_window_remaining_percentage,
-                ..
-            } => {
-                assert_eq!(*input_tokens, 0);
-                assert_eq!(*output_tokens, 0);
-                assert_eq!(*context_window_used_percentage, Some(42.5));
-                assert_eq!(*context_window_remaining_percentage, Some(57.5));
-            }
-            other => panic!("expected UsageUpdate, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_system_hook_started() {
-        let mut ps = ProtocolState::new(false);
-        let raw = json!({
-            "type": "system",
-            "subtype": "hook_started",
-            "hook_event": "PreToolUse",
-            "hook_id": "h1",
-            "hook_name": "lint-check"
-        });
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        match &events[0] {
-            BusEvent::HookStarted {
-                hook_event,
-                hook_id,
-                hook_name,
-                ..
-            } => {
-                assert_eq!(hook_event, "PreToolUse");
-                assert_eq!(hook_id, "h1");
-                assert_eq!(hook_name.as_deref(), Some("lint-check"));
-            }
-            other => panic!("expected HookStarted, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_system_hook_progress() {
-        let mut ps = ProtocolState::new(false);
-        let raw = json!({"type": "system", "subtype": "hook_progress", "hook_id": "h1"});
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        match &events[0] {
-            BusEvent::HookProgress { hook_id, .. } => assert_eq!(hook_id, "h1"),
-            other => panic!("expected HookProgress, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_user_task_notification_xml() {
-        let mut ps = ProtocolState::new(false);
-        let xml = concat!(
-            "<task-notification>\n",
-            "<task-id>a9bb95555169d1db3</task-id>\n",
-            "<tool-use-id>toolu_01KEqmg7q9uc7ZWouxEvYeHM</tool-use-id>\n",
-            "<output-file>/tmp/tasks/a9bb9.output</output-file>\n",
-            "<status>completed</status>\n",
-            "<summary>Agent \"JSDoc for src/a.ts\" completed</summary>\n",
-            "<result>PR: none — permission denied</result>\n",
-            "</task-notification>"
-        );
-        let raw = json!({
-            "type": "user",
-            "message": { "content": xml }
-        });
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        match &events[0] {
-            BusEvent::TaskNotification {
-                task_id,
-                status,
-                data,
-                ..
-            } => {
-                assert_eq!(task_id, "a9bb95555169d1db3");
-                assert_eq!(status, "completed");
-                assert_eq!(data["tool_use_id"], "toolu_01KEqmg7q9uc7ZWouxEvYeHM");
-                assert_eq!(data["summary"], "Agent \"JSDoc for src/a.ts\" completed");
-                assert_eq!(data["output_file"], "/tmp/tasks/a9bb9.output");
-                assert_eq!(data["result"], "PR: none — permission denied");
-            }
-            other => panic!("expected TaskNotification, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_user_task_notification_xml_missing_task_id() {
-        let mut ps = ProtocolState::new(false);
-        let xml = concat!(
-            "<task-notification>\n",
-            "<status>completed</status>\n",
-            "<summary>Agent completed</summary>\n",
-            "</task-notification>"
-        );
-        let raw = json!({
-            "type": "user",
-            "message": { "content": xml }
-        });
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(
-            events.len(),
-            0,
-            "should not emit event when task-id is missing"
-        );
-    }
-
-    #[test]
-    fn test_user_task_notification_xml_missing_status() {
-        let mut ps = ProtocolState::new(false);
-        let xml = concat!(
-            "<task-notification>\n",
-            "<task-id>t1</task-id>\n",
-            "<summary>Agent completed</summary>\n",
-            "</task-notification>"
-        );
-        let raw = json!({
-            "type": "user",
-            "message": { "content": xml }
-        });
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(
-            events.len(),
-            0,
-            "should not emit event when status is missing"
-        );
-    }
-
-    #[test]
-    fn test_user_task_notification_xml_missing_optional_fields() {
-        let mut ps = ProtocolState::new(false);
-        let xml = concat!(
-            "<task-notification>\n",
-            "<task-id>t42</task-id>\n",
-            "<status>running</status>\n",
-            "</task-notification>"
-        );
-        let raw = json!({
-            "type": "user",
-            "message": { "content": xml }
-        });
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        match &events[0] {
-            BusEvent::TaskNotification {
-                task_id,
-                status,
-                data,
-                ..
-            } => {
-                assert_eq!(task_id, "t42");
-                assert_eq!(status, "running");
-                assert!(
-                    data["tool_use_id"].is_null(),
-                    "missing optional field should be null, not empty string"
-                );
-                assert!(data["summary"].is_null());
-                assert!(data["output_file"].is_null());
-            }
-            other => panic!("expected TaskNotification, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_system_hook_response() {
-        let mut ps = ProtocolState::new(false);
-        let raw = json!({
-            "type": "system",
-            "subtype": "hook_response",
-            "hook_id": "h1",
-            "hook_event": "PreToolUse",
-            "outcome": "approved",
-            "hook_name": "lint-check",
-            "stdout": "ok",
-            "stderr": "",
-            "exit_code": 0
-        });
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        match &events[0] {
-            BusEvent::HookResponse {
-                hook_id,
-                hook_event,
-                outcome,
-                hook_name,
-                stdout,
-                stderr,
-                exit_code,
-                ..
-            } => {
-                assert_eq!(hook_id, "h1");
-                assert_eq!(hook_event, "PreToolUse");
-                assert_eq!(outcome, "approved");
-                assert_eq!(hook_name.as_deref(), Some("lint-check"));
-                assert_eq!(stdout.as_deref(), Some("ok"));
-                assert_eq!(stderr.as_deref(), Some(""));
-                assert_eq!(*exit_code, Some(0));
-            }
-            other => panic!("expected HookResponse, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_system_task_notification() {
-        let mut ps = ProtocolState::new(false);
-        let raw = json!({"type": "system", "subtype": "task_notification", "task_id": "t1", "status": "started"});
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        match &events[0] {
-            BusEvent::TaskNotification {
-                task_id, status, ..
-            } => {
-                assert_eq!(task_id, "t1");
-                assert_eq!(status, "started");
-            }
-            other => panic!("expected TaskNotification, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_system_files_persisted() {
-        let mut ps = ProtocolState::new(false);
-        let raw =
-            json!({"type": "system", "subtype": "files_persisted", "files": ["a.rs", "b.rs"]});
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        match &events[0] {
-            BusEvent::FilesPersisted { files, .. } => {
-                assert_eq!(files.as_array().unwrap().len(), 2);
-            }
-            other => panic!("expected FilesPersisted, got {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_system_auth_status() {
-        let mut ps = ProtocolState::new(false);
-        let raw = json!({
-            "type": "system",
-            "subtype": "auth_status",
-            "isAuthenticating": true,
-            "output": ["Logging in...", "Success"]
-        });
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        match &events[0] {
-            BusEvent::AuthStatus {
-                is_authenticating,
-                output,
-                ..
-            } => {
-                assert!(*is_authenticating);
-                assert_eq!(output, &vec!["Logging in...", "Success"]);
-            }
-            other => panic!("expected AuthStatus, got {:?}", other),
-        }
-    }
+// ══════════════════════════════════════════════════════════════════
+//  Group A + Group B: Stream/content event tests
+// ══════════════════════════════════════════════════════════════════
 
     #[test]
     fn test_content_block_start_tool() {
@@ -806,75 +288,6 @@ mod tests {
             BusEvent::CommandOutput { content, .. } => assert_eq!(content, "cost info here"),
             other => panic!("expected CommandOutput, got {:?}", other),
         }
-    }
-
-    #[test]
-    fn test_system_local_command_output() {
-        let mut ps = ProtocolState::new(false);
-        ps.set_pending_slash_command(Some("/context".to_string()));
-
-        // CLI sends system/local_command_output with content
-        let raw = json!({
-            "type": "system",
-            "subtype": "local_command_output",
-            "content": "## Context Usage\n\n**Model:** opus"
-        });
-        let events = ps.map_event(RUN, &raw);
-        assert_eq!(events.len(), 1);
-        match &events[0] {
-            BusEvent::CommandOutput { content, .. } => {
-                assert!(content.contains("Context Usage"));
-            }
-            other => panic!("expected CommandOutput, got {:?}", other),
-        }
-
-        // Behavior assertion: subsequent result should NOT emit a fallback hint
-        // because pending_slash_command was already cleared by local_command_output.
-        let result = json!({
-            "type": "result",
-            "subtype": "success",
-            "usage": {"input_tokens": 10, "output_tokens": 5},
-            "cost_usd": 0.001
-        });
-        let result_events = ps.map_event(RUN, &result);
-        // Should be UsageUpdate + RunState(idle), no extra CommandOutput hint
-        assert!(
-            !result_events
-                .iter()
-                .any(|e| matches!(e, BusEvent::CommandOutput { .. })),
-            "result should not emit fallback hint after local_command_output"
-        );
-    }
-
-    #[test]
-    fn test_system_local_command_output_empty_content_still_clears_pending() {
-        let mut ps = ProtocolState::new(false);
-        ps.set_pending_slash_command(Some("/context".to_string()));
-
-        // CLI sends system/local_command_output with empty content (edge case)
-        let raw = json!({
-            "type": "system",
-            "subtype": "local_command_output",
-            "content": ""
-        });
-        let events = ps.map_event(RUN, &raw);
-        // No CommandOutput emitted for empty content
-        assert_eq!(events.len(), 0);
-
-        // But pending_slash_command IS cleared → no fallback hint on result
-        let result = json!({
-            "type": "result",
-            "subtype": "success",
-            "usage": {"input_tokens": 10, "output_tokens": 5},
-            "cost_usd": 0.001
-        });
-        let result_events = ps.map_event(RUN, &result);
-        assert!(
-            !result_events
-                .iter()
-                .any(|e| matches!(e, BusEvent::CommandOutput { .. })),
-            "empty local_command_output should still prevent fallback hint"
-        );
     }
 
     #[test]
@@ -1710,3 +1123,241 @@ mod tests {
         assert!(matches!(&events[0], BusEvent::Raw { .. }));
     }
 }
+
+    #[test]
+    fn test_assistant_message_text_only() {
+        let mut ps = ProtocolState::new(false);
+        let raw = json!({
+            "type": "assistant",
+            "message": {
+                "id": "m1",
+                "model": "opus-4",
+                "stop_reason": "end_turn",
+                "content": [{"type": "text", "text": "Hello there!"}]
+            }
+        });
+        let events = ps.map_event(RUN, &raw);
+        assert_eq!(events.len(), 1);
+        match &events[0] {
+            BusEvent::MessageComplete {
+                message_id,
+                text,
+                model,
+                stop_reason,
+                ..
+            } => {
+                assert_eq!(message_id, "m1");
+                assert_eq!(text, "Hello there!");
+                assert_eq!(model.as_deref(), Some("opus-4"));
+                assert_eq!(stop_reason.as_deref(), Some("end_turn"));
+            }
+            other => panic!("expected MessageComplete, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_assistant_message_with_tool() {
+        let mut ps = ProtocolState::new(false);
+        let raw = json!({
+            "type": "assistant",
+            "message": {
+                "id": "m1",
+                "content": [
+                    {"type": "text", "text": "Let me read that."},
+                    {"type": "tool_use", "id": "tu-1", "name": "Read", "input": {"path": "/x"}}
+                ]
+            }
+        });
+        let events = ps.map_event(RUN, &raw);
+        assert_eq!(
+            events.len(),
+            2,
+            "ToolStart (during loop) + MessageComplete (after loop)"
+        );
+        // Note: ToolStart is emitted during content iteration, MessageComplete after
+        match &events[0] {
+            BusEvent::ToolStart {
+                tool_use_id,
+                tool_name,
+                input,
+                ..
+            } => {
+                assert_eq!(tool_use_id, "tu-1");
+                assert_eq!(tool_name, "Read");
+                assert_eq!(input.get("path").unwrap().as_str().unwrap(), "/x");
+            }
+            other => panic!("expected ToolStart, got {:?}", other),
+        }
+        match &events[1] {
+            BusEvent::MessageComplete {
+                message_id, text, ..
+            } => {
+                assert_eq!(message_id, "m1");
+                assert_eq!(text, "Let me read that.");
+            }
+            other => panic!("expected MessageComplete, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_assistant_tool_dedup() {
+        let mut ps = ProtocolState::new(false);
+        // Step 1: tool already emitted via streaming content_block_start
+        let start = json!({
+            "type": "content_block_start",
+            "content_block": {"type": "tool_use", "id": "tu-1", "name": "Bash"}
+        });
+        ps.map_event(RUN, &start);
+        // Step 2: assistant message arrives with same tool
+        let raw = json!({
+            "type": "assistant",
+            "message": {
+                "id": "m1",
+                "content": [
+                    {"type": "text", "text": "Running."},
+                    {"type": "tool_use", "id": "tu-1", "name": "Bash", "input": {"cmd": "ls"}}
+                ]
+            }
+        });
+        let events = ps.map_event(RUN, &raw);
+        // Only MessageComplete emitted, ToolStart is deduped
+        assert_eq!(events.len(), 1);
+        assert!(matches!(&events[0], BusEvent::MessageComplete { .. }));
+    }
+
+    #[test]
+    fn test_user_tool_result() {
+        let mut ps = ProtocolState::new(false);
+        // Pre-register tool id→name
+        ps.emitted_tool_ids
+            .insert("tu-1".to_string(), "Bash".to_string());
+        let raw = json!({
+            "type": "user",
+            "message": {
+                "content": [
+                    {"type": "tool_result", "tool_use_id": "tu-1", "content": "files listed ok"}
+                ]
+            }
+        });
+        let events = ps.map_event(RUN, &raw);
+        assert_eq!(events.len(), 1);
+        match &events[0] {
+            BusEvent::ToolEnd {
+                tool_use_id,
+                tool_name,
+                status,
+                ..
+            } => {
+                assert_eq!(tool_use_id, "tu-1");
+                assert_eq!(tool_name, "Bash");
+                assert_eq!(status, "success");
+            }
+            other => panic!("expected ToolEnd, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_user_tool_result_error() {
+        let mut ps = ProtocolState::new(false);
+        ps.emitted_tool_ids
+            .insert("tu-1".to_string(), "Bash".to_string());
+        let raw = json!({
+            "type": "user",
+            "message": {
+                "content": [
+                    {"type": "tool_result", "tool_use_id": "tu-1", "content": "command failed", "is_error": true}
+                ]
+            }
+        });
+        let events = ps.map_event(RUN, &raw);
+        assert_eq!(events.len(), 1);
+        match &events[0] {
+            BusEvent::ToolEnd { status, .. } => assert_eq!(status, "error"),
+            other => panic!("expected ToolEnd, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_user_command_output() {
+        let mut ps = ProtocolState::new(false);
+        let raw = json!({
+            "type": "user",
+            "message": {
+                "content": "<local-command-stdout>cost info here</local-command-stdout>"
+            }
+        });
+        let events = ps.map_event(RUN, &raw);
+        assert_eq!(events.len(), 1);
+        match &events[0] {
+            BusEvent::CommandOutput { content, .. } => assert_eq!(content, "cost info here"),
+            other => panic!("expected CommandOutput, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_content_block_start_missing_id() {
+        // content_block_start path has `if !tool_use_id.is_empty()` guard → safe
+        let mut ps = ProtocolState::new(false);
+        let raw = json!({
+            "type": "content_block_start",
+            "content_block": {"type": "tool_use", "name": "Bash"}
+        });
+        let events = ps.map_event(RUN, &raw);
+        assert!(
+            events.is_empty(),
+            "content_block_start with missing id: guarded, no output"
+        );
+    }
+
+    #[test]
+    fn test_content_block_start_no_content_block() {
+        let mut ps = ProtocolState::new(false);
+        let raw = json!({"type": "content_block_start"});
+        let events = ps.map_event(RUN, &raw);
+        assert!(events.is_empty(), "no content_block field: no output");
+    }
+
+    #[test]
+    fn test_assistant_tool_missing_id() {
+        // assistant path has NO guard on tool_use_id — empty id leaks out
+        // This test locks the CURRENT (defective) behavior
+        let mut ps = ProtocolState::new(false);
+        let raw = json!({
+            "type": "assistant",
+            "message": {
+                "id": "m1",
+                "content": [{"type": "tool_use", "name": "Bash", "input": {}}]
+            }
+        });
+        let events = ps.map_event(RUN, &raw);
+        // ⚠️ Current behavior: ToolStart with empty tool_use_id leaks out (L584 has no guard)
+        let tool_starts: Vec<_> = events
+            .iter()
+            .filter(|e| matches!(e, BusEvent::ToolStart { .. }))
+            .collect();
+        assert_eq!(
+            tool_starts.len(),
+            1,
+            "empty id tool_use leaks through assistant path"
+        );
+        match &tool_starts[0] {
+            BusEvent::ToolStart { tool_use_id, .. } => {
+                assert_eq!(
+                    tool_use_id, "",
+                    "tool_use_id is empty string (known defect)"
+                );
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn test_assistant_no_content() {
+        let mut ps = ProtocolState::new(false);
+        let raw = json!({"type": "assistant", "message": {}});
+        let events = ps.map_event(RUN, &raw);
+        assert!(
+            events.is_empty(),
+            "assistant with no content array: no output"
+        );
+    }
