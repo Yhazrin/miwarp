@@ -3,7 +3,7 @@
    * Settings orchestrator (v1.0.9 perf): tab-scoped loading, no mount-time
    * deferHeavy IPC. Heavy work runs only when a tab is first activated.
    */
-  import { getContext, onMount } from "svelte";
+  import { getContext, onMount, onDestroy } from "svelte";
   import { page } from "$app/stores";
   import { disarmChatSettingsHop } from "$lib/utils/chat-settings-nav";
   import * as api from "$lib/api";
@@ -72,6 +72,7 @@
     warning?: string;
   } | null>(null);
   let webLinkCopied = $state(false);
+  let webLinkTimer: ReturnType<typeof setTimeout> | undefined;
   let webRestarting = $state(false);
   let webRestartError = $state<string | null>(null);
   let webRestartWarning = $state<string | null>(null);
@@ -83,6 +84,7 @@
   let webTunnelUrl = $state("");
   let mobileQrDataUrl = $state<string | null>(null);
   let mobilePairingLinkCopied = $state(false);
+  let pairingLinkTimer: ReturnType<typeof setTimeout> | undefined;
   let mobileQrRefreshing = $state(false);
   let webSelfCheckRunning = $state(false);
   let webSelfCheckResult = $state<string | null>(null);
@@ -433,7 +435,8 @@
     if (!url) return;
     await navigator.clipboard.writeText(url);
     webLinkCopied = true;
-    setTimeout(() => (webLinkCopied = false), 1500);
+    if (webLinkTimer) clearTimeout(webLinkTimer);
+    webLinkTimer = setTimeout(() => (webLinkCopied = false), 1500);
   }
 
   async function copyPairingLink() {
@@ -441,7 +444,8 @@
     if (!link) return;
     await navigator.clipboard.writeText(link);
     mobilePairingLinkCopied = true;
-    setTimeout(() => (mobilePairingLinkCopied = false), 1500);
+    if (pairingLinkTimer) clearTimeout(pairingLinkTimer);
+    pairingLinkTimer = setTimeout(() => (mobilePairingLinkCopied = false), 1500);
   }
 
   async function refreshMobilePairing() {
@@ -926,6 +930,11 @@
       return mimoAgentSettings;
     },
   };
+
+  onDestroy(() => {
+    if (webLinkTimer) clearTimeout(webLinkTimer);
+    if (pairingLinkTimer) clearTimeout(pairingLinkTimer);
+  });
 </script>
 
 <div class="flex h-full animate-slide-up">

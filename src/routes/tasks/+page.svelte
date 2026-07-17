@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { taskCoreStore } from "$lib/stores/task-core-store.svelte";
   import type { TaskCreateInput } from "$lib/types/task";
@@ -13,6 +13,7 @@
   let createOpen = $state(false);
   let loadingEvents = $state(false);
   let reconcileToast = $state<string | null>(null);
+  let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
   const selectedTask = $derived(taskCoreStore.selected);
   const eventsForSelected = $derived(selectedTask ? taskCoreStore.eventsFor(selectedTask.id) : []);
@@ -82,10 +83,10 @@
         moved: String(report.moved_to_needs_attention),
         unchanged: String(report.unchanged),
       });
-      setTimeout(() => (reconcileToast = null), 4000);
+      toastTimer = setTimeout(() => (reconcileToast = null), 4000);
     } catch (e) {
       reconcileToast = e instanceof Error ? e.message : String(e);
-      setTimeout(() => (reconcileToast = null), 4000);
+      toastTimer = setTimeout(() => (reconcileToast = null), 4000);
     }
   }
 
@@ -131,6 +132,10 @@
       notes: decision.notes ?? null,
     });
   }
+
+  onDestroy(() => {
+    if (toastTimer) clearTimeout(toastTimer);
+  });
 </script>
 
 <div class="flex h-full min-h-0 flex-col">

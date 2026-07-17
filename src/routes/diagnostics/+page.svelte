@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { diagnosticsStore } from "$lib/stores/diagnostics-store.svelte";
   import type {
@@ -15,6 +15,7 @@
   let severityFilter = $state<DiagnosticsSeverity | "all">("all");
   let search = $state("");
   let toast = $state<string | null>(null);
+  let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
   const events = $derived.by((): DiagnosticsEvent[] => {
     diagnosticsStore.setFilter({ category: categoryFilter, severity: severityFilter, search });
@@ -50,15 +51,21 @@
       const bundle = await diagnosticsStore.exportRedactedBundle();
       if (bundle) {
         toast = t("diagnostics_export_done", { path: bundle.destination });
-        setTimeout(() => (toast = null), 4000);
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => (toast = null), 4000);
       }
     } catch (e) {
       toast = t("diagnostics_export_failed", {
         message: e instanceof Error ? e.message : String(e),
       });
-      setTimeout(() => (toast = null), 4000);
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => (toast = null), 4000);
     }
   }
+
+  onDestroy(() => {
+    if (toastTimer) clearTimeout(toastTimer);
+  });
 </script>
 
 <div class="flex h-full min-h-0 flex-col">

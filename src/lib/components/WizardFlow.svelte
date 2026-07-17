@@ -13,6 +13,7 @@
   import Button from "./Button.svelte";
   import EmptyState from "./EmptyState.svelte";
   import type { Snippet } from "svelte";
+  import { onDestroy } from "svelte";
 
   export interface WizardStep {
     id: string;
@@ -64,6 +65,7 @@
   // Navigation state
   let isTransitioning = $state(false);
   let _transitionDirection = $state<"forward" | "back">("forward");
+  let transitionTimer: ReturnType<typeof setTimeout> | undefined;
 
   // Collected data from all steps
   let collectedData = $state<Record<string, unknown>>({});
@@ -145,7 +147,7 @@
     isTransitioning = true;
     _transitionDirection = "back";
 
-    setTimeout(() => {
+    transitionTimer = setTimeout(() => {
       if (currentStepIndex > 0) {
         currentStepIndex--;
       }
@@ -161,7 +163,7 @@
 
     isTransitioning = true;
 
-    setTimeout(() => {
+    transitionTimer = setTimeout(() => {
       if (currentStepIndex < totalSteps - 1) {
         currentStepIndex++;
       }
@@ -175,7 +177,7 @@
     _transitionDirection = index > currentStepIndex ? "forward" : "back";
     isTransitioning = true;
 
-    setTimeout(() => {
+    transitionTimer = setTimeout(() => {
       currentStepIndex = index;
       isTransitioning = false;
     }, 200);
@@ -185,6 +187,9 @@
   function _updateStepData(stepId: string, data: unknown) {
     collectedData = { ...collectedData, [stepId]: data };
   }
+  onDestroy(() => {
+    if (transitionTimer) clearTimeout(transitionTimer);
+  });
 </script>
 
 <div class="flex flex-col h-full">

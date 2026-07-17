@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
   import { artifactStore, type ArtifactGroup } from "$lib/stores/artifact-store.svelte";
@@ -12,6 +12,7 @@
   let kindFilter = $state<ArtifactKind | "all">("all");
   let pinnedOnly = $state(false);
   let toast = $state<string | null>(null);
+  let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
   const groups = $derived.by((): ArtifactGroup[] => {
     artifactStore.filter = { ...artifactStore.filter, kind: kindFilter, search, pinnedOnly };
@@ -55,7 +56,8 @@
       console.info("artifact: open", artifact.source_uri);
     }
     toast = t("artifacts_open_external");
-    setTimeout(() => (toast = null), 2000);
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (toast = null), 2000);
   }
 
   async function onCopyPath(artifact: ArtifactRecord): Promise<void> {
@@ -67,7 +69,8 @@
       }
     }
     toast = t("artifacts_copied");
-    setTimeout(() => (toast = null), 2000);
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (toast = null), 2000);
   }
 
   const kindOptions: { id: ArtifactKind | "all"; key: MessageKey }[] = [
@@ -86,6 +89,10 @@
     { id: "diagnostic_bundle", key: "artifacts_kind_diagnostic_bundle" },
     { id: "context_pack", key: "artifacts_kind_context_pack" },
   ];
+
+  onDestroy(() => {
+    if (toastTimer) clearTimeout(toastTimer);
+  });
 </script>
 
 <div class="flex h-full min-h-0 flex-col">
