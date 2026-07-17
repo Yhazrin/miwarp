@@ -11,7 +11,7 @@
  *      regression risk for mobile parity.
  *
  *   2. The Rust `BusEvent::Runtime*` and `BusEvent::Diagnostic*` variants
- *      declared in `src-tauri/src/models.rs` must have a matching entry
+ *      declared in `src-tauri/src/models/event.rs` must have a matching entry
  *      in the frontend `BusEvent` union in `src/lib/types.ts` (and vice
  *      versa). The general bus-contract test already covers this, but
  *      this script surfaces only the v1.0.9 namespace so the CI log
@@ -24,22 +24,26 @@
  *            scripts/architecture/ios-ws-contract.mjs,
  *            src/lib/bus/__tests__/bus-contract.test.ts
  */
+import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseDispatchMethods, parseTauriGenerateHandler } from "./contract-lib.mjs";
 import { REPO_ROOT, readText, report } from "./lib.mjs";
 
 const LIB_RS = join(REPO_ROOT, "src-tauri", "src", "lib.rs");
-const DISPATCH = join(REPO_ROOT, "src-tauri", "src", "web_server", "dispatch.rs");
-const MODELS_RS = join(REPO_ROOT, "src-tauri", "src", "models.rs");
-const TYPES_TS = join(REPO_ROOT, "src", "lib", "types.ts");
+const DISPATCH = join(REPO_ROOT, "src-tauri", "src", "web_server", "dispatch", "mod.rs");
+const MODELS_DIR = join(REPO_ROOT, "src-tauri", "src", "models");
+const TYPES_TS = join(REPO_ROOT, "src", "lib", "types", "session.ts");
 
 const libRsSrc = readText(LIB_RS) ?? "";
 const dispatchSrc = readText(DISPATCH) ?? "";
-const modelsSrc = readText(MODELS_RS) ?? "";
+const modelsSrc = readdirSync(MODELS_DIR)
+  .filter((f) => f.endsWith(".rs"))
+  .map((f) => readText(join(MODELS_DIR, f)) ?? "")
+  .join("\n");
 const typesTsSrc = readText(TYPES_TS) ?? "";
 
 if (!modelsSrc || !typesTsSrc) {
-  console.error("✗ cross-platform-bus: cannot read models.rs or types.ts");
+  console.error("✗ cross-platform-bus: cannot read models/ directory or types.ts");
   process.exit(1);
 }
 
@@ -174,7 +178,7 @@ const rustSnakeSet = new Set(runtimeRust.map(variantToSnake));
 for (const t of runtimeTs) {
   if (!rustSnakeSet.has(t)) {
     violations.push(
-      `Frontend BusEvent "${t}" has no matching Rust variant starting with Runtime*/Diagnostic*. Add to src-tauri/src/models.rs or remove from types.ts.`,
+      `Frontend BusEvent "${t}" has no matching Rust variant starting with Runtime*/Diagnostic*. Add to src-tauri/src/models/event.rs or remove from types.ts.`,
     );
   }
 }

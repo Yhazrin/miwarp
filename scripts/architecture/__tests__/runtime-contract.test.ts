@@ -40,7 +40,7 @@ const WS_MESSAGES_FILE = join(
   "Core",
   "WebSocketMessages.swift",
 );
-const DISPATCH_FILE = join(REPO_ROOT, "src-tauri", "src", "web_server", "dispatch.rs");
+const DISPATCH_FILE = join(REPO_ROOT, "src-tauri", "src", "web_server", "dispatch", "mod.rs");
 const WS_INTERNAL_FILE = join(REPO_ROOT, "src-tauri", "src", "web_server", "ws.rs");
 
 const RUNTIME_HUB_COMMANDS = [

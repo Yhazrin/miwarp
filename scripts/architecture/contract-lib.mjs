@@ -455,7 +455,7 @@ export function rustBusVariantToType(variant) {
 }
 
 /**
- * Parse Rust `pub enum BusEvent { ... }` variant names from models.rs.
+ * Parse Rust `pub enum BusEvent { ... }` variant names from models/.
  *
  * @param {string} source
  * @returns {string[]} PascalCase variant names

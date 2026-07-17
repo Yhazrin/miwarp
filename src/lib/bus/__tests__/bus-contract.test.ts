@@ -2,7 +2,7 @@
  * Bidirectional contract test for the BusEvent union.
  *
  * The Rust backend declares `pub enum BusEvent { ... }` in
- * `src-tauri/src/models.rs`. The frontend declares `export type BusEvent = ...`
+ * `src-tauri/src/models/event.rs`. The frontend declares `export type BusEvent = ...`
  * in `src/lib/types.ts`. These two declarations must stay in sync: a
  * variant added on one side without the other is a silent event loss
  * (frontend drops unknown types, backend serde rejects unknown JSON).
@@ -13,18 +13,18 @@
  *
  * If this test fails:
  *   1. Find the missing/extra variant below.
- *   2. Add it to BOTH `src-tauri/src/models.rs` and `src/lib/types.ts`
+ *   2. Add it to BOTH `src-tauri/src/models/event.rs` and `src/lib/types.ts`
  *      (or remove it from the side where it shouldn't exist).
  *   3. Update `src-tauri/src/web_server/broadcaster.rs::event_type_name`
  *      to match — it's the log-facing canonical name.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..", "..", "..");
-const RUST_FILE = join(REPO_ROOT, "src-tauri", "src", "models.rs");
-const TS_FILE = join(REPO_ROOT, "src", "lib", "types.ts");
+const MODELS_DIR = join(REPO_ROOT, "src-tauri", "src", "models");
+const TS_FILE = join(REPO_ROOT, "src", "lib", "types", "session.ts");
 
 /** Convert Rust VariantName → snake_case type literal. */
 function rustToType(variant: string): string {
@@ -36,7 +36,7 @@ function rustToType(variant: string): string {
 /** Extract Rust `BusEvent::VariantName` declarations. */
 function extractRustVariants(src: string): string[] {
   const enumStart = src.indexOf("pub enum BusEvent");
-  if (enumStart < 0) throw new Error("Could not find `pub enum BusEvent` in models.rs");
+  if (enumStart < 0) throw new Error("Could not find `pub enum BusEvent` in models/");
   // Find the matching closing brace by counting braces from enumStart.
   const afterEnum = src.indexOf("{", enumStart);
   let depth = 1;
@@ -89,12 +89,15 @@ function extractFrontendTypes(src: string): string[] {
 }
 
 describe("BusEvent contract", () => {
-  const rustSrc = readFileSync(RUST_FILE, "utf-8");
+  const rustSrc = readdirSync(MODELS_DIR)
+    .filter((f) => f.endsWith(".rs"))
+    .map((f) => readFileSync(join(MODELS_DIR, f), "utf-8"))
+    .join("\n");
   const tsSrc = readFileSync(TS_FILE, "utf-8");
   const rustVariants = extractRustVariants(rustSrc);
   const tsTypes = extractFrontendTypes(tsSrc);
 
-  it("models.rs and types.ts are readable", () => {
+  it("models/ directory and types.ts are readable", () => {
     expect(rustSrc).toContain("pub enum BusEvent");
     expect(tsSrc).toContain("export type BusEvent");
   });

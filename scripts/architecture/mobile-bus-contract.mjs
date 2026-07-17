@@ -3,7 +3,7 @@
  * Mobile BusEvent contract gate.
  *
  * Ensures iOS (BusEventPayload.EventType) and Android (MiWarpRpcClient when
- * branches) stay aligned with Rust `BusEvent` variants in models.rs.
+ * branches) stay aligned with Rust `BusEvent` variants in models/.
  *
  * Sister to `src/lib/bus/__tests__/bus-contract.test.ts` (Rust ↔ desktop TS)
  * and focused on the mobile decoders that previously fell back to `.raw`.
@@ -11,6 +11,7 @@
  * Run from repo root:
  *   node scripts/architecture/mobile-bus-contract.mjs
  */
+import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import {
   RECOVERY_BUS_EVENT_TYPES,
@@ -22,7 +23,7 @@ import {
 } from "./contract-lib.mjs";
 import { REPO_ROOT, readText, rel, report } from "./lib.mjs";
 
-const rustFile = join(REPO_ROOT, "src-tauri", "src", "models.rs");
+const modelsDir = join(REPO_ROOT, "src-tauri", "src", "models");
 const iosFile = join(
   REPO_ROOT,
   "apps",
@@ -48,12 +49,20 @@ const androidFile = join(
   "MiWarpRpcClient.kt",
 );
 
-const rustSrc = readText(rustFile);
+const rustSrc = readdirSync(modelsDir)
+  .filter((f) => f.endsWith(".rs"))
+  .map((f) => readText(join(modelsDir, f)) ?? "")
+  .join("\n");
 const iosSrc = readText(iosFile);
 const androidSrc = readText(androidFile);
 
 if (!rustSrc || !iosSrc || !androidSrc) {
   console.error("✗ mobile-bus-contract: missing source file(s)");
+  process.exit(1);
+}
+
+if (!rustSrc) {
+  console.error("✗ mobile-bus-contract: cannot read models/ directory");
   process.exit(1);
 }
 
@@ -107,7 +116,7 @@ for (const [eventType, fields] of Object.entries(RECOVERY_PAYLOAD_FIELDS)) {
 
 const hint =
   `Sources:\n` +
-  `  · ${rel(REPO_ROOT, rustFile)}\n` +
+  `  · ${rel(REPO_ROOT, modelsDir)}\n` +
   `  · ${rel(REPO_ROOT, iosFile)}\n` +
   `  · ${rel(REPO_ROOT, androidFile)}\n` +
   `Recovery events must decode to typed payloads — Raw is only for truly unknown wire types.`;

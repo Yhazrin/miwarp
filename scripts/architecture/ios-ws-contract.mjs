@@ -66,7 +66,8 @@ const dispatchFile = join(
   "src-tauri",
   "src",
   "web_server",
-  "dispatch.rs",
+  "dispatch",
+  "mod.rs",
 );
 const wsFile = join(REPO_ROOT, "src-tauri", "src", "web_server", "ws.rs");
 
