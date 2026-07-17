@@ -32,8 +32,8 @@ export interface UrlParamsDeps {
   getPromptRef: () => { focus: () => void } | undefined;
   getSettingsCache: () => unknown;
   getXtermRef: () => unknown;
-  folderCwdOverride: { value: string };
-  selectedWorkspaceCwd: { value: string };
+  setFolderCwdOverride: (v: string) => void;
+  setSelectedWorkspaceCwd: (v: string) => void;
 }
 
 export function createUrlParams(deps: UrlParamsDeps) {
@@ -86,8 +86,8 @@ export function createUrlParams(deps: UrlParamsDeps) {
           }
           window.dispatchEvent(new Event("ocv:cwd-changed"));
         }
-        deps.folderCwdOverride.value = normalizedFolder;
-        deps.selectedWorkspaceCwd.value = normalizedFolder;
+        deps.setFolderCwdOverride(normalizedFolder);
+        deps.setSelectedWorkspaceCwd(normalizedFolder);
         deps.store.sessionCwd = normalizedFolder;
         deps.chatViewCache.lastRunId = "";
         deps.store.loadRun("", deps.getXtermRef());

@@ -12,10 +12,9 @@
   } from "$lib/types";
   import * as api from "$lib/api";
   import { createGitBranchPoller } from "$lib/utils/git-branch";
-  import AgentSelector from "./AgentSelector.svelte";
-  import AuthSourceBadge from "./AuthSourceBadge.svelte";
-  import FileAttachment from "./FileAttachment.svelte";
   import SlashMenu from "./SlashMenu.svelte";
+  import PromptToolbar from "./prompt/PromptToolbar.svelte";
+  import PromptAttachments from "./prompt/PromptAttachments.svelte";
   import AtMentionMenu from "./AtMentionMenu.svelte";
   import {
     filterSlashCommands,
@@ -35,10 +34,8 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import type { ProcessVisibility } from "$lib/utils/process-visibility";
   import { shouldShowContextDetails } from "$lib/utils/process-visibility";
-  import { IS_MAC } from "$lib/utils/platform";
   import { t } from "$lib/i18n/index.svelte";
   import { showToast } from "$lib/stores/toast-store.svelte";
-  import { formatPasteSize } from "$lib/utils/format";
   import {
     BINARY_ATTACHMENT_TYPES,
     MAX_ATTACHMENTS,
@@ -49,7 +46,6 @@
     isPdf,
     isConvertibleFile,
     isConvertibleByExt,
-    isSpreadsheetExt,
     getFileExtension,
     classifyByMime,
     getFileSizeLimit,
@@ -73,7 +69,6 @@
   import { misencodedNavigationDirection, moveTextareaCaret } from "$lib/utils/prompt-text";
   import { resolveTextareaLayout } from "$lib/components/prompt/textarea-layout";
   import Icon from "$lib/components/Icon.svelte";
-  import PermissionModePicker from "$lib/components/PermissionModePicker.svelte";
 
   const PRIVATE_USE_KEYBOARD_MIN = 0xf700;
   const PRIVATE_USE_KEYBOARD_MAX = 0xf8ff;
@@ -2041,78 +2036,14 @@
   {/if}
 
   <!-- Attachment & paste block previews -->
-  {#if store.pendingAttachments.length > 0 || store.pastedBlocks.length > 0 || store.pendingPathRefs.length > 0}
-    <div class="mb-2 flex flex-wrap gap-1.5">
-      {#each store.pendingAttachments as att (att.id)}
-        <FileAttachment
-          name={att.name}
-          size={att.size}
-          mimeType={att.type}
-          isPathRef={!!att.filePath && !att.contentBase64}
-          onremove={() => removeAttachment(att.id)}
-        />
-      {/each}
-      {#each store.pendingPathRefs as ref (ref.id)}
-        <FileAttachment
-          name={ref.name}
-          size={0}
-          mimeType={ref.isDir ? "inode/directory" : "application/octet-stream"}
-          isPathRef={true}
-          onremove={() => removePathRef(ref.id)}
-        />
-      {/each}
-      {#each store.pastedBlocks as block (block.id)}
-        {@const isSpreadsheet = block.ext ? isSpreadsheetExt(block.ext) : false}
-        <span
-          class="inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] text-miwarp-status-info px-2 py-1 text-xs"
-        >
-          {#if isSpreadsheet}
-            <!-- Table/spreadsheet icon -->
-            <svg
-              class="h-3.5 w-3.5 shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M3 9h18" /><path d="M3 15h18" /><path d="M9 3v18" />
-            </svg>
-          {:else}
-            <!-- Clipboard icon for text -->
-            <svg
-              class="h-3.5 w-3.5 shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path
-                d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
-              />
-            </svg>
-          {/if}
-          <span class="truncate max-w-[200px]">{block.preview}</span>
-          <span class="text-miwarp-status-info dark:text-miwarp-status-info"
-            >{formatPasteSize(block.lineCount, block.charCount)}</span
-          >
-          <button
-            type="button"
-            onclick={() => removePastedBlock(block.id)}
-            class="ml-0.5 rounded p-0.5 transition-colors hover:bg-[hsl(var(--miwarp-status-info)/0.15)]"
-            title={t("prompt_removePaste")}
-            aria-label={t("prompt_removePaste")}
-          >
-            <Icon name="x" size="xs" />
-          </button>
-        </span>
-      {/each}
-    </div>
-  {/if}
+  <PromptAttachments
+    attachments={store.pendingAttachments}
+    pathRefs={store.pendingPathRefs}
+    pastedBlocks={store.pastedBlocks}
+    onRemoveAttachment={removeAttachment}
+    onRemovePathRef={removePathRef}
+    onRemovePastedBlock={removePastedBlock}
+  />
 
   <!-- L3: Quick action pills + git branch (above input container) -->
   {#if (slashEnabled && quickActions.length > 0) || gitBranch}
@@ -2161,227 +2092,7 @@
     </div>
   {/if}
 
-  {#snippet promptToolbarLeft(compact: boolean)}
-    {#if !hasRun && onAgentChange}
-      <AgentSelector value={agent} onchange={(a) => onAgentChange?.(a)} />
-    {/if}
-    {#if showPermissionModeButton && onPermissionModeChange}
-      <PermissionModePicker
-        {permissionMode}
-        onchange={onPermissionModeChange}
-        variant="input"
-        placement="above"
-      />
-    {:else if !hasRun}
-      <div class="w-1"></div>
-    {/if}
-    {#if fastModeState === "on" || fastModeState === "ultracode"}
-      <button
-        type="button"
-        class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider
-          bg-[hsl(var(--miwarp-status-info)/0.15)] text-miwarp-status-info
-          hover:bg-[hsl(var(--miwarp-status-info)/0.25)] transition-colors
-          motion-running-pulse"
-        title={t("prompt_fastModeActive")}
-        onclick={() => onFastModeSwitch?.("off")}
-      >
-        <Icon name="zap" size="xs" class="shrink-0" />
-        {#if !compact}
-          <span>fast</span>
-        {/if}
-      </button>
-    {/if}
-    {#if showAuthBadge && !hasRun && !compact}
-      <AuthSourceBadge
-        {authOverview}
-        {authSourceLabel}
-        {authSourceCategory}
-        {apiKeySource}
-        {hasRun}
-        {authMode}
-        {platformCredentials}
-        {platformId}
-        {onAuthModeChange}
-        {onPlatformChange}
-        {localProxyStatuses}
-      />
-    {/if}
-    {#if hasStash && onRestoreStash}
-      <button
-        type="button"
-        class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-miwarp-accent-violet hover:bg-[hsl(var(--miwarp-accent-violet)/0.25)] transition-colors"
-        title={t("prompt_stashRestore")}
-        onclick={onRestoreStash}
-      >
-        <Icon name="refresh-cw" size="xs" />
-        {#if !compact}
-          {t("prompt_stashBadge")}
-        {/if}
-      </button>
-    {/if}
-  {/snippet}
 
-  {#snippet promptSendButton(btw = false)}
-    <!-- Keep the primary action's dimensions stable while the composer grows.
-         Changing the button itself makes the right action rail look as if it
-         jumps, even when its outer edge is anchored. -->
-    {@const sendSizeClass = "h-7 w-7"}
-    {@const sendIconSize = "sm"}
-    {@const sendLookClass = canSend
-      ? btw
-        ? "bg-miwarp-status-info text-miwarp-accent-on-accent hover:opacity-90"
-        : "bg-primary text-primary-foreground hover:bg-primary/90"
-      : "bg-primary text-primary-foreground opacity-45 cursor-not-allowed"}
-    <button
-      type="button"
-      class="flex shrink-0 items-center justify-center rounded-full transition-[opacity,background-color] duration-200 {sendSizeClass} {sendLookClass}"
-      onclick={btw ? handleBtwSend : handleSend}
-      disabled={!canSend}
-      data-busy={busy ? "true" : "false"}
-      title={btw ? t("promptInput_sendSideQuestion") : t("prompt_send")}
-      aria-label={btw ? t("promptInput_sendSideQuestion") : t("prompt_send")}
-    >
-      <Icon name="arrow-right" size={sendIconSize} />
-    </button>
-  {/snippet}
-
-  {#snippet promptToolbarRight(compact: boolean)}
-    {#if showTokenEstimateUi && !compact}
-      <span
-        class="text-[10px] tabular-nums px-1.5 shrink-0 {tokenWarning
-          ? 'text-miwarp-status-warning'
-          : 'text-muted-foreground/50'}"
-        title={contextWindow > 0 ? t("prompt_tokenPercent", { pct: String(tokenPercent) }) : ""}
-      >
-        {t("prompt_tokenEstimate", { tokens: String(tokenEstimate) })}
-        {#if contextWindow > 0}<span class="ml-0.5"
-            >{t("prompt_tokenPercent", { pct: String(tokenPercent) })}</span
-          >{/if}
-        {#if tokenWarning}<Icon
-            name="triangle-alert"
-            size="xs"
-            class="ml-0.5 inline text-miwarp-status-warning"
-          />{/if}
-      </span>
-    {/if}
-    {#if slashEnabled}
-      <button
-        type="button"
-        bind:this={slashBtnEl}
-        class="flex h-7 w-7 items-center justify-center rounded-full
-          text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors"
-        onclick={openSlashMenuFromButton}
-        title={t("prompt_slashCommands")}
-        aria-label={t("prompt_slashCommands")}
-      >
-        <svg
-          class="h-4 w-4"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M17 3 7 21" />
-        </svg>
-      </button>
-    {/if}
-    <input
-      bind:this={fileInput}
-      type="file"
-      multiple
-      accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.txt,.md,.json,.ts,.tsx,.js,.jsx,.py,.rs,.svelte,.html,.css,.yaml,.yml,.toml,.xml,.sh,.sql,.go,.java,.c,.cpp,.h,.rb,.php,.swift,.csv,.log,.docx,.xlsx"
-      class="hidden"
-      onchange={handleFileSelect}
-    />
-    <button
-      type="button"
-      class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
-      onclick={() => fileInput?.click()}
-      disabled={store.pendingAttachments.length >= 8}
-      title={t("prompt_attachFiles")}
-      aria-label={t("prompt_attachFiles")}
-    >
-      <svg
-        class="h-4 w-4"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <path
-          d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"
-        />
-      </svg>
-    </button>
-    {#if IS_MAC && !compact}
-      <button
-        type="button"
-        class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
-        onclick={() => api.captureScreenshot()}
-        disabled={store.pendingAttachments.length >= 8}
-        title={t("prompt_screenshot")}
-      >
-        <svg
-          class="h-4 w-4"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path
-            d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"
-          />
-          <circle cx="12" cy="13" r="3" />
-        </svg>
-      </button>
-    {/if}
-
-    {#if running && onInterrupt}
-      {#if canSend}
-        {@render promptSendButton(btwMode)}
-      {/if}
-      {#if onBtwSend}
-        <button
-          type="button"
-          onclick={() => (btwMode = !btwMode)}
-          title={t("promptInput_sideQuestion")}
-          class="flex h-7 w-7 items-center justify-center rounded-full transition-colors {btwMode
-            ? 'text-miwarp-status-info bg-miwarp-status-info/10'
-            : 'text-muted-foreground/60 hover:text-foreground hover:bg-accent/15'}"
-        >
-          <svg
-            class="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-          </svg>
-        </button>
-      {/if}
-      <button
-        type="button"
-        class="flex h-7 w-7 items-center justify-center rounded-full text-destructive transition-colors hover:bg-destructive/10"
-        onclick={onInterrupt}
-        title={t("prompt_stop")}
-      >
-        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-          <rect x="6" y="6" width="12" height="12" rx="2" />
-        </svg>
-      </button>
-    {:else}
-      {@render promptSendButton(false)}
-    {/if}
-  {/snippet}
 
   <!-- Unified input container -->
   <div
@@ -2441,8 +2152,49 @@
           ? 'top-0 h-full'
           : 'bottom-[7px]'}"
       >
-        {@render promptToolbarLeft(true)}
-        {@render promptToolbarRight(useCapsuleStrip)}
+        <PromptToolbar
+          compact={useCapsuleStrip}
+          {hasRun}
+          {agent}
+          {onAgentChange}
+          {showPermissionModeButton}
+          {permissionMode}
+          {onPermissionModeChange}
+          {fastModeState}
+          {onFastModeSwitch}
+          {showAuthBadge}
+          {authOverview}
+          {authSourceLabel}
+          {authSourceCategory}
+          {apiKeySource}
+          {authMode}
+          {platformCredentials}
+          {platformId}
+          {onPlatformChange}
+          {onAuthModeChange}
+          {localProxyStatuses}
+          {hasStash}
+          {onRestoreStash}
+          {showTokenEstimateUi}
+          {tokenWarning}
+          {tokenEstimate}
+          {tokenPercent}
+          {contextWindow}
+          {slashEnabled}
+          bind:slashBtnEl
+          {openSlashMenuFromButton}
+          bind:fileInput
+          {handleFileSelect}
+          pendingAttachmentCount={store.pendingAttachments.length}
+          {running}
+          {onInterrupt}
+          {canSend}
+          {btwMode}
+          {onBtwSend}
+          {handleBtwSend}
+          {handleSend}
+          onToggleBtwMode={() => (btwMode = !btwMode)}
+        />
       </div>
 
       <textarea

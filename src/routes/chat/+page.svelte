@@ -38,21 +38,21 @@
 
   import ToolActivity from "$lib/components/ToolActivity.svelte";
   import ShortcutHelpPanel from "$lib/components/ShortcutHelpPanel.svelte";
-  import type { PromptInputSnapshot } from "$lib/types";
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import { t } from "$lib/i18n/index.svelte";
   import { showToast as _showToast } from "$lib/stores/toast-store.svelte";
   import { registerSessionIslandNotify } from "$lib/stores/session-island-notify.svelte";
   import { registerToastListener } from "$lib/stores/toast-store.svelte";
   import { workspacesStore } from "$lib/stores/workspaces-store.svelte";
-  // getTransport managed by folder picker composable
+  import { createUrlParams } from "./use-url-params.svelte";
+  import { createAutoScroll } from "./use-auto-scroll.svelte";
+  import { createContinuityCapsule } from "./use-continuity-capsule.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { perfMarkAsync } from "$lib/utils/perf";
-  import { setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
+  import { setLastTarget } from "$lib/utils/remote-cwd";
   import { shouldTriggerAutoTitle, deriveAutoName } from "$lib/utils/auto-name";
   import { generateRunTitle } from "$lib/api";
   import { normalizeCwd } from "$lib/utils/sidebar-groups";
-  // ProcessVisibility type managed by chatState composable
   import {
     normalizeSessionIslandAlignment,
     SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT,
@@ -113,32 +113,12 @@
     getCachedRenderLimit,
   } from "$lib/chat/chat-view-cache.svelte";
   import { snapshotChatBootstrap } from "$lib/chat/chat-bootstrap-cache";
-  import {
-    ContinuityCapsuleController,
-    type ContinuitySaveInput,
-    type PendingRestore,
-  } from "$lib/chat/continuity-capsule-controller";
-  import {
-    sanitizeDraft as sanitizeDraftForCapsule,
-    type ContinuityAnchor,
-    type ContinuityDraft,
-  } from "$lib/chat/continuity-capsule";
-
-  // ── Helpers ──
-
-  // ── Layout context ──
   const _toggleLayoutSidebar = getContext<() => void>("toggleSidebar");
   const layoutChrome = getContext<LayoutChromeContext>(LAYOUT_CHROME_CONTEXT_KEY);
   const keybindingStore = getContext<KeybindingStore>("keybindings");
-  // v1.0.10 perf: layout already loaded UserSettings in its own onMount; reuse it
-  // to skip the ~10-30ms duplicate getUserSettings() IPC at chat-mount time.
   const settingsCache = getContext<SettingsCacheContext | undefined>(SETTINGS_CACHE_CONTEXT_KEY);
-
-  // ── Store + Middleware ──
   const store = sessionStore;
   const middleware = getEventMiddleware();
-
-  // ── Composables ──
   const chatState = createChatState();
   const scrollState = createScrollState(
     () => store,
@@ -151,15 +131,28 @@
     },
     (opts) => fp.openFolderPicker(opts),
   );
-
-  // ── UI-only state (not in store) ──
+  const urlParams = createUrlParams({
+    pageUrl: () => $page.url,
+    store,
+    getRemoteHosts: () => remoteHosts,
+    chatViewCache,
+    getPromptRef: () => promptRef,
+    getSettingsCache: () => settingsCache,
+    getXtermRef: () => xtermRef,
+    setFolderCwdOverride: (v) => { folderCwdOverride = v; },
+    setSelectedWorkspaceCwd: (v) => { selectedWorkspaceCwd = v; },
+  });
+  const capsule = createContinuityCapsule({
+    store,
+    tl,
+    chatState,
+    scrollState,
+    getPromptRef: () => promptRef,
+    getChatAreaRef: () => chatAreaRef,
+  });
   let middlewareReady = $state(false);
   let xtermRef: XTerminal | undefined = $state();
   let promptRef: PromptInput | undefined = $state();
-
-  // Publish the prompt input handle so deep descendants (MermaidInteractive's
-  // popover, future slash-menu extras, etc.) can route actions through the
-  // live input without prop-drilling. Cleared on unmount via the cleanup.
   $effect(() => {
     const handle = promptRef
       ? {
@@ -170,11 +163,6 @@
     setChatInputHandle(handle);
     return () => setChatInputHandle(undefined);
   });
-
-  // Publish a timeline-shrink handle so the layout's newChat click can
-  // collapse the visible render window before navigating to /chat?new=1.
-  // Without this, runs with >500 messages stall the click while Svelte
-  // tears down the existing timeline DOM mid-navigation.
   $effect(() => {
     const handle = {
       shrinkVisibleRender(cap = 24) {
@@ -186,8 +174,6 @@
     setChatTimelineResetHandle(handle);
     return () => setChatTimelineResetHandle(undefined);
   });
-
-  // ── Sync process visibility when settings change ──
   $effect(() => {
     const s = chatState.settings;
     chatState.syncProcessVisibility(s);
@@ -201,22 +187,10 @@
   /** Reactive cwd override for new-chat-in-folder (cleared when a run is loaded) */
   let folderCwdOverride = $state("");
   let chatAreaRef: HTMLDivElement | undefined = $state();
-  // scrollState.isChatAutoScroll, scrollState.readingHistory, scrollState.showChatScrollHint,
-  // scrollState.showScrollButton are managed by use-scroll composable
-  // scrollState.scrollToInFlight, scrollState.restoringScroll are non-reactive flags
-  // agentSettings, resuming, approving managed by chatState composable
-  // (pendingResumeText removed — auto-resume uses atomic resume+send via initialMessage)
-  /** Most recent run with a session_id — for "Continue last session" on welcome screen. */
   let lastContinuableRun = $state<import("$lib/types").TaskRun | null>(null);
-  /** Available remote hosts from settings. */
   let remoteHosts = $state<import("$lib/types").RemoteHost[]>([]);
-  /** Auth overview for AuthSourceBadge. */
   let authOverview = $state<import("$lib/types").AuthOverview | null>(null);
 
-  // folderPickerOpen, folderPickerInitialHost, folderPickerInitialPath,
-  // folderPickerHideTarget, folderPickerResolve managed by folder picker composable
-
-  /** Preloaded skill details from filesystem (has descriptions). */
   let preloadedSkills = $state<import("$lib/types").StandaloneSkill[]>([]);
   /** Preloaded agent definitions from filesystem. */
   let preloadedAgents = $state<import("$lib/types").AgentDefinitionSummary[]>([]);
@@ -224,31 +198,19 @@
   let projectCommands = $state<import("$lib/types").CliCommand[]>([]);
   /** Local proxy running statuses for AuthSourceBadge. */
   let localProxyStatuses = $state<Record<string, { running: boolean; needsAuth: boolean }>>({});
-
-  // ── Project init detection ──
   let projectInitStatus = $state<import("$lib/types").ProjectInitStatus | null>(null);
-
-  // ── Task notification banner ──
   let notificationVisible = $state(false);
   let latestNotification = $state<{ task_id: string; status: string } | null>(null);
-
-  // ── Rewind modal ──
   let rewindModalOpen = $state(false);
   let rewindDirectTarget = $state<RewindCandidate | null>(null);
   let rewindMarkers = $state<RewindMarker[]>([]);
-
-  // Clear direct target on modal close
   $effect(() => {
     if (!rewindModalOpen) rewindDirectTarget = null;
   });
-
-  // ── Team dispatch (composable) ──
   const team = createTeamDispatch({
     store,
     getSendMessage: () => sendMessage,
   });
-
-  // Load presets on mount
   onMount(() => {
     // Register workspace selection callback so sidebar folder expansion
     // triggers the workspace overview in the chat page.
@@ -264,9 +226,6 @@
     getPresets()
       .then((p) => team.setTeamPresets(p))
       .catch((e) => dbgWarn("chat", "getPresets failed:", e));
-
-    // Wire split workspace toast sink — chat page is the only place that
-    // owns the i18n + showToast pipeline, so the store just gets the key.
     splitWorkspaceStore.onToast = (key, kind) => {
       _showToast(t(key as never), kind ?? "info");
     };
@@ -275,8 +234,6 @@
     void reconcileSplitFromUrl(get(page).url.searchParams);
 
     registerSessionIslandNotify(chatState.pushPermissionStatus);
-
-    // Route toast notifications through SessionStatusBar overlay.
     registerToastListener((toast) => {
       chatState.toastOverlay = toast;
       chatState.toastOverlayVersion = Date.now();
@@ -308,15 +265,11 @@
       window.removeEventListener(api.USER_SETTINGS_CHANGED_EVENT, onUserSettingsChanged);
     };
   });
-
-  // ── Split workspace integration ──────────────────────────────────────────
   $effect(() => {
     if (isSplitUrlSyncLocked()) return;
     const params = $page.url.searchParams;
     void reconcileSplitFromUrl(params);
   });
-
-  // Auto-name one-shot latch: reset only on actual run ID change
   let prevAutoNameRunId = "";
   let autoNameDone = false;
   $effect(() => {
@@ -326,8 +279,6 @@
       autoNameDone = false;
     }
   });
-
-  // Clear markers on run switch (explicit prev-value check)
   let prevRewindRunId = "";
   $effect(() => {
     const id = store.run?.id ?? "";
@@ -336,8 +287,6 @@
       rewindMarkers = [];
     }
   });
-
-  // Lazy: only compute when rewind modal is open (avoids 3 array allocations per timeline change)
   let rewindCandidates = $derived(
     rewindModalOpen
       ? store.timeline
@@ -361,8 +310,6 @@
           )
       : [],
   );
-
-  // ── BTW side question ──
   let btwState = $state<{
     active: boolean;
     btwId: string | null;
@@ -372,17 +319,9 @@
     loading: boolean;
   }>({ active: false, btwId: null, question: "", answer: "", error: null, loading: false });
 
-  // ── Shortcut help panel ──
-  // shortcutHelpOpen, statusBarRef, stashedInput, sidebarRequestedTab managed by chatState
-  // permissionStatusOverlay, toastOverlay managed by chatState
-
-  // toolPanelActiveTab, toolPanelIndicators, requestedPreviewPath, requestedPreviewUrl managed by chatState
-
   function openPreviewForPath(path: string) {
     chatState.openPreviewForPath(path, toggleSidebar);
   }
-
-  // Clear preview when run changes (defense-in-depth; ToolActivity also clears via its runId effect)
   let _lastPreviewClearRunId = "__unset__";
   $effect(() => {
     const id = store.run?.id ?? "";
@@ -391,19 +330,12 @@
       chatState.requestedPreviewPath = null;
     }
   });
-
-  // ── Verbose state (composable) ──
   const verbose = createVerboseState();
-
-  // ── Tool result lazy-load cache (composable) ──
   const toolResultCache = createToolResultCache(() => store.run?.id);
-  // Clear cache on run switch
   $effect(() => {
     const _ = store.run?.id;
     toolResultCache.clearCache();
   });
-
-  // ── Timeline rendering (composable) ──
   let _suppressLoadMoreRearm = false;
   let loadMoreEarlierRef: () => void = () => {};
 
@@ -419,8 +351,6 @@
     getChatAreaRef: () => chatAreaRef,
     loadMoreEarlier: () => loadMoreEarlierRef(),
   });
-
-  // ── Timeline annotations (composable) ──
   const ta = createTimelineAnnotations({
     store,
     getVisibleTimeline: () => tl.visibleTimeline,
@@ -428,8 +358,6 @@
     getUserCountPrefix: () => tl.userCountPrefix,
     getCollapsedIndices: () => burstCollapse.collapsedIndices,
   });
-
-  // ── Session-derived state (composable) ──
   const sd = createSessionDerived({
     store,
     getSettings: () => chatState.settings,
@@ -439,18 +367,7 @@
     timelineAnnotations: ta,
   });
 
-  // ── MCP panel ──
-  // mcpPanelOpen managed by chatState
-
-  // ── CLI session browser ──
-
-  // Track status bar expansion for MCP panel offset
-  // statusBarExpanded managed by chatState
-
   let currentEffort = $state("");
-
-  // Effort guard: auto-clear effort when model doesn't support it;
-  // also auto-populate default effort ("high") when empty and model supports it.
   $effect(() => {
     if (store.agent !== "claude") return;
 
@@ -477,38 +394,24 @@
       });
     }
   });
-
-  // Auto-focus input on run change
   $effect(() => {
     const _ = store.run?.id;
     requestAnimationFrame(() => promptRef?.focus());
   });
-
-  // Sync verbose state from CLI config when run changes (or on retry)
   $effect(() => {
     const _tick = verbose.verboseRetryTick; // extra dep: drives retry on failure
     verbose.syncVerboseState(store.run?.id);
   });
-
-  // (usage annotations derived values moved to createSessionDerived)
-
-  // ── Fork overlay (composable) ──
   const fork = createForkOverlay({
     store,
     t: t as unknown as (key: string) => string,
   });
-
-  // ── Model guard (composable) ──
   const modelGuard = createModelGuard({
     store,
     getSettings: () => chatState.settings,
     getCliCurrentModel,
   });
-
-  // ── Thinking timer + slash command processing (composable) ──
   const thinking = useThinkingTimer({ store });
-
-  // Task notification top banner: active tasks only; always re-arm dismiss timer on map updates
   $effect(() => {
     const notifications = store.taskNotifications;
     if (notifications.size === 0) {
@@ -530,31 +433,16 @@
     return () => clearTimeout(timer);
   });
 
-  // ── URL-derived (primitive values only — avoids $effect re-trigger on unrelated URL changes) ──
-  let runId = $derived($page.url.searchParams.get("run") ?? "");
-  let hasNewParam = $derived($page.url.searchParams.has("new"));
-  let hasResumeParam = $derived($page.url.searchParams.has("resume"));
-  let folderParam = $derived($page.url.searchParams.get("folder"));
-  let hostParam = $derived($page.url.searchParams.get("host"));
-  // Pending logical-folder target from `?sf=<folderId>` (sidebar "new session in
-  // folder" entry point). Cleared once consumed so subsequent sessions in the
-  // same chat tab default to the workspace root.
-  let pendingSubFolderId = $state<string>("");
-  $effect(() => {
-    const sf = $page.url.searchParams.get("sf");
-    if (sf) pendingSubFolderId = sf;
-  });
-
   let routeRunPending = $derived(
-    !!runId && tl.loadingRunId === runId && store.run?.id !== runId && !store.error,
+    !!urlParams.runId && tl.loadingRunId === urlParams.runId && store.run?.id !== urlParams.runId && !store.error,
   );
 
   let routeRunLoadFailed = $derived(
-    !!runId && store.run?.id !== runId && store.phase === "failed" && !!store.error,
+    !!urlParams.runId && store.run?.id !== urlParams.runId && store.phase === "failed" && !!store.error,
   );
 
   let welcomeVisible = $derived(
-    !runId &&
+    !urlParams.runId &&
       !tl.loadingRunId &&
       store.timeline.length === 0 &&
       !store.streamingText &&
@@ -562,347 +450,63 @@
       store.phase !== "loading",
   );
 
-  /** Effective cwd for the workspace overview panel: shows when a workspace
-   *  folder has been selected via sidebar expansion or URL folder param, and
-   *  no session is actively loaded (regardless of welcomeVisible, which can
-   *  be false due to cached runId redirects before the store populates). */
+  /** Effective cwd for the workspace overview panel. */
   let selectedWorkspaceCwd = $state("");
   let workspaceOverviewCwd = $derived(
-    !hasNewParam && !store.run && store.timeline.length === 0 && !store.streamingText
+    !urlParams.hasNewParam && !store.run && store.timeline.length === 0 && !store.streamingText
       ? (selectedWorkspaceCwd || folderCwdOverride || "")
       : "",
   );
-
-  // Clear sidebar-selected workspace when a session becomes active so the
-  // overview doesn't reappear on navigation back to the welcome screen.
   $effect(() => {
     if (store.run && selectedWorkspaceCwd) {
       selectedWorkspaceCwd = "";
     }
   });
-
-  // Consume ?folder= and/or ?host= params: switch target/folder, then clean URL.
-  $effect(() => {
-    const folder = folderParam;
-    const host = hostParam;
-    if (!folder && !host) return;
-    untrack(() => {
-      dbg("chat", "url params", { folder, host });
-      // Validate non-empty host against currently loaded settings. If `remoteHosts`
-      // hasn't loaded yet (this effect can fire before onMount finishes settings
-      // fetch), fall back to optimistic acceptance — the backend surfaces a
-      // "Remote host '...' not found" error if the name is genuinely bogus.
-      let resolvedHost: string | null = null;
-      if (host !== null) {
-        if (host === "") {
-          resolvedHost = null; // explicit clear
-        } else if (remoteHosts.length === 0 || remoteHosts.some((h) => h.name === host)) {
-          resolvedHost = host;
-        } else {
-          dbgWarn("chat", "URL ?host= references unknown remote — ignoring", { host });
-          resolvedHost = null;
-        }
-        store.remoteHostName = resolvedHost;
-        setLastTarget(resolvedHost);
-      }
-      if (folder) {
-        const normalizedFolder = normalizeCwd(folder);
-        if (resolvedHost) {
-          setStoredRemoteCwd(resolvedHost, normalizedFolder);
-        } else if (normalizedFolder) {
-          try {
-            localStorage.setItem("ocv:project-cwd", normalizedFolder);
-          } catch {
-            // localStorage may fail in restricted contexts
-          }
-          window.dispatchEvent(new Event("ocv:cwd-changed"));
-        }
-        folderCwdOverride = normalizedFolder;
-        selectedWorkspaceCwd = normalizedFolder;
-        store.sessionCwd = normalizedFolder;
-        chatViewCache.lastRunId = "";
-        store.loadRun("", xtermRef);
-      }
-      const clean = new URL($page.url);
-      clean.searchParams.delete("folder");
-      clean.searchParams.delete("host");
-      clean.searchParams.delete("sf");
-      replaceState(clean, {});
-      requestAnimationFrame(() => promptRef?.focus());
-    });
-  });
-
-  // ── Computed (thin wrappers for template convenience) ──
   let sending = $derived(store.phase === "spawning");
 
-  // ── Continuity Capsule (v1.0.9 "Trustworthy Reload & Session Continuity") ──
-  // Local-first, versioned, capacity-bounded supplement to chat-view-cache
-  // that captures per-run state the existing cache does not: unsent drafts,
-  // the cwd at save time, the first visible timeline anchor + offset (for
-  // stable scroll restoration across reloads), the tool filter, the
-  // process visibility, and a per-run Inspector (ToolActivity sidebar)
-  // snapshot. Hard rules: never persist tokens / API keys / env values;
-  // never persist raw attachment bytes; LRU + 14-day TTL on read; schema
-  // versioned; corruption-safe degrade.
-
-  /** Anchor: the first visible timeline row at the time of the last save.
-   *  Updated via a rAF-coalesced effect so the DOM read happens off the
-   *  hot reactive path. */
-  let currentAnchor: ContinuityAnchor | null = $state(null);
-
-  /** Track which run the controller has already applied a restore for.
-   *  Latched so repeated effect runs (e.g. during streaming) don't
-   *  re-apply the same restore. */
-  let _restoreAppliedFor = "";
-
-  /** Last runId observed by the send coordinator reconcile step.
-   *  Mirrors `permissionCoordinator.lastActiveRunId` so we don't
-   *  reconcile twice on the same navigation. */
+  /** Last runId observed by the send coordinator reconcile step. */
   let sendCoordinatorLastActiveRunId: string | null = null;
 
-  function buildDraftFromPrompt(): ContinuityDraft | null {
-    const prompt = promptRef;
-    if (!prompt || typeof prompt.getInputSnapshot !== "function") return null;
-    let snap: PromptInputSnapshot | null = null;
-    try {
-      snap = prompt.getInputSnapshot() as PromptInputSnapshot;
-    } catch (e) {
-      dbgWarn("chat", "continuity.snapshot.failed", { error: String(e) });
-      return null;
-    }
-    return sanitizeDraftForCapsule(snap);
-  }
-
-  function captureContinuityInput(): ContinuitySaveInput | null {
-    const runId = store.run?.id;
-    if (!runId) return null;
-    return {
-      runId,
-      cwd: store.effectiveCwd ?? "",
-      draft: buildDraftFromPrompt(),
-      toolFilter: tl.toolFilter,
-      processVisibility: chatState.processVisibility,
-      anchor: currentAnchor,
-      inspector: {
-        toolPanelActiveTab: chatState.toolPanelActiveTab,
-        requestedPreviewPath: chatState.requestedPreviewPath ?? null,
-        sidebarCollapsed: chatState.sidebarCollapsed,
-      },
-    };
-  }
-
-  const continuityController = new ContinuityCapsuleController({
-    capture: captureContinuityInput,
-    debounceMs: 500,
-    onLog: (event, detail) => dbg("continuity", event, detail),
-  });
-
-  // Attach on mount; dispose on unmount. The cleanup function is the
-  // Svelte 5 idiom for tying resource teardown to the component lifetime.
-  $effect(() => {
-    continuityController.attach();
-    return () => {
-      continuityController.flush("dispose");
-      continuityController.dispose();
-    };
-  });
-
-  /** Track the first visible row in the chat area so the controller can
-   *  persist a stable anchor (entryId + offset) for scroll restoration.
-   *  Coalesced via rAF to avoid DOM thrash on every render. */
-  $effect(() => {
-    // Touch the dependencies that should trigger a re-read.
-    const _timeline = store.timeline;
-    const _area = chatAreaRef;
-    if (!_area) return;
-    let cancelled = false;
-    const id = requestAnimationFrame(() => {
-      if (cancelled) return;
-      const area = chatAreaRef;
-      if (!area) return;
-      const rootTop = area.getBoundingClientRect().top + 1;
-      const el = area.querySelector<HTMLElement>("[data-entry-id]");
-      if (!el) {
-        currentAnchor = null;
-        return;
-      }
-      const rect = el.getBoundingClientRect();
-      if (rect.bottom <= rootTop) {
-        currentAnchor = null;
-        return;
-      }
-      const entryId = el.getAttribute("data-entry-id") ?? "";
-      if (!entryId) {
-        currentAnchor = null;
-        return;
-      }
-      currentAnchor = { entryId, offsetPx: Math.max(0, Math.round(rect.top - rootTop)) };
-    });
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(id);
-    };
-  });
-
-  /** Watch high-level save-relevant state and trigger a debounced save.
-   *  The prompt text itself is captured at flush time via the controller
-   *  (it reads the latest `promptRef.getInputSnapshot()`); we don't
-   *  subscribe to the input's per-keystroke $state here. The pagehide
-   *  / beforeNavigate / dispose paths guarantee a final flush. */
-  $effect(() => {
-    const id = store.run?.id;
-    if (!id) return;
-    // Touch the rest of the state to create $effect dependencies.
-    void store.effectiveCwd;
-    void tl.toolFilter;
-    void tl.renderLimit;
-    void chatState.toolPanelActiveTab;
-    void chatState.sidebarCollapsed;
-    void chatState.requestedPreviewPath;
-    void chatState.processVisibility;
-    void currentAnchor;
-    continuityController.scheduleSave(id);
-  });
-
-  /** Wrap the team dispatcher's value-change handler so user keystrokes
-   *  also trigger a debounced continuity save. The team handler itself
-   *  stays untouched; the wrapper keeps the two side-effects orthogonal. */
+  /** Wrap team dispatcher to also trigger continuity save on keystroke. */
   function handleInputValueChangeWithContinuity(value: string): void {
     try {
       team.handleInputValueChange(value);
     } finally {
       const id = store.run?.id;
-      if (id) continuityController.scheduleSave(id);
+      if (id) capsule.controller.scheduleSave(id);
     }
   }
-
-  function applyContinuityRestore(runId: string, restore: PendingRestore): void {
-    dbg("continuity", "restore.apply", { runId, savedAt: restore.savedAt });
-    // Draft first — restores both the visible input and the attachment
-    // queue. Empty / null draft is fine (no input state change).
-    if (restore.draft) {
-      const prompt = promptRef;
-      if (prompt?.restoreSnapshot) {
-        const snap: PromptInputSnapshot = {
-          text: restore.draft.text,
-          attachments: restore.draft.attachments,
-          pastedBlocks: restore.draft.pastedBlocks,
-          pathRefs: restore.draft.pathRefs,
-        };
-        try {
-          prompt.restoreSnapshot(snap);
-        } catch (e) {
-          dbgWarn("chat", "continuity.restore.draft.failed", { error: String(e) });
-        }
-      }
-    }
-    // Tool filter — set after draft so it wins ties.
-    if (restore.toolFilter) {
-      tl.setToolFilter(restore.toolFilter);
-    } else {
-      tl.setToolFilter(null);
-    }
-    // Inspector (right-side panel) — direct assignments; the cache
-    // single-source-of-truth pattern still works because these are
-    // local $state.
-    chatState.toolPanelActiveTab = restore.inspector.toolPanelActiveTab;
-    chatState.requestedPreviewPath = restore.inspector.requestedPreviewPath;
-    chatState.sidebarCollapsed = restore.inspector.sidebarCollapsed;
-    // Anchor: wait for the timeline to populate, then expand renderLimit
-    // and scroll. `scrollToMessage` already calls `expandRenderLimitTo`
-    // internally; we just need to wait for store.timeline to contain the
-    // anchor entry.
-    if (restore.anchor) {
-      const anchor = restore.anchor;
-      // Find the matching entry id in the loaded timeline. If not found
-      // after a short grace window, fall back to bottom (no dead loop).
-      let attempts = 0;
-      const tryRestoreAnchor = () => {
-        attempts++;
-        const match = store.timeline.find((e) => e.id === anchor.entryId);
-        if (match) {
-          scrollState.isChatAutoScroll = false;
-          scrollState.readingHistory = true;
-          scrollToMessage(anchor.entryId).catch((e) => {
-            dbgWarn("chat", "continuity.anchor.scroll.failed", { error: String(e) });
-          });
-        } else if (attempts < 6) {
-          // Timeline may still be replaying events. Try a few more times
-          // before giving up.
-          setTimeout(tryRestoreAnchor, 80);
-        } else {
-          dbg("continuity", "restore.anchor.missing", { entryId: anchor.entryId });
-          // Anchor not found — fall back to bottom.
-          requestAnimationFrame(() => {
-            if (chatAreaRef) chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
-            scrollState.isChatAutoScroll = true;
-            scrollState.readingHistory = false;
-          });
-        }
-      };
-      tryRestoreAnchor();
-    }
-  }
-
-  // Watch runId changes → load run + subscribe middleware
-  // Gated on middlewareReady to ensure listeners are registered before subscribing
   $effect(() => {
     if (!middlewareReady) return;
-    const id = runId;
-    const hasResume = hasResumeParam;
-    const isNewChat = hasNewParam;
+    const id = urlParams.runId;
+    const hasResume = urlParams.hasResumeParam;
+    const isNewChat = urlParams.hasNewParam;
     untrack(() => {
       middleware.subscribeCurrent(id, store);
-
-      // ── Permission coordinator reconcile ──
-      // The active run is the source of truth for permission request
-      // identity. When the user switches runs we cancel any in-flight
-      // permission responses whose captured runId no longer matches.
-      // Bump generation so late responses can be detected as stale.
       const previousRunId = permissionCoordinator.lastActiveRunId;
       if (previousRunId !== id) {
         permissionCoordinator.reconcileActiveRun(id);
         permissionCoordinator.bumpGeneration();
         permissionCoordinator.lastActiveRunId = id;
-      }
-
-      // ── Send coordinator reconcile ──
-      // Mirror the permission coordinator pattern: when the user switches
-      // runs, any in-flight submit that captured a stale runId must be
-      // cancelled (rejection surfaces a `stale_identity` failure so the
-      // draft can be restored). Without this, the previous run's pending
-      // transport promise could resolve against the new run's UI and
-      // race the next submit. See `SendCoordinator.cancelForRun` and
-      // `SendCoordinator.reconcileActiveRun`.
-      const previousSendRunId = sendCoordinatorLastActiveRunId;
+      }      const previousSendRunId = sendCoordinatorLastActiveRunId;
       if (previousSendRunId !== id) {
         if (previousSendRunId) {
           send.coordinator.cancelForRun(previousSendRunId, "Run switched");
         }
         send.coordinator.reconcileActiveRun(id);
         sendCoordinatorLastActiveRunId = id;
-      }
-
-      // Strongest guard: resume operation in progress — don't interfere.
-      // Check both store guard (set inside resumeSession) and local flag
-      // (set at handleResume entry, before store guard is acquired).
-      if (store.resumeInFlight || chatState.resuming) {
+      }      if (store.resumeInFlight || chatState.resuming) {
         dbg("effect", "skip loadRun — resume in progress");
         return;
       }
-      // Resume $effect will handle this case
       if (hasResume) return;
 
       if (!id) {
         // Case 1: explicit new chat (?new=1) → start empty
-        if (isNewChat) {
-          // Flush + drop the previous run's pending debounce; the previous
-          // run's capsule entry is intentionally preserved so a reload of
-          // the old run still restores its draft.
-          const prev = store.run?.id;
-          if (prev) continuityController.flush("manual", prev);
-          continuityController.switchRun("");
-          _restoreAppliedFor = "";
+        if (isNewChat) {          const prev = store.run?.id;
+          if (prev) capsule.controller.flush("manual", prev);
+          capsule.controller.switchRun("");
+          capsule.restoreAppliedFor = "";
           chatViewCache.lastRunId = "";
           store.loadRun("", xtermRef);
           cancelProgressive();
@@ -949,13 +553,13 @@
           // Re-attach the controller to the in-memory run (navigation
           // return path) so subsequent typing saves land in its capsule
           // entry.
-          continuityController.switchRun(store.run.id);
+          capsule.controller.switchRun(store.run.id);
           return;
         }
 
         // Case 4: truly empty → new empty run
-        continuityController.switchRun("");
-        _restoreAppliedFor = "";
+        capsule.controller.switchRun("");
+        capsule.restoreAppliedFor = "";
         store.loadRun("", xtermRef);
         cancelProgressive();
         return;
@@ -967,21 +571,21 @@
       // Flush the previous run before switching so its latest state is
       // captured in the capsule (the conservative "save on leave" path
       // complements the pagehide/beforeNavigate flush).
-      const prev = continuityController.__getCurrentRunId();
+      const prev = capsule.controller.__getCurrentRunId();
       if (prev && prev !== id) {
-        continuityController.flush("manual", prev);
-        continuityController.switchRun(id);
+        capsule.controller.flush("manual", prev);
+        capsule.controller.switchRun(id);
       } else if (!prev) {
-        continuityController.switchRun(id);
+        capsule.controller.switchRun(id);
       }
       // Seed the pending restore for the new run id (one-shot). If the
       // user navigates to a different run before consume, the latch
       // clears it via switchRun → noApplyPendingRestore path.
-      void continuityController.seedAsync(id).then((ready) => {
+      void capsule.controller.seedAsync(id).then((ready) => {
         if (!ready) {
           // No capsule entry → no restore, just clear the latch so a
           // later reload of the same run can re-seed.
-          _restoreAppliedFor = id;
+          capsule.restoreAppliedFor = id;
         }
       });
 
@@ -1003,27 +607,6 @@
       });
     });
   });
-
-  /** Apply a pending continuity restore once the run is loaded and the
-   *  timeline contains the anchor entry. The effect re-runs whenever
-   *  store.run.id or the timeline length changes; the `_restoreAppliedFor`
-   *  latch ensures we apply the restore exactly once per run id. */
-  $effect(() => {
-    const id = store.run?.id;
-    if (!id) return;
-    if (_restoreAppliedFor === id) return;
-    if (tl.loadingRunId) return; // still loading
-    if (store.phase === "loading") return;
-    if (store.timeline.length === 0) return;
-    const restore = continuityController.consumePendingRestore();
-    _restoreAppliedFor = id;
-    if (restore && restore.runId === id) {
-      applyContinuityRestore(id, restore);
-    }
-  });
-
-  // Handle scrollTo for already-loaded runs (e.g., clicking a second search result
-  // in the same run). The runId effect above won't re-fire when only scrollTo changes.
   $effect(() => {
     if (!middlewareReady) return;
     const scrollTo = $page.url.searchParams.get("scrollTo");
@@ -1032,9 +615,9 @@
       // loadRunProgressive handles scrollTo during run loading — don't double-scroll
       if (scrollState.scrollToInFlight) return;
       if (store.phase === "loading") return;
-      if (store.run?.id !== runId) return;
+      if (store.run?.id !== urlParams.runId) return;
 
-      dbg("effect", "same-run scrollTo", { scrollTo, runId });
+      dbg("effect", "same-run scrollTo", { scrollTo, runId: urlParams.runId });
       scrollState.scrollToInFlight = true;
       const clean = new URL($page.url);
       clean.searchParams.delete("scrollTo");
@@ -1045,8 +628,6 @@
       });
     });
   });
-
-  // Consume ?resume= URL param for session resume via sidebar button
   $effect(() => {
     const url = $page.url;
     const paramRunId = url.searchParams.get("run");
@@ -1063,49 +644,14 @@
       });
     }
   });
-
-  // Auto-scroll chat (only when user is near bottom)
-
-  $effect(() => {
-    if (store.useStreamSession && chatAreaRef) {
-      const tl = store.timeline.length;
-      const st = store.streamingText.length;
-      const _rid = store.run?.id;
-      const tlChanged = tl !== scrollState.prevTl;
-      const stChanged = st !== scrollState.prevSt;
-      scrollState.prevTl = tl;
-      scrollState.prevSt = st;
-      if (!tlChanged && !stChanged) return;
-
-      if (scrollState.isChatAutoScroll && !scrollState.readingHistory) {
-        if (tlChanged) {
-          requestAnimationFrame(() => {
-            if (chatAreaRef && scrollState.isChatAutoScroll && !scrollState.readingHistory) {
-              pinChatToBottom();
-            }
-          });
-        } else if (stChanged) {
-          followChatBottom();
-        }
-      } else {
-        scrollState.showChatScrollHint = true;
-      }
-    }
+  createAutoScroll({
+    store,
+    getChatAreaRef: () => chatAreaRef,
+    scrollState,
+    pinChatToBottom,
+    followChatBottom,
+    scrollChatToBottom,
   });
-
-  // Reset scroll state on run change
-  $effect(() => {
-    void store.run?.id;
-    if (!scrollState.restoringScroll) {
-      scrollState.isChatAutoScroll = !scrollState.scrollToInFlight;
-      scrollState.readingHistory = false;
-    }
-    scrollState.showChatScrollHint = false;
-    scrollState.prevTl = 0;
-    scrollState.prevSt = 0;
-  });
-
-  // ── Terminal helpers ──
 
   function handleTermReady(_cols: number, _rows: number) {
     // Terminal ready — Codex pipe mode is output-only, no setup needed
@@ -1114,29 +660,6 @@
   function handleTermResize(_cols: number, _rows: number) {
     // Codex pipe mode doesn't need resize — terminal is output-only
   }
-
-  // ── Permission pending auto-scroll (inline cards in timeline) ──
-  $effect(() => {
-    const runId = store.run?.id ?? "";
-    const needsApproval = store.hasPendingPermission;
-
-    if (runId !== scrollState.prevPermissionRunId) {
-      scrollState.prevPermissionRunId = runId;
-      scrollState.prevHadPermission = false;
-    }
-
-    if (needsApproval && !scrollState.prevHadPermission) {
-      if (!chatAreaRef || scrollState.readingHistory) return;
-      requestAnimationFrame(() => {
-        if (!scrollState.readingHistory) scrollChatToBottom();
-      });
-      dbg("chat", "permission pending -> autoscroll to inline card", { runId });
-    }
-
-    scrollState.prevHadPermission = needsApproval;
-  });
-
-  // ── Pending tool permission log ──
   let _prevPanelCount = 0;
   $effect(() => {
     const count = sd.pendingToolPermissions.length;
@@ -1151,10 +674,6 @@
       _prevPanelCount = count;
     }
   });
-
-  // ── Send message ──
-
-  // ── Project init detection ──
   let showInitHint = $derived(
     projectInitStatus !== null && !projectInitStatus.has_claude_md && !store.run,
   );
@@ -1175,8 +694,6 @@
       projectInitStatus = v;
     },
   });
-
-  // ── Permission mode name translation ──
 
   function getPermModeLabel(mode: string): string {
     const map: Record<string, () => string> = {
@@ -1208,86 +725,49 @@
     permissionCoordinator,
   } = createPermissionHandlers({
     store,
-    get timelineIdIndex() {
-      return tl.timelineIdIndex;
-    },
-    setApproving: (v: boolean) => {
-      chatState.approving = v;
-    },
-    goto,
-    tick,
+    get timelineIdIndex() { return tl.timelineIdIndex; },
+    setApproving: (v: boolean) => { chatState.approving = v; },
+    goto, tick,
   });
 
   const {
-    handleModelChange,
-    handleEffortChange,
-    handleAuthModeChange,
-    checkAllLocalProxies,
-    handlePlatformChange,
+    handleModelChange, handleEffortChange, handleAuthModeChange,
+    checkAllLocalProxies, handlePlatformChange,
   } = createPlatformHandlers({
     store,
     getSettings: () => chatState.settings,
     getCurrentEffort: () => currentEffort,
-    setCurrentEffort: (v: string) => {
-      currentEffort = v;
-    },
+    setCurrentEffort: (v: string) => { currentEffort = v; },
     setLastKnownGoodModel: modelGuard.setLastKnownGoodModel,
-    setAuthOverview: (v) => {
-      authOverview = v;
-    },
-    setLocalProxyStatuses: (v) => {
-      localProxyStatuses = v;
-    },
+    setAuthOverview: (v) => { authOverview = v; },
+    setLocalProxyStatuses: (v) => { localProxyStatuses = v; },
     getCliCurrentModel,
   });
 
   const scrollNav = createScrollNavigation({
-    store,
-    tick,
+    store, tick,
     getChatAreaRef: () => chatAreaRef,
-    getFilteredTimeline: () => tl.filteredTimeline,
-    getVisibleTimeline: () => tl.visibleTimeline,
-    getToolBursts: () => tl.toolBursts,
-    burstCollapse,
+    getFilteredTimeline: () => tl.filteredTimeline, getVisibleTimeline: () => tl.visibleTimeline,
+    getToolBursts: () => tl.toolBursts, burstCollapse,
     getProcessVisibility: () => chatState.processVisibility,
-    getRenderLimit: () => tl.renderLimit,
-    setRenderLimit: tl.setRenderLimit,
-    getToolFilter: () => tl.toolFilter,
-    setToolFilter: tl.setToolFilter,
-    getLoadingRunId: () => tl.loadingRunId,
-    setLoadingRunId: tl.setLoadingRunId,
-    getLoadingMore: () => tl.loadingMore,
-    setLoadingMore: tl.setLoadingMore,
-    getLoadMoreArmed: () => tl.loadMoreArmed,
-    setLoadMoreArmed: tl.setLoadMoreArmed,
-    setIsChatAutoScroll: (v: boolean) => {
-      scrollState.isChatAutoScroll = v;
-    },
+    getRenderLimit: () => tl.renderLimit, setRenderLimit: tl.setRenderLimit,
+    getToolFilter: () => tl.toolFilter, setToolFilter: tl.setToolFilter,
+    getLoadingRunId: () => tl.loadingRunId, setLoadingRunId: tl.setLoadingRunId,
+    getLoadingMore: () => tl.loadingMore, setLoadingMore: tl.setLoadingMore,
+    getLoadMoreArmed: () => tl.loadMoreArmed, setLoadMoreArmed: tl.setLoadMoreArmed,
+    setIsChatAutoScroll: (v: boolean) => { scrollState.isChatAutoScroll = v; },
     getIsChatAutoScroll: () => scrollState.isChatAutoScroll,
-    setShowChatScrollHint: (v: boolean) => {
-      scrollState.showChatScrollHint = v;
-    },
+    setShowChatScrollHint: (v: boolean) => { scrollState.showChatScrollHint = v; },
     getScrollToInFlight: () => scrollState.scrollToInFlight,
-    setScrollToInFlight: (v: boolean) => {
-      scrollState.scrollToInFlight = v;
-    },
+    setScrollToInFlight: (v: boolean) => { scrollState.scrollToInFlight = v; },
     getSuppressLoadMoreRearm: () => _suppressLoadMoreRearm,
-    setSuppressLoadMoreRearm: (v: boolean) => {
-      _suppressLoadMoreRearm = v;
-    },
-    setReadingHistory: (v: boolean) => {
-      scrollState.readingHistory = v;
-    },
-    setFolderCwdOverride: (v: string) => {
-      folderCwdOverride = v;
-    },
-    reloadProjectData,
-    getPageUrl: () => $page.url,
-    replaceState,
+    setSuppressLoadMoreRearm: (v: boolean) => { _suppressLoadMoreRearm = v; },
+    setReadingHistory: (v: boolean) => { scrollState.readingHistory = v; },
+    setFolderCwdOverride: (v: string) => { folderCwdOverride = v; },
+    reloadProjectData, getPageUrl: () => $page.url, replaceState,
   });
-
-  // Wire deferred callback for circular dependency (useTimelineState → scrollNav)
   loadMoreEarlierRef = scrollNav.loadMoreEarlier;
+  capsule.setScrollToMessage(scrollNav.scrollToMessage);
 
   const {
     cancelProgressive,
@@ -1306,26 +786,14 @@
     store,
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
     showToast: _showToast,
-    setBtwState: (v) => {
-      btwState = v;
-    },
-    setVerboseEnabled: (v) => {
-      verbose.verboseEnabled = v;
-    },
-    setRequestedPreviewUrl: (v) => {
-      chatState.requestedPreviewUrl = v;
-    },
-    setSidebarRequestedTab: (v) => {
-      chatState.sidebarRequestedTab = v;
-    },
+    setBtwState: (v) => { btwState = v; },
+    setVerboseEnabled: (v) => { verbose.verboseEnabled = v; },
+    setRequestedPreviewUrl: (v) => { chatState.requestedPreviewUrl = v; },
+    setSidebarRequestedTab: (v) => { chatState.sidebarRequestedTab = v; },
     getSidebarCollapsed: () => chatState.sidebarCollapsed,
-    setSidebarCollapsed: (v) => {
-      chatState.sidebarCollapsed = v;
-    },
+    setSidebarCollapsed: (v) => { chatState.sidebarCollapsed = v; },
     getSettings: () => chatState.settings,
-    setSettings: (v) => {
-      chatState.settings = v;
-    },
+    setSettings: (v) => { chatState.settings = v; },
     getPromptRef: () => promptRef,
   });
 
@@ -1344,27 +812,16 @@
   } = chatActions;
 
   const forkLifecycle = createForkLifecycle({
-    store,
-    middleware,
-    goto,
-    loadRunProgressive,
+    store, middleware, goto, loadRunProgressive,
     getResuming: () => chatState.resuming,
-    setResuming: (v: boolean) => {
-      chatState.resuming = v;
-    },
+    setResuming: (v: boolean) => { chatState.resuming = v; },
     getForkOverlay: () => fork.forkOverlay,
-    setForkOverlay: (v) => {
-      fork.setForkOverlay(v);
-    },
-    setLastContinuableRun: (v) => {
-      lastContinuableRun = v;
-    },
+    setForkOverlay: (v) => { fork.setForkOverlay(v); },
+    setLastContinuableRun: (v) => { lastContinuableRun = v; },
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
   });
 
   const { handleResume, handleForkCancel, handleForkRetry } = forkLifecycle;
-
-  // Auto-name: after first idle, ask Claude once for a concise title (fallback: prompt excerpt)
   $effect(() => {
     const shouldStart = shouldTriggerAutoTitle({
       phase: store.phase,
@@ -1434,7 +891,7 @@
     // Flush the continuity capsule so the next reload sees the latest
     // draft / anchor / inspector state. Synchronous localStorage write
     // is fine here — the page is about to be torn down.
-    continuityController.flush("beforeNavigate");
+    capsule.controller.flush("beforeNavigate");
     if (to?.url.pathname.startsWith("/settings") && chatState.settings) {
       snapshotChatBootstrap(chatState.settings, chatState.agentSettings);
     }
@@ -1455,48 +912,24 @@
   });
 
   const send = createSendMessage({
-    store,
-    thinking,
+    store, thinking,
     getRemoteHosts: () => remoteHosts,
     showToast: _showToast,
     openFolderPicker: fp.openFolderPicker,
-    handleResume,
-    loadCliVersionInfo,
-    promptInputRef: () => promptRef,
-    getPromptRef: () => promptRef,
+    handleResume, loadCliVersionInfo,
+    promptInputRef: () => promptRef, getPromptRef: () => promptRef,
     goto,
-    setIsChatAutoScroll: (v) => {
-      scrollState.isChatAutoScroll = v;
-    },
-    setShowChatScrollHint: (v) => {
-      scrollState.showChatScrollHint = v;
-    },
-    setTeamDispatchPrompt: (v) => {
-      team.setTeamDispatchPrompt(v);
-    },
-    setTeamDispatchOpen: (v) => {
-      team.setTeamDispatchOpen(v);
-    },
+    setIsChatAutoScroll: (v) => { scrollState.isChatAutoScroll = v; },
+    setShowChatScrollHint: (v) => { scrollState.showChatScrollHint = v; },
+    setTeamDispatchPrompt: (v) => { team.setTeamDispatchPrompt(v); },
+    setTeamDispatchOpen: (v) => { team.setTeamDispatchOpen(v); },
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
     getFolderCwdOverride: () => folderCwdOverride,
-    /** Consume the pending logical-folder id (?sf=) once, then clear so the
-     *  next session in the same chat tab falls back to the workspace root. */
-    consumePendingSubFolderId: () => {
-      const v = pendingSubFolderId;
-      pendingSubFolderId = "";
-      return v;
-    },
+    consumePendingSubFolderId: () => urlParams.consumePendingSubFolderId(),
   });
-
-  // Backward-compatible alias — many internal call sites still reference
-  // `sendMessage` directly. The new handle returns a richer object; we
-  // expose `.sendMessage` so legacy code keeps compiling.
   const sendMessage = send.sendMessage;
 
   /**
-   * v1.0.9: re-submit a failed send with a fresh client message id. The
-   * captured draft snapshot is passed in via the status event; we resolve
-   * the current prompt text and let the regular send path take over.
    */
   function handleSendRetry(_event: { runId: string; clientMessageId: string }): void {
     const prompt = promptRef;
@@ -1513,9 +946,6 @@
     });
   }
 
-  // Chat keybinding callbacks — registered/unregistered via keybindingStore in onMount below
-
-  // ── Page-level drag-drop (Tauri native events) ──
   let pageDragActive = $state(false);
   let dragProcessingCount = $state(0);
   let dragProcessing = $derived(dragProcessingCount > 0);
@@ -1561,96 +991,139 @@
     rewindModalOpen = true;
   }
 
-  // ── Initialize lifecycle handlers (replaces 8 onMount blocks) ──
   initLifecycleHandlers({
-    store,
-    middleware,
-    keybindingStore,
-    // v1.0.10 perf: forward the layout-cached settings handle so init()
-    // can skip the cold getUserSettings() IPC when layout already loaded.
+    store, middleware, keybindingStore,
     getSettingsCache: () => settingsCache,
-    getSettings: () => chatState.settings,
-    setSettings: (v) => {
-      chatState.settings = v;
-    },
-    setRemoteHosts: (v) => {
-      remoteHosts = v;
-    },
-    setAuthOverview: (v) => {
-      authOverview = v;
-    },
+    getSettings: () => chatState.settings, setSettings: (v) => { chatState.settings = v; },
+    setRemoteHosts: (v) => { remoteHosts = v; },
+    setAuthOverview: (v) => { authOverview = v; },
     checkAllLocalProxies,
-    getAgentSettings: () => chatState.agentSettings,
-    setAgentSettings: (v) => {
-      chatState.agentSettings = v;
-    },
-    setCurrentEffort: (v) => {
-      currentEffort = v;
-    },
-    handlePermissionModeChange,
-    getPermModeLabel,
-    loadCliInfo,
-    getCliCurrentModel,
-    loadCliVersionInfo,
+    getAgentSettings: () => chatState.agentSettings, setAgentSettings: (v) => { chatState.agentSettings = v; },
+    setCurrentEffort: (v) => { currentEffort = v; },
+    handlePermissionModeChange, getPermModeLabel,
+    loadCliInfo, getCliCurrentModel, loadCliVersionInfo,
     isContaminatedDefaultModel: modelGuard.isContaminatedDefaultModel,
     setLastKnownGoodModel: modelGuard.setLastKnownGoodModel,
-    checkProjectInit,
-    reloadProjectData,
-    getShortcutHelpOpen: () => chatState.shortcutHelpOpen,
-    setShortcutHelpOpen: (v) => {
-      chatState.shortcutHelpOpen = v;
-    },
+    checkProjectInit, reloadProjectData,
+    getShortcutHelpOpen: () => chatState.shortcutHelpOpen, setShortcutHelpOpen: (v) => { chatState.shortcutHelpOpen = v; },
     getStatusBarRef: () => chatState.statusBarRef,
-    getStashedInput: () => chatState.stashedInput,
-    setStashedInput: (v) => {
-      chatState.stashedInput = v;
-    },
+    getStashedInput: () => chatState.stashedInput, setStashedInput: (v) => { chatState.stashedInput = v; },
     getPromptRef: () => promptRef,
-    setStatusBarExpanded: (v) => {
-      chatState.statusBarExpanded = v;
-    },
-    getSidebarCollapsed: () => chatState.sidebarCollapsed,
-    setSidebarCollapsed: (v) => {
-      chatState.sidebarCollapsed = v;
-    },
-    setSidebarRequestedTab: (v) => {
-      chatState.sidebarRequestedTab = v;
-    },
+    setStatusBarExpanded: (v) => { chatState.statusBarExpanded = v; },
+    getSidebarCollapsed: () => chatState.sidebarCollapsed, setSidebarCollapsed: (v) => { chatState.sidebarCollapsed = v; },
+    setSidebarRequestedTab: (v) => { chatState.sidebarRequestedTab = v; },
     setShowChatToast: _showToast,
-    setPageDragActive: (v) => {
-      pageDragActive = v;
-    },
-    setDragProcessingCount: (fn) => {
-      dragProcessingCount = fn(dragProcessingCount);
-    },
+    setPageDragActive: (v) => { pageDragActive = v; },
+    setDragProcessingCount: (fn) => { dragProcessingCount = fn(dragProcessingCount); },
     getXtermRef: () => xtermRef,
-    getBtwState: () => btwState,
-    setBtwState: (v) => {
-      btwState = v;
-    },
+    getBtwState: () => btwState, setBtwState: (v) => { btwState = v; },
     contextHistoryMap: sd.contextHistoryMap,
-    triggerContextHistoryReactivity: () => {
-      sd.setContextHistoryMap(new Map(sd.contextHistoryMap));
-    },
-    getRunId: () => runId,
-    setLastContinuableRun: (v) => {
-      lastContinuableRun = v;
-    },
-    setMiddlewareReady: (v) => {
-      middlewareReady = v;
-    },
-    setAutoNameDone: (v) => {
-      autoNameDone = v;
-    },
+    triggerContextHistoryReactivity: () => { sd.setContextHistoryMap(new Map(sd.contextHistoryMap)); },
+    getRunId: () => urlParams.runId,
+    setLastContinuableRun: (v) => { lastContinuableRun = v; },
+    setMiddlewareReady: (v) => { middlewareReady = v; },
+    setAutoNameDone: (v) => { autoNameDone = v; },
     getForkOverlay: () => fork.forkOverlay,
     cleanupVerbose: () => verbose.cleanupVerbose(),
-    cancelProgressive,
-    handleSummarize,
-    handleRewind,
-    toggleCliConfigBool,
+    cancelProgressive, handleSummarize, handleRewind, toggleCliConfigBool,
     goto,
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
   });
+
+  const stageTimelineVm = {
+    visibleTimeline: tl.visibleTimeline,
+    filteredTimeline: tl.filteredTimeline,
+    toolNamesInTimeline: tl.toolNamesInTimeline,
+    toolFilter: tl.toolFilter,
+    setToolFilter: tl.setToolFilter,
+    renderLimit: tl.renderLimit,
+    timelineIdIndex: tl.timelineIdIndex,
+    lastClearSepId: tl.lastClearSepId,
+    latestPlanToolId: tl.latestPlanToolId,
+    batchGroups: tl.batchGroups,
+    toolBursts: tl.toolBursts,
+    burstCollapse,
+    lastAssistantIdx: sd.lastAssistantIdx,
+    usageAnnotations: ta.usageAnnotations,
+    lastTurnUsage: ta.lastTurnUsage,
+    claudeTurnStarts: ta.claudeTurnStarts,
+    showPermissionPanel: false,
+    permissionCoordinator,
+    fetchToolResult: toolResultCache.fetchToolResult,
+    topSentinelRef: tl.topSentinel,
+    setTopSentinel: tl.setTopSentinel,
+  };
+  const stageSessionVm = {
+    welcomeVisible,
+    lastContinuableRun,
+    authOverview,
+    localProxyStatuses,
+    showInitHint,
+    cliVersionInfo: sd.cliVersionInfo,
+    channelLatest: sd.channelLatest,
+    remoteHosts,
+    availableWorkspaces: workspacesStore.list,
+    selectedCwd: folderCwdOverride,
+  };
+  const stageLoadingVm = {
+    routeRunLoadFailed,
+    routeRunPending,
+    runId: urlParams.runId,
+    notificationVisible,
+    latestNotification,
+    rewindMarkers,
+    activeTeamRuns: team.activeTeamRuns,
+  };
+  const stageThinkingVm = {
+    thinkingElapsed: thinking.thinkingElapsed,
+    thinkingVisible: thinking.thinkingVisible,
+    spinnerVerb: thinking.spinnerVerb,
+    processingSlashCmd: thinking.processingSlashCmd,
+    approving: chatState.approving,
+    sending,
+  };
+  const stageForkVm = {
+    forkOverlay: fork.forkOverlay,
+    forkElapsed: fork.forkElapsed,
+    resuming: chatState.resuming,
+  };
+  const stageHandlers = {
+    goto,
+    sendMessage,
+    fillPrompt,
+    handleAuthModeChange,
+    handlePlatformChange,
+    handleRewindToMessage,
+    handleToolAnswer,
+    handleToolApprove,
+    handlePermissionRespond,
+    handleExitPlanClearContext,
+    handleExitPlanBypass,
+    getPlanContentForExitPlan,
+    openPreviewForPath,
+    handleHookCallbackRespond,
+    handleElicitationRespond,
+    onCwdChange: (cwd: string) => {
+      const normalized = normalizeCwd(cwd);
+      if (!normalized) return;
+      folderCwdOverride = normalized;
+      store.sessionCwd = normalized;
+      try { localStorage.setItem("ocv:project-cwd", normalized); } catch { /* noop */ }
+      window.dispatchEvent(new Event("ocv:cwd-changed"));
+    },
+    onAddWorkspace: () => { void fp.addWorkspaceFromPicker(); },
+    handleChatScroll,
+    handleChatWheel,
+    scrollChatToBottom,
+    handleTermResize,
+    handleTermReady,
+    handleForkCancel,
+    handleForkRetry,
+    dismissInitHint,
+    dismissTaskNotificationBanner: () => { notificationVisible = false; },
+    loadRunProgressive,
+    setLastTarget,
+  };
 </script>
 
 {#snippet heroMetaFooterContent()}
@@ -1865,107 +1338,12 @@
             {store}
             settings={chatState.settings}
             processVisibility={chatState.processVisibility}
-            timelineVm={{
-              visibleTimeline: tl.visibleTimeline,
-              filteredTimeline: tl.filteredTimeline,
-              toolNamesInTimeline: tl.toolNamesInTimeline,
-              toolFilter: tl.toolFilter,
-              setToolFilter: tl.setToolFilter,
-              renderLimit: tl.renderLimit,
-              timelineIdIndex: tl.timelineIdIndex,
-              lastClearSepId: tl.lastClearSepId,
-              latestPlanToolId: tl.latestPlanToolId,
-              batchGroups: tl.batchGroups,
-              toolBursts: tl.toolBursts,
-              burstCollapse,
-              lastAssistantIdx: sd.lastAssistantIdx,
-              usageAnnotations: ta.usageAnnotations,
-              lastTurnUsage: ta.lastTurnUsage,
-              claudeTurnStarts: ta.claudeTurnStarts,
-              showPermissionPanel: false,
-              fetchToolResult: toolResultCache.fetchToolResult,
-              topSentinelRef: tl.topSentinel,
-              setTopSentinel: tl.setTopSentinel,
-            }}
-            sessionVm={{
-              welcomeVisible,
-              lastContinuableRun,
-              authOverview,
-              localProxyStatuses,
-              showInitHint,
-              cliVersionInfo: sd.cliVersionInfo,
-              channelLatest: sd.channelLatest,
-              remoteHosts,
-              availableWorkspaces: workspacesStore.list,
-              selectedCwd: folderCwdOverride,
-            }}
-            loadingVm={{
-              routeRunLoadFailed,
-              routeRunPending,
-              runId,
-              notificationVisible,
-              latestNotification,
-              rewindMarkers,
-              activeTeamRuns: team.activeTeamRuns,
-            }}
-            thinkingVm={{
-              thinkingElapsed: thinking.thinkingElapsed,
-              thinkingVisible: thinking.thinkingVisible,
-              spinnerVerb: thinking.spinnerVerb,
-              processingSlashCmd: thinking.processingSlashCmd,
-              approving: chatState.approving,
-              sending,
-            }}
-            forkVm={{
-              forkOverlay: fork.forkOverlay,
-              forkElapsed: fork.forkElapsed,
-              resuming: chatState.resuming,
-            }}
-            handlers={{
-              goto,
-              sendMessage,
-              fillPrompt,
-              handleAuthModeChange,
-              handlePlatformChange,
-              handleRewindToMessage,
-              handleToolAnswer,
-              handleToolApprove,
-              handlePermissionRespond,
-              handleExitPlanClearContext,
-              handleExitPlanBypass,
-              getPlanContentForExitPlan,
-              openPreviewForPath,
-              handleHookCallbackRespond,
-              handleElicitationRespond,
-              onCwdChange: (cwd: string) => {
-                const normalized = normalizeCwd(cwd);
-                if (!normalized) return;
-                folderCwdOverride = normalized;
-                store.sessionCwd = normalized;
-                try {
-                  localStorage.setItem("ocv:project-cwd", normalized);
-                } catch {
-                  // localStorage may fail in restricted contexts
-                }
-                window.dispatchEvent(new Event("ocv:cwd-changed"));
-              },
-              onAddWorkspace: () => {
-                void fp.addWorkspaceFromPicker();
-              },
-              handleChatScroll,
-              handleChatWheel,
-              scrollChatToBottom,
-              handleTermResize,
-              handleTermReady,
-              handleForkCancel,
-              handleForkRetry,
-              dismissInitHint,
-              dismissTaskNotificationBanner: () => {
-                notificationVisible = false;
-              },
-              loadRunProgressive,
-              setLastTarget,
-            }}
+            timelineVm={stageTimelineVm}
+            sessionVm={stageSessionVm}
+            loadingVm={stageLoadingVm}
+            thinkingVm={stageThinkingVm}
+            forkVm={stageForkVm}
+            handlers={stageHandlers}
             bind:thinkingExpanded={thinking.thinkingExpanded}
             showChatScrollHint={scrollState.showChatScrollHint}
             isChatAutoScroll={scrollState.isChatAutoScroll}
@@ -1994,108 +1372,12 @@
         {store}
         settings={chatState.settings}
         processVisibility={chatState.processVisibility}
-        timelineVm={{
-          visibleTimeline: tl.visibleTimeline,
-          filteredTimeline: tl.filteredTimeline,
-          toolNamesInTimeline: tl.toolNamesInTimeline,
-          toolFilter: tl.toolFilter,
-          setToolFilter: tl.setToolFilter,
-          renderLimit: tl.renderLimit,
-          timelineIdIndex: tl.timelineIdIndex,
-          lastClearSepId: tl.lastClearSepId,
-          latestPlanToolId: tl.latestPlanToolId,
-          batchGroups: tl.batchGroups,
-          toolBursts: tl.toolBursts,
-          burstCollapse,
-          lastAssistantIdx: sd.lastAssistantIdx,
-          usageAnnotations: ta.usageAnnotations,
-          lastTurnUsage: ta.lastTurnUsage,
-          claudeTurnStarts: ta.claudeTurnStarts,
-          showPermissionPanel: false,
-          permissionCoordinator,
-          fetchToolResult: toolResultCache.fetchToolResult,
-          topSentinelRef: tl.topSentinel,
-          setTopSentinel: tl.setTopSentinel,
-        }}
-        sessionVm={{
-          welcomeVisible,
-          lastContinuableRun,
-          authOverview,
-          localProxyStatuses,
-          showInitHint,
-          cliVersionInfo: sd.cliVersionInfo,
-          channelLatest: sd.channelLatest,
-          remoteHosts,
-          availableWorkspaces: workspacesStore.list,
-          selectedCwd: folderCwdOverride,
-        }}
-        loadingVm={{
-          routeRunLoadFailed,
-          routeRunPending,
-          runId,
-          notificationVisible,
-          latestNotification,
-          rewindMarkers,
-          activeTeamRuns: team.activeTeamRuns,
-        }}
-        thinkingVm={{
-          thinkingElapsed: thinking.thinkingElapsed,
-          thinkingVisible: thinking.thinkingVisible,
-          spinnerVerb: thinking.spinnerVerb,
-          processingSlashCmd: thinking.processingSlashCmd,
-          approving: chatState.approving,
-          sending,
-        }}
-        forkVm={{
-          forkOverlay: fork.forkOverlay,
-          forkElapsed: fork.forkElapsed,
-          resuming: chatState.resuming,
-        }}
-        handlers={{
-          goto,
-          sendMessage,
-          fillPrompt,
-          handleAuthModeChange,
-          handlePlatformChange,
-          handleRewindToMessage,
-          handleToolAnswer,
-          handleToolApprove,
-          handlePermissionRespond,
-          handleExitPlanClearContext,
-          handleExitPlanBypass,
-          getPlanContentForExitPlan,
-          openPreviewForPath,
-          handleHookCallbackRespond,
-          handleElicitationRespond,
-          onCwdChange: (cwd: string) => {
-            const normalized = normalizeCwd(cwd);
-            if (!normalized) return;
-            folderCwdOverride = normalized;
-            store.sessionCwd = normalized;
-            try {
-              localStorage.setItem("ocv:project-cwd", normalized);
-            } catch {
-              // localStorage may fail in restricted contexts
-            }
-            window.dispatchEvent(new Event("ocv:cwd-changed"));
-          },
-          onAddWorkspace: () => {
-            void fp.addWorkspaceFromPicker();
-          },
-          handleChatScroll,
-          handleChatWheel,
-          scrollChatToBottom,
-          handleTermResize,
-          handleTermReady,
-          handleForkCancel,
-          handleForkRetry,
-          dismissInitHint,
-          dismissTaskNotificationBanner: () => {
-            notificationVisible = false;
-          },
-          loadRunProgressive,
-          setLastTarget,
-        }}
+        timelineVm={stageTimelineVm}
+        sessionVm={stageSessionVm}
+        loadingVm={stageLoadingVm}
+        thinkingVm={stageThinkingVm}
+        forkVm={stageForkVm}
+        handlers={stageHandlers}
         bind:thinkingExpanded={thinking.thinkingExpanded}
         showChatScrollHint={scrollState.showChatScrollHint}
         isChatAutoScroll={scrollState.isChatAutoScroll}

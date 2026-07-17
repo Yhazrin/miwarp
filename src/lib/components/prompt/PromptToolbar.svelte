@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from "$lib/components/Icon.svelte";
   import AgentSelector from "./AgentSelector.svelte";
-  import AuthSourceBadge from "./AuthSourceBadge.svelte";
+  import AuthSourceBadge from "$lib/components/AuthSourceBadge.svelte";
   import PermissionModePicker from "$lib/components/PermissionModePicker.svelte";
   import { IS_MAC } from "$lib/utils/platform";
   import { t } from "$lib/i18n/index.svelte";

@@ -38,6 +38,10 @@ export interface ContinuityCapsuleDeps {
     requestedPreviewPath: string | null;
     sidebarCollapsed: boolean;
   };
+  scrollState: {
+    isChatAutoScroll: boolean;
+    readingHistory: boolean;
+  };
   getPromptRef: () => {
     getInputSnapshot?: () => unknown;
     restoreSnapshot?: (snap: PromptInputSnapshot) => void;
@@ -186,6 +190,8 @@ export function createContinuityCapsule(deps: ContinuityCapsuleDeps) {
           (e) => e.id === anchor.entryId,
         );
         if (match) {
+          deps.scrollState.isChatAutoScroll = false;
+          deps.scrollState.readingHistory = true;
           _scrollToMessage?.(anchor.entryId).catch((e: unknown) => {
             dbgWarn("chat", "continuity.anchor.scroll.failed", { error: String(e) });
           });
@@ -196,6 +202,8 @@ export function createContinuityCapsule(deps: ContinuityCapsuleDeps) {
           requestAnimationFrame(() => {
             const area = deps.getChatAreaRef();
             if (area) area.scrollTop = area.scrollHeight;
+            deps.scrollState.isChatAutoScroll = true;
+            deps.scrollState.readingHistory = false;
           });
         }
       };
