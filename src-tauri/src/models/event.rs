@@ -4,6 +4,9 @@ use std::collections::HashMap;
 
 use super::usage::{McpServerInfo, ModelUsageEntry};
 
+/// Reason a Ralph loop ended. Serializes to snake_case for frontend union matching.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum RalphCompleteReason {
     MaxIterations,
     CompletionPromise,
@@ -482,4 +485,3 @@ pub enum SessionMode {
     Continue,
     Fork,
 }
-

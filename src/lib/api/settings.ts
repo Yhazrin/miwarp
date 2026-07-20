@@ -24,16 +24,10 @@ import type {
   ProjectGitStatus,
   ProjectNotes,
 } from "../types";
-import type {
-  } from "../runtime-control-plane/types";
-import type {
-  } from "../types/task";
-import type {
-  } from "../types/run-journal";
-import type {
-  } from "../types/attention-queue";
-
-
+import type {} from "../runtime-control-plane/types";
+import type {} from "../types/task";
+import type {} from "../types/run-journal";
+import type {} from "../types/attention-queue";
 
 export async function getBackendCapabilities(): Promise<BackendCapabilities> {
   return invoke<BackendCapabilities>(CMD.get_backend_capabilities);
@@ -453,5 +447,3 @@ export async function getLocalIp(preferV6: boolean): Promise<string | null> {
   return invoke<string | null>(CMD.get_local_ip, { preferV6 });
 }
 export const USER_SETTINGS_CHANGED_EVENT = "miwarp:user-settings-changed";
-
-

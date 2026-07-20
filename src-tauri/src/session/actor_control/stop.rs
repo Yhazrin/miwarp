@@ -4,29 +4,17 @@
 //! Owns the lifecycle of a `SessionActor`: acquire `SpawnLocks` → resolve auth & remote
 //! → spawn process → insert handle → send initial message.
 
-use crate::agent::adapter::{self, AdapterSettings};
-use crate::agent::attachment::AttachmentData;
-use crate::agent::claude_stream;
-use crate::agent::session_actor::{self, ActorCommand};
 use crate::agent::spawn_locks::SpawnLocks;
-use crate::governor::{Admission, ResourceGovernor};
-use crate::models::{AgentRuntimeKind, BusEvent, RunMeta, RunStatus, SessionMode};
+use crate::governor::ResourceGovernor;
+use crate::models::{BusEvent, RunStatus};
 use crate::storage;
 use crate::web_server::broadcaster::BroadcastEmitter;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio_util::sync::CancellationToken;
 
-/// Default timeout for actor replies (permission, elicitation, hook callback, etc.)
-pub(crate) const ACTOR_REPLY_TIMEOUT_MS: u64 = 30_000;
-/// Timeout for `send_message` actor replies (may need to wait for turn dispatch)
-pub(crate) const ACTOR_SEND_TIMEOUT_MS: u64 = 45_000;
-/// Timeout for `WaitReady` after actor spawn
-pub(crate) const ACTOR_READY_TIMEOUT_MS: u64 = 5_000;
+use super::reply::stop_actor;
 
 /// Await an actor oneshot reply with a timeout.
 /// Returns the inner `Result<T, String>` or a timeout/drop error.
-
 pub(crate) async fn stop_session_impl(
     emitter: &Arc<BroadcastEmitter>,
     sessions: &crate::agent::adapter::ActorSessionMap,
@@ -53,4 +41,3 @@ pub(crate) async fn stop_session_impl(
     governor.release_run(&run_id).await;
     Ok(())
 }
-

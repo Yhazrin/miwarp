@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
-use super::run::RunStatus;
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProjectStack {
     pub typescript: bool,
     pub rust: bool,
@@ -60,12 +61,3 @@ pub struct ProjectNotes {
     pub content: String,
     pub modified_at: Option<String>,
 }
-
-// ── Fleet View types (v1.2.0) ──
-//
-// "数字员工视图" 的聚合数据类型：每个 SessionActorHandle 对应一个 FleetMember。
-// 字段命名严格走 camelCase，前端直接消费。
-
-/// Real-time status of a digital employee (session actor).
-/// Derived from RunStatus + ActorSessionMap liveness + actor state string.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]

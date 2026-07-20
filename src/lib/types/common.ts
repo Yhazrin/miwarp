@@ -1,4 +1,5 @@
 import type { RunStatus } from "./primitives";
+import type { TaskRun } from "./session";
 // Usage, Git, Project, Team, Plugin, Fleet, and other types
 // Auto-generated from types.ts — do not edit manually
 
@@ -13,7 +14,6 @@ export interface ModelUsageSummary {
   cacheWriteTokens: number;
   costUsd: number;
 }
-
 
 export interface RunUsageSummary {
   runId: string;
@@ -33,7 +33,6 @@ export interface RunUsageSummary {
   modelUsage?: Record<string, ModelUsageSummary>;
 }
 
-
 export interface ModelAggregate {
   model: string;
   runs: number;
@@ -44,7 +43,6 @@ export interface ModelAggregate {
   costUsd: number;
   pct: number;
 }
-
 
 export interface DailyAggregate {
   date: string;
@@ -62,14 +60,12 @@ export interface DailyAggregate {
   modelBreakdown?: Record<string, ModelTokens>;
 }
 
-
 export interface ModelTokens {
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
   cacheWriteTokens: number;
 }
-
 
 export interface UsageOverview {
   totalCostUsd: number;
@@ -89,14 +85,12 @@ export interface UsageOverview {
   longestStreak: number;
 }
 
-
 export interface GitFileStat {
   path: string;
   status: string; // "M", "A", "D", "R", "?"
   insertions: number;
   deletions: number;
 }
-
 
 export interface GitSummary {
   branch: string;
@@ -106,9 +100,7 @@ export interface GitSummary {
   total_deletions: number;
 }
 
-
 export type GitTimelineEntryType = "working_tree" | "commit" | "branch_ref" | "remote_ref" | "base";
-
 
 export interface GitTimelineEntry {
   id: string;
@@ -126,7 +118,6 @@ export interface GitTimelineEntry {
   changed_files?: number;
 }
 
-
 export interface GitTimelineResponse {
   is_repo: boolean;
   branch: string;
@@ -136,14 +127,12 @@ export interface GitTimelineResponse {
   entries: GitTimelineEntry[];
 }
 
-
 export interface ProjectStack {
   typescript: boolean;
   rust: boolean;
   python: boolean;
   go: boolean;
 }
-
 
 export interface ProjectCommands {
   test: string[];
@@ -153,12 +142,10 @@ export interface ProjectCommands {
   start: string[];
 }
 
-
 export interface ProjectDocExcerpt {
   exists: boolean;
   excerpt: string;
 }
-
 
 export interface ProjectMetadata {
   stack: ProjectStack;
@@ -167,14 +154,12 @@ export interface ProjectMetadata {
   readme: ProjectDocExcerpt;
 }
 
-
 export interface ProjectLastCommit {
   shortHash: string;
   subject: string;
   author: string;
   timeIso: string;
 }
-
 
 export interface ProjectGitStatus {
   isGitRepo: boolean;
@@ -185,15 +170,12 @@ export interface ProjectGitStatus {
   lastCommit: ProjectLastCommit | null;
 }
 
-
 export interface ProjectNotes {
   content: string;
   modifiedAt: string | null;
 }
 
-
 export type MediaArtifactKind = "image" | "video" | "audio" | "html" | "pdf" | "file";
-
 
 export interface MediaArtifact {
   id: string;
@@ -206,7 +188,6 @@ export interface MediaArtifact {
   previewable: boolean;
 }
 
-
 export type ArtifactFailureCode =
   | "NOT_FOUND"
   | "FORBIDDEN"
@@ -214,12 +195,10 @@ export type ArtifactFailureCode =
   | "UNSUPPORTED_TYPE"
   | "SENSITIVE_PATH";
 
-
 export interface ArtifactResolutionResult {
   ok: true;
   artifact: MediaArtifact;
 }
-
 
 export interface ArtifactResolutionFailure {
   ok: false;
@@ -228,21 +207,7 @@ export interface ArtifactResolutionFailure {
   code: ArtifactFailureCode;
 }
 
-
 export type ArtifactResolution = ArtifactResolutionResult | ArtifactResolutionFailure;
-
-
-export interface ModelUsageEntry {
-  input_tokens: number;
-  output_tokens: number;
-  cache_read_tokens: number;
-  cache_write_tokens: number;
-  web_search_requests: number;
-  cost_usd: number;
-  context_window?: number;
-  maxOutputTokens?: number;
-}
-
 
 export interface TeamConfig {
   name: string;
@@ -253,7 +218,6 @@ export interface TeamConfig {
   leadSessionId: string;
   members: TeamMember[];
 }
-
 
 export interface TeamMember {
   agentId: string;
@@ -273,7 +237,6 @@ export interface TeamMember {
   isActive: boolean;
 }
 
-
 export interface TeamInboxMessage {
   from: string;
   text: string;
@@ -282,7 +245,6 @@ export interface TeamInboxMessage {
   color: string;
   read: boolean;
 }
-
 
 export interface TeamTask {
   id: string;
@@ -296,7 +258,6 @@ export interface TeamTask {
   metadata?: unknown;
 }
 
-
 export interface TeamSummary {
   name: string;
   description: string;
@@ -306,7 +267,6 @@ export interface TeamSummary {
   created_at: number;
 }
 
-
 export type TeamRunStatus =
   | "created"
   | "planning"
@@ -315,9 +275,7 @@ export type TeamRunStatus =
   | "failed"
   | "cancelled";
 
-
 export type TeamMemberRunStatus = "pending" | "running" | "completed" | "failed";
-
 
 export interface TeamPresetMember {
   id: string;
@@ -327,14 +285,12 @@ export interface TeamPresetMember {
   defaultModel?: string;
 }
 
-
 export interface TeamPreset {
   id: string;
   name: string;
   description: string;
   members: TeamPresetMember[];
 }
-
 
 export interface TeamMemberRun {
   id: string;
@@ -347,7 +303,6 @@ export interface TeamMemberRun {
   summary?: string;
   error?: string;
 }
-
 
 export interface TeamRun {
   id: string;
@@ -367,12 +322,10 @@ export interface TeamRun {
   updatedAt: string;
 }
 
-
 export interface PluginAuthor {
   name: string;
   email?: string;
 }
-
 
 export interface PluginComponents {
   skills: string[];
@@ -382,7 +335,6 @@ export interface PluginComponents {
   mcp_servers: string[];
   lsp_servers: string[];
 }
-
 
 export interface MarketplacePlugin {
   name: string;
@@ -400,7 +352,6 @@ export interface MarketplacePlugin {
   components: PluginComponents;
 }
 
-
 export interface MarketplaceInfo {
   name: string;
   source: unknown;
@@ -408,7 +359,6 @@ export interface MarketplaceInfo {
   last_updated?: string;
   plugin_count: number;
 }
-
 
 export interface StandaloneSkill {
   name: string;
@@ -418,13 +368,11 @@ export interface StandaloneSkill {
   remoteRef?: SkillRemoteRef;
 }
 
-
 export interface SkillSummary {
   total: number;
   builtIn: number;
   custom: number;
 }
-
 
 export interface InstalledPlugin {
   name: string;
@@ -439,12 +387,10 @@ export interface InstalledPlugin {
   [key: string]: unknown;
 }
 
-
 export interface PluginOperationResult {
   success: boolean;
   message: string;
 }
-
 
 export interface CommunitySkillResult {
   id: string;
@@ -453,7 +399,6 @@ export interface CommunitySkillResult {
   installs: number;
   source: string;
 }
-
 
 export interface CommunitySkillDetail {
   id: string;
@@ -467,12 +412,10 @@ export interface CommunitySkillDetail {
   github_url: string | null;
 }
 
-
 export interface ProviderHealth {
   available: boolean;
   reason: string | null;
 }
-
 
 export interface ContextSnapshot {
   runId: string;
@@ -481,13 +424,11 @@ export interface ContextSnapshot {
   data: import("$lib/utils/context-parser").ContextData;
 }
 
-
 export interface McpRegistrySearchResult {
   servers: McpRegistryServer[];
   nextCursor: string | null;
   count: number;
 }
-
 
 export interface McpRegistryServer {
   name: string;
@@ -499,7 +440,6 @@ export interface McpRegistryServer {
   repository?: McpRegistryRepository;
 }
 
-
 export interface McpRegistryPackage {
   registryType: string;
   identifier: string;
@@ -507,13 +447,11 @@ export interface McpRegistryPackage {
   environmentVariables: McpRegistryEnvVar[];
 }
 
-
 export interface McpRegistryRemote {
   type: string;
   url: string;
   headers: McpRegistryHeader[];
 }
-
 
 export interface McpRegistryEnvVar {
   name: string;
@@ -521,7 +459,6 @@ export interface McpRegistryEnvVar {
   isRequired?: boolean;
   isSecret?: boolean;
 }
-
 
 export interface McpRegistryHeader {
   name: string;
@@ -531,12 +468,10 @@ export interface McpRegistryHeader {
   isSecret?: boolean;
 }
 
-
 export interface McpRegistryRepository {
   url?: string;
   source?: string;
 }
-
 
 export interface ConfiguredMcpServer {
   name: string;
@@ -548,7 +483,6 @@ export interface ConfiguredMcpServer {
   env_keys: string[];
   header_keys: string[];
 }
-
 
 export interface PromptSearchResult {
   runId: string;
@@ -566,7 +500,6 @@ export interface PromptSearchResult {
   isFavorite: boolean;
 }
 
-
 export interface PromptFavorite {
   runId: string;
   seq: number;
@@ -575,7 +508,6 @@ export interface PromptFavorite {
   note: string;
   createdAt: string;
 }
-
 
 export interface RunSearchFilters {
   query?: string;
@@ -593,7 +525,6 @@ export interface RunSearchFilters {
   limit?: number;
   offset?: number;
 }
-
 
 export interface RunSearchResult {
   runId: string;
@@ -617,12 +548,10 @@ export interface RunSearchResult {
   errorSummary?: string;
 }
 
-
 export interface FacetCount {
   value: string;
   count: number;
 }
-
 
 export interface RunSearchFacets {
   projects: FacetCount[];
@@ -634,30 +563,25 @@ export interface RunSearchFacets {
   totalCost: number;
 }
 
-
 export interface RunSearchResponse {
   results: RunSearchResult[];
   facets: RunSearchFacets;
   totalMatching: number;
 }
 
-
 export interface BtwDelta {
   btw_id: string;
   text: string;
 }
 
-
 export interface BtwComplete {
   btw_id: string;
 }
-
 
 export interface BtwError {
   btw_id: string;
   error: string;
 }
-
 
 export type FleetStatus =
   | "idle"
@@ -667,7 +591,6 @@ export type FleetStatus =
   | "stopped"
   | "detached";
 
-
 export interface FleetMemberMetrics {
   uptimeSecs: number;
   toolCalls: number;
@@ -675,7 +598,6 @@ export interface FleetMemberMetrics {
   costUsdEstimate: number;
   messageCount: number;
 }
-
 
 export interface FleetMemberSummary {
   id: string;
@@ -690,13 +612,11 @@ export interface FleetMemberSummary {
   model?: string;
 }
 
-
 export interface FleetMemberDetail extends FleetMemberSummary {
   permissionMode?: string;
   teamIds: string[];
   recentRuns: TaskRun[];
 }
-
 
 export interface FleetMetrics {
   total: number;
@@ -706,18 +626,15 @@ export interface FleetMetrics {
   totalCostTodayUsd: number;
 }
 
-
 export interface FleetSendResult {
   runId: string;
   accepted: boolean;
 }
 
-
 export interface DocExcerpt {
   exists: boolean;
   excerpt: string;
 }
-
 
 export interface ProjectMetadata {
   stack: ProjectStack;
@@ -726,14 +643,12 @@ export interface ProjectMetadata {
   readme: DocExcerpt;
 }
 
-
 export interface LastCommit {
   shortHash: string;
   subject: string;
   author: string;
   timeIso: string;
 }
-
 
 export interface ProjectGitStatus {
   isGitRepo: boolean;
@@ -743,5 +658,3 @@ export interface ProjectGitStatus {
   dirtyCount: number;
   lastCommit: LastCommit | null;
 }
-
-

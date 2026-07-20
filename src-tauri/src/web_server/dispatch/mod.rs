@@ -1,9 +1,10 @@
 mod handlers;
 mod middleware;
 mod routes;
+mod session_handlers;
 
 // Re-export public helpers for backward compatibility
-pub use middleware::{extract_str, extract_u64, normalize_top_level_keys, camel_to_snake};
+pub use middleware::{camel_to_snake, extract_str, extract_u64, normalize_top_level_keys};
 
 use serde_json::Value;
 use std::time::Instant;
@@ -38,3 +39,4 @@ pub async fn dispatch_command(
 }
 
 #[cfg(test)]
+mod tests;

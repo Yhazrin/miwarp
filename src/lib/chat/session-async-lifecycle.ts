@@ -65,8 +65,22 @@ export class SessionAsyncLifecycleCoordinator {
   }
 
   /**
+   * Page mount: allow the shared SessionStore to accept work again.
+   *
+   * The store outlives the chat page, so `unmount()` cannot be terminal for
+   * the coordinator itself. Bump the generation when reactivating to keep all
+   * work captured by the previous page instance stale.
+   */
+  mount(): void {
+    if (this.mounted) return;
+    this.mounted = true;
+    this.resumeBusy = false;
+    this.invalidate();
+  }
+
+  /**
    * Page teardown: block future writes and invalidate all in-flight ops.
-   * Clears resume single-flight so a fresh store instance can resume.
+   * Clears resume single-flight so a later page mount can resume.
    */
   unmount(): void {
     this.mounted = false;

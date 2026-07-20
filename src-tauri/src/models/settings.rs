@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::HashMap;
 
+use super::now_iso;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserSettings {
     pub default_agent: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -165,7 +167,7 @@ pub struct SessionStatusColors {
     pub idle: Option<String>,
 }
 
-fn default_auth_mode() -> String {
+pub(super) fn default_auth_mode() -> String {
     "cli".to_string()
 }
 
@@ -260,7 +262,7 @@ fn default_sound_feedback_level() -> String {
     "minimal".to_string()
 }
 
-fn default_true() -> bool {
+pub(super) fn default_true() -> bool {
     true
 }
 
@@ -526,7 +528,3 @@ pub struct InstallMethod {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
 }
-
-// ── Prompt search & favorites ──
-
-#[derive(Debug, Clone, Serialize)]

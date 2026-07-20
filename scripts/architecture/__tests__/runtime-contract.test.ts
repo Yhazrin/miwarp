@@ -27,6 +27,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { parseDispatchMethods } from "../contract-lib.mjs";
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..", "..");
 const SPEC_FILE = join(REPO_ROOT, "docs", "architecture", "v1.0.9-runtime-contract.md");
@@ -40,7 +41,9 @@ const WS_MESSAGES_FILE = join(
   "Core",
   "WebSocketMessages.swift",
 );
-const DISPATCH_FILE = join(REPO_ROOT, "src-tauri", "src", "web_server", "dispatch", "mod.rs");
+// `mod.rs` only owns the public dispatch wrapper; the actual WS method
+// contract is the match table in `routes.rs`.
+const DISPATCH_FILE = join(REPO_ROOT, "src-tauri", "src", "web_server", "dispatch", "routes.rs");
 const WS_INTERNAL_FILE = join(REPO_ROOT, "src-tauri", "src", "web_server", "ws.rs");
 
 const RUNTIME_HUB_COMMANDS = [
@@ -200,13 +203,12 @@ describe("v1.0.9 Runtime Contract code compliance (deferred)", () => {
     // (a) the dispatch match arms OR (b) is marked desktop-only in the
     // dispatch match arms with a clear rationale.
     const { dispatchSrc } = dispatchedMethods;
+    const dispatch = parseDispatchMethods(dispatchSrc);
     const missing: string[] = [];
     for (const cmd of tauriDiag) {
-      const armPattern = new RegExp(`"${cmd}"\\s*=>\\s*\\{`);
-      const desktopOnlyPattern = new RegExp(`"${cmd}"[\\s\\S]{0,320}"desktop only"`);
-      const inDispatch = armPattern.test(dispatchSrc);
-      const isDesktopOnly = desktopOnlyPattern.test(dispatchSrc);
-      if (!inDispatch && !isDesktopOnly) {
+      // Use the shared parser rather than a one-literal-per-arm regex: the
+      // refactored route table groups commands in multi-pattern match arms.
+      if (!dispatch.supported.has(cmd) && !dispatch.desktopOnly.has(cmd)) {
         missing.push(cmd);
       }
     }

@@ -21,8 +21,6 @@ import type {
 import { usesStreamSession, getCliCapabilities } from "$lib/runtime";
 import type { CliCapabilities } from "$lib/runtime";
 import { dbg, dbgWarn } from "$lib/utils/debug";
-import { eventTs } from "$lib/utils/event-ts";
-import { uuid } from "$lib/utils/uuid";
 import {
   type SessionPhase,
   type UsageState,
@@ -39,10 +37,7 @@ import { SessionAsyncLifecycleCoordinator } from "$lib/chat/session-async-lifecy
 import { getAgentFeatures, type AgentFeatures } from "$lib/utils/agent-features";
 import { dedupeMcpServersByName } from "$lib/utils/mcp";
 import { TransportController, DEFAULT_TIMEOUTS } from "../session/transport-controller";
-import {
-  activeToolName as activeToolNameProjection,
-  timelineAttachments,
-} from "../session/timeline-projection";
+import { activeToolName as activeToolNameProjection } from "../session/timeline-projection";
 import {
   contextWindow as contextWindowProjection,
   totalTokens as totalTokensProjection,
@@ -53,22 +48,8 @@ import {
   parseSnapshotBody,
   saveSnapshotToIdb,
 } from "../session/snapshot-repository";
-import {
-  findToolIdx,
-  findHeIdx,
-  findHeIdxByStatus,
-  findParentToolIdx,
-  updateToolInAnySubTimeline,
-  appendToSubTimeline,
-  updateSubTimelineTool,
-  appendSubTimelineStreamingDelta,
-  extractSubTimelineThinking,
-  removeSubTimelineStreamingEntry,
-  extractSubTimelineStreamingContent,
-  patchAssistantContentIfEmpty,
-  resolveStaleTools,
-  accumulateJsonInput,
-} from "./timeline-helpers";
+import { resolveStaleTools } from "./timeline-helpers";
+import { SessionStoreTimelineOperations } from "./timeline-operations";
 import {
   applyHookEvent as applyHookEventCore,
   applyHookUsage as applyHookUsageCore,
@@ -140,7 +121,7 @@ export interface TaskNotificationItem {
 
 // ── Store ──
 
-export class SessionStore {
+export class SessionStore extends SessionStoreTimelineOperations {
   // ── State fields ──
   phase: SessionPhase = $state("empty");
   run: TaskRun | null = $state(null);
@@ -285,10 +266,10 @@ export class SessionStore {
   private _seenToolIds = new Set<string>();
 
   /** Highest _seq processed — used for WS checkpoint on reconnect/subscribe */
-  private _lastProcessedSeq = 0;
+  protected _lastProcessedSeq = 0;
   /** Last bus event type applied by _reduce (for render error diagnostics). */
   private _lastReduceEventType = "";
-  private _needsIdleHealthCheck = false;
+  protected _needsIdleHealthCheck = false;
   private _recovery = new SessionRecoveryController({
     setNotice: (notice) => {
       this.recoveryNotice = notice;
@@ -300,9 +281,9 @@ export class SessionStore {
 
   // ── Reducer tool indexes (runtime-only, not serialized) ──
   /** tool_use_id → timeline[] index for tool entries (first-match, reducer fast-path). */
-  private _toolTlIndex = new Map<string, number>();
+  protected _toolTlIndex = new Map<string, number>();
   /** tool_use_id → tools[] (HookEvent) index (first-match, reducer fast-path). */
-  private _toolHeIndex = new Map<string, number>();
+  protected _toolHeIndex = new Map<string, number>();
   /** _lastProcessedSeq at last snapshot write — throttles idle snapshot rewrites. */
   private _lastSnapshotSeq = 0;
 
@@ -639,292 +620,6 @@ export class SessionStore {
     return "other";
   }
 
-  // ── Reducer index helpers ──
-
-  /** Append a timeline entry and update tool index if applicable.
-   *  Index uses first-match semantics (matching findIndex behavior) — only set if not already present. */
-  private _pushTimeline(ctx: ReduceCtx | null, entry: TimelineEntry): void {
-    if (ctx) {
-      ctx.tl.push(entry);
-      if (entry.kind === "tool" && !ctx.toolTlIndex.has(entry.id)) {
-        ctx.toolTlIndex.set(entry.id, ctx.tl.length - 1);
-      }
-    } else {
-      this.timeline = [...this.timeline, entry];
-      if (entry.kind === "tool" && !this._toolTlIndex.has(entry.id)) {
-        this._toolTlIndex.set(entry.id, this.timeline.length - 1);
-      }
-    }
-  }
-
-  /** Push an optimistic user message to the timeline (deduped by content in _reduce). Returns the entry ID for rollback. */
-  private _pushOptimisticUser(content: string, attachments?: Attachment[]): string {
-    const id = uuid();
-    this._pushTimeline(null, {
-      kind: "user",
-      id,
-      anchorId: id,
-      content,
-      ts: new Date().toISOString(),
-      ...(attachments && attachments.length > 0
-        ? { attachments: timelineAttachments(attachments) }
-        : {}),
-    });
-    return id;
-  }
-
-  /** Remove an optimistic user message from the timeline by ID (rollback on send failure). */
-  private _removeOptimisticUser(entryId: string): void {
-    this.timeline = this.timeline.filter((e) => e.id !== entryId);
-  }
-
-  /** Append a hook event entry and update tool index if applicable.
-   *  Index uses first-match semantics — only set if not already present. */
-  private _pushHookEntry(ctx: ReduceCtx | null, heEntry: HookEvent): void {
-    const toolUseId = (heEntry as Record<string, unknown>).tool_use_id as string | undefined;
-    if (ctx) {
-      ctx.he.push(heEntry);
-      if (toolUseId && !ctx.toolHeIndex.has(toolUseId))
-        ctx.toolHeIndex.set(toolUseId, ctx.he.length - 1);
-    } else {
-      this.tools = [...this.tools, heEntry];
-      if (toolUseId && !this._toolHeIndex.has(toolUseId))
-        this._toolHeIndex.set(toolUseId, this.tools.length - 1);
-    }
-  }
-
-  /** Find tool timeline entry by tool_use_id. Map fast-path + findIndex fallback. */
-  private _findToolIdx(ctx: ReduceCtx | null, toolUseId: string): number {
-    const tl = ctx ? ctx.tl : this.timeline;
-    const index = ctx ? ctx.toolTlIndex : this._toolTlIndex;
-    return findToolIdx(tl, index, toolUseId);
-  }
-
-  /** Simple id-only lookup for hook events. Map fast-path + findIndex fallback. */
-  private _findHeIdx(ctx: ReduceCtx | null, toolUseId: string): number {
-    const he = ctx ? ctx.he : this.tools;
-    const index = ctx ? ctx.toolHeIndex : this._toolHeIndex;
-    return findHeIdx(he, index, toolUseId);
-  }
-
-  /** Status-aware hook event lookup: Map fast-path + status validation + scan fallback.
-   *  Used by user_message and tool_end which filter by status==="running". */
-  private _findHeIdxByStatus(ctx: ReduceCtx | null, toolUseId: string, status: string): number {
-    const he = ctx ? ctx.he : this.tools;
-    const index = ctx ? ctx.toolHeIndex : this._toolHeIndex;
-    return findHeIdxByStatus(he, index, toolUseId, status);
-  }
-
-  // ── SubTimeline helpers (subagent routing) ──
-
-  /** Find the parent tool entry in timeline by tool_use_id; return index or -1.
-   *  Uses _findToolIdx for Map fast-path with findIndex fallback. */
-  private _findParentToolIdx(ctx: ReduceCtx | null, parentToolUseId: string): number {
-    const tl = ctx ? ctx.tl : this.timeline;
-    const index = ctx ? ctx.toolTlIndex : this._toolTlIndex;
-    return findParentToolIdx(tl, index, parentToolUseId);
-  }
-
-  /** Search ALL subTimelines (one level deep) for a tool with the given id.
-   *  Used when parent_tool_use_id is missing but the tool exists in a subTimeline.
-   *  Returns true if found and updated; false if not found. */
-  private _updateToolInAnySubTimeline(
-    toolUseId: string,
-    updater: (old: BusToolItem) => BusToolItem,
-    ctx: ReduceCtx | null,
-  ): boolean {
-    const tl = ctx ? ctx.tl : this.timeline;
-    if (!ctx) {
-      const cloned = [...this.timeline];
-      const result = updateToolInAnySubTimeline(cloned, toolUseId, updater);
-      if (result) this.timeline = cloned;
-      return result;
-    }
-    return updateToolInAnySubTimeline(tl, toolUseId, updater);
-  }
-
-  /** Append an entry to a parent tool's subTimeline. */
-  private _appendToSubTimeline(
-    tl: TimelineEntry[],
-    parentIdx: number,
-    entry: TimelineEntry,
-    ctx: ReduceCtx | null,
-  ): void {
-    if (ctx) {
-      appendToSubTimeline(ctx.tl, parentIdx, entry);
-    } else {
-      const cloned = [...this.timeline];
-      appendToSubTimeline(cloned, parentIdx, entry);
-      this.timeline = cloned;
-    }
-  }
-
-  /** Update a tool entry inside a parent tool's subTimeline (3-level immutable update). */
-  private _updateSubTimelineTool(
-    parentToolUseId: string,
-    childToolUseId: string,
-    updater: (old: BusToolItem) => BusToolItem,
-    ctx: ReduceCtx | null,
-  ): boolean {
-    const index = ctx ? ctx.toolTlIndex : this._toolTlIndex;
-    if (ctx) {
-      return updateSubTimelineTool(ctx.tl, index, parentToolUseId, childToolUseId, updater);
-    }
-    const cloned = [...this.timeline];
-    const result = updateSubTimelineTool(cloned, index, parentToolUseId, childToolUseId, updater);
-    if (result) this.timeline = cloned;
-    return result;
-  }
-
-  /** Append/update a synthetic assistant entry in a parent tool's subTimeline for streaming deltas.
-   *  Single-active-stream per parent: synthetic ID = `__sub_stream_{parentToolUseId}`.
-   *  If the entry doesn't exist yet, creates it; otherwise appends to content or thinkingText. */
-  private _appendSubTimelineStreamingDelta(
-    parentToolUseId: string,
-    field: "content" | "thinkingText",
-    text: string,
-    ctx: ReduceCtx | null,
-  ): void {
-    const index = ctx ? ctx.toolTlIndex : this._toolTlIndex;
-    if (ctx) {
-      appendSubTimelineStreamingDelta(ctx.tl, index, parentToolUseId, field, text);
-    } else {
-      const cloned = [...this.timeline];
-      appendSubTimelineStreamingDelta(cloned, index, parentToolUseId, field, text);
-      this.timeline = cloned;
-    }
-  }
-
-  /** Extract thinkingText from a parent tool's synthetic streaming entry (before removal). */
-  private _extractSubTimelineThinking(
-    parentToolUseId: string,
-    ctx: ReduceCtx | null,
-  ): string | undefined {
-    const tl = ctx ? ctx.tl : this.timeline;
-    const index = ctx ? ctx.toolTlIndex : this._toolTlIndex;
-    return extractSubTimelineThinking(tl, index, parentToolUseId);
-  }
-
-  /** Remove the synthetic streaming entry from a parent tool's subTimeline (called on message_complete). */
-  private _removeSubTimelineStreamingEntry(parentToolUseId: string, ctx: ReduceCtx | null): void {
-    const index = ctx ? ctx.toolTlIndex : this._toolTlIndex;
-    if (ctx) {
-      removeSubTimelineStreamingEntry(ctx.tl, index, parentToolUseId);
-    } else {
-      const cloned = [...this.timeline];
-      removeSubTimelineStreamingEntry(cloned, index, parentToolUseId);
-      this.timeline = cloned;
-    }
-  }
-
-  /** Extract streamed assistant content from a parent tool's synthetic subTimeline entry. */
-  private _extractSubTimelineStreamingContent(
-    parentToolUseId: string,
-    ctx: ReduceCtx | null,
-  ): string {
-    const tl = ctx ? ctx.tl : this.timeline;
-    const index = ctx ? ctx.toolTlIndex : this._toolTlIndex;
-    return extractSubTimelineStreamingContent(tl, index, parentToolUseId);
-  }
-
-  /** Drop in-flight stream/thinking buffers (live turn shell or orphan recovery). */
-  private _clearStreamingState(ctx: ReduceCtx | null): void {
-    if (ctx) {
-      ctx.streamText = "";
-      ctx.thinkingText = "";
-    } else {
-      this.streamingText = "";
-      this.thinkingText = "";
-    }
-    this.thinkingStartMs = 0;
-    this.thinkingEndMs = 0;
-  }
-
-  private _patchAssistantContentIfEmpty(
-    ctx: ReduceCtx | null,
-    messageId: string,
-    content: string,
-  ): boolean {
-    const tl = ctx ? ctx.tl : this.timeline;
-    return patchAssistantContentIfEmpty(tl, messageId, content);
-  }
-
-  private _materializeOrphanStreamingOnIdle(
-    ctx: ReduceCtx | null,
-    ev: Extract<BusEvent, { type: "run_state" }>,
-    replayOnly: boolean,
-    getTl: () => TimelineEntry[],
-  ): void {
-    if (replayOnly) return;
-    const streamText = ctx ? ctx.streamText : this.streamingText;
-    const trimmed = streamText.trim();
-    if (!trimmed) return;
-
-    const lastAssistant = [...getTl()]
-      .reverse()
-      .find((e): e is Extract<TimelineEntry, { kind: "assistant" }> => e.kind === "assistant");
-    if (lastAssistant && lastAssistant.content.trim() === trimmed) {
-      dbg("store", "orphan streamingText dropped — already materialized in timeline", {
-        runId: ev.run_id,
-        len: streamText.length,
-        messageId: lastAssistant.id,
-      });
-      this._clearStreamingState(ctx);
-      return;
-    }
-
-    const id = `synthetic_assistant_${ev.run_id}_${this._lastProcessedSeq}`;
-    if (getTl().some((e) => e.kind === "assistant" && e.id === id)) {
-      this._clearStreamingState(ctx);
-      return;
-    }
-    dbgWarn("store", "orphan streamingText materialized on idle", {
-      runId: ev.run_id,
-      len: streamText.length,
-      lastProcessedSeq: this._lastProcessedSeq,
-    });
-    const entry: TimelineEntry = {
-      kind: "assistant",
-      id,
-      anchorId: id,
-      content: streamText,
-      ts: eventTs(ev),
-    };
-    this._pushTimeline(ctx, entry);
-    this._clearStreamingState(ctx);
-  }
-
-  private _runIdleHealthCheckIfNeeded(): void {
-    if (!this._needsIdleHealthCheck || !this.run) return;
-    this._needsIdleHealthCheck = false;
-
-    const lastAssistant = [...this.timeline]
-      .reverse()
-      .find((e): e is Extract<TimelineEntry, { kind: "assistant" }> => e.kind === "assistant");
-    if (lastAssistant && !lastAssistant.content.trim() && this.usage.outputTokens > 0) {
-      dbgWarn("store", "idle health: empty assistant with output tokens", {
-        runId: this.run.id,
-        messageId: lastAssistant.id,
-        outputTokens: this.usage.outputTokens,
-      });
-      void this.recoverFromEventLog("Recovered from persisted event log");
-      return;
-    }
-
-    if (this.streamingText.trim()) {
-      dbgWarn("store", "idle health: orphan streamingText remains", {
-        runId: this.run.id,
-        len: this.streamingText.length,
-      });
-      this._materializeOrphanStreamingOnIdle(
-        null,
-        { type: "run_state", run_id: this.run.id, state: "idle" },
-        false,
-        () => this.timeline,
-      );
-    }
-  }
-
   /** Highest WS `_seq` processed — exposed for protocol quarantine seq invariants. */
   getLastProcessedSeq(): number {
     return this._lastProcessedSeq;
@@ -954,32 +649,6 @@ export class SessionStore {
         if (this.run?.id !== runId) return;
         await this.loadRun(runId);
       },
-    );
-  }
-
-  /** Accumulate partial JSON and try to parse. Returns merged tool fields. */
-  private static _accumulateJsonInput(
-    tool: Record<string, unknown>,
-    partialJson: string,
-  ): { input?: Record<string, unknown>; _inputJsonAccum: string } {
-    return accumulateJsonInput(tool, partialJson);
-  }
-
-  /** Route tool_input_delta to a child tool inside a parent's subTimeline. */
-  private _updateSubTimelineToolInput(
-    parentToolUseId: string,
-    childToolUseId: string,
-    partialJson: string,
-    ctx: ReduceCtx | null,
-  ): void {
-    this._updateSubTimelineTool(
-      parentToolUseId,
-      childToolUseId,
-      (t) => {
-        const accum = SessionStore._accumulateJsonInput(t as Record<string, unknown>, partialJson);
-        return { ...t, ...accum } as typeof t;
-      },
-      ctx,
     );
   }
 
@@ -1363,6 +1032,11 @@ export class SessionStore {
     );
   }
 
+  /** Call from page mount so the shared store can accept a new load generation. */
+  mountGuards(): void {
+    this._asyncLifecycle.mount();
+  }
+
   /** Call from page cleanup to prevent stale async writes after unmount. */
   unmountGuards(): void {
     this._asyncLifecycle.unmount();
@@ -1377,7 +1051,11 @@ export class SessionStore {
 
   /** Resolve an AskUserQuestion tool: transition from ask_pending → success. */
   resolveAskQuestion(toolUseId: string, answer: string): void {
-    resolveAskQuestionImpl(this as unknown as Parameters<typeof resolveAskQuestionImpl>[0], toolUseId, answer);
+    resolveAskQuestionImpl(
+      this as unknown as Parameters<typeof resolveAskQuestionImpl>[0],
+      toolUseId,
+      answer,
+    );
   }
 
   /** Answer an AskUserQuestion tool via session message. */
@@ -1413,7 +1091,11 @@ export class SessionStore {
 
   /** Handle chat-delta event (pipe-exec mode). */
   handleChatDelta(text: string, xtermRef?: { writeText(s: string): void }): void {
-    handleChatDeltaImpl(this as unknown as Parameters<typeof handleChatDeltaImpl>[0], text, xtermRef);
+    handleChatDeltaImpl(
+      this as unknown as Parameters<typeof handleChatDeltaImpl>[0],
+      text,
+      xtermRef,
+    );
   }
 
   // ── Private ──

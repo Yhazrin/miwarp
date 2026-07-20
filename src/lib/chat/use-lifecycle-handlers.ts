@@ -399,6 +399,10 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
   // ════════════════════════════════════════════════════════════════════
   onMount(() => {
     let destroyed = false;
+    // SessionStore is an app-level singleton. Page cleanup deactivates its
+    // async guards, so every new chat page instance must reactivate them
+    // before middleware readiness can trigger a run load.
+    store.mountGuards();
     if (middleware.isStarted()) {
       setMiddlewareReady(true);
     }

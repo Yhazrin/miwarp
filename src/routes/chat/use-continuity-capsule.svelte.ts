@@ -42,10 +42,12 @@ export interface ContinuityCapsuleDeps {
     isChatAutoScroll: boolean;
     readingHistory: boolean;
   };
-  getPromptRef: () => {
-    getInputSnapshot?: () => unknown;
-    restoreSnapshot?: (snap: PromptInputSnapshot) => void;
-  } | undefined;
+  getPromptRef: () =>
+    | {
+        getInputSnapshot?: () => unknown;
+        restoreSnapshot?: (snap: PromptInputSnapshot) => void;
+      }
+    | undefined;
   getChatAreaRef: () => HTMLDivElement | undefined;
 }
 
@@ -227,9 +229,15 @@ export function createContinuityCapsule(deps: ContinuityCapsuleDeps) {
   });
 
   return {
-    get currentAnchor() { return currentAnchor; },
-    get restoreAppliedFor() { return _restoreAppliedFor; },
-    set restoreAppliedFor(v: string) { _restoreAppliedFor = v; },
+    get currentAnchor() {
+      return currentAnchor;
+    },
+    get restoreAppliedFor() {
+      return _restoreAppliedFor;
+    },
+    set restoreAppliedFor(v: string) {
+      _restoreAppliedFor = v;
+    },
     controller,
     /** Set after scrollNav is created to resolve circular dependency. */
     setScrollToMessage(fn: (id: string) => Promise<void>) {

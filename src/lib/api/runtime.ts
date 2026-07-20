@@ -7,28 +7,22 @@ import { CMD, type CmdName } from "../tauri-commands";
 function invoke<T>(cmd: CmdName | string, args?: Record<string, unknown>): Promise<T> {
   return getTransport().invoke<T>(cmd, args);
 }
-import type {
-  } from "../types";
+import type {} from "../types";
 import type {
   ConfigTransactionPreview,
   ConfigTransactionResult,
   RuntimeControlPlaneList,
   RuntimeHubHealthResponse,
 } from "../runtime-control-plane/types";
-import type {
-  } from "../types/task";
-import type {
-  } from "../types/run-journal";
-import type {
-  } from "../types/attention-queue";
+import type {} from "../types/task";
+import type {} from "../types/run-journal";
+import type {} from "../types/attention-queue";
 import type {
   FleetMemberSummary,
   FleetMemberDetail,
   FleetMetrics,
   FleetSendResult,
 } from "../types";
-
-
 
 export async function runtimeHubList(force = false): Promise<RuntimeControlPlaneList> {
   return invoke<RuntimeControlPlaneList>(CMD.runtime_hub_list, { force });
@@ -107,4 +101,3 @@ export async function sendToFleetMember(id: string, prompt: string): Promise<Fle
 export async function stopFleetMember(id: string): Promise<boolean> {
   return invoke<boolean>(CMD.fleet_stop_member, { id });
 }
-

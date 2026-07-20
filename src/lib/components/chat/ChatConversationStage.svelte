@@ -165,10 +165,7 @@
   /** Single live-turn shell: avatar stays mounted for the whole in-flight turn. */
   const liveTurnVisible = $derived(
     store.isActivelyRunning &&
-      (store.isThinking ||
-        liveStreamingVisible ||
-        !!store.thinkingText ||
-        !!processingSlashCmd),
+      (store.isThinking || liveStreamingVisible || !!store.thinkingText || !!processingSlashCmd),
   );
 
   const liveTurnWaiting = $derived(
@@ -527,7 +524,7 @@
                     {spinnerVerb}
                     {processingSlashCmd}
                     thinkingText={store.thinkingText}
-                    thinkingExpanded={thinkingExpanded}
+                    {thinkingExpanded}
                     onToggleThinkingExpand={() => (thinkingExpanded = !thinkingExpanded)}
                     streamingText={store.streamingText}
                     showStreaming={liveStreamingVisible}

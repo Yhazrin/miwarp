@@ -105,13 +105,7 @@
     onClearBatchSelection,
   }: Props = $props();
 
-  type SidebarBodyId =
-    | "chat"
-    | "explorer"
-    | "teams"
-    | "settings"
-    | "scheduled-tasks"
-    | "plugins";
+  type SidebarBodyId = "chat" | "explorer" | "teams" | "settings" | "scheduled-tasks" | "plugins";
 
   const BODY_LOADERS: Record<SidebarBodyId, () => Promise<{ default: SidebarBodyComponent }>> = {
     chat: () => import("$lib/layout/sidebar-bodies/ChatSidebarBody.svelte"),
@@ -211,39 +205,47 @@
     {:else if BodyComponent}
       {@const C = BodyComponent}
       {#if activeBodyId === "chat"}
+        <!-- prettier-ignore -->
         <C
-          {enrichedProjectFolders}
-          {visibleSearchResults}
-          {selectedRunId}
-          {selectedScheduledTaskId}
-          {mascotEnabled}
-          {selectedGroupKeys}
-          {batchModeActive}
-          {dragRunId}
-          {dragOverFolderId}
-          {dragOverUnfolderedKey}
-          {highlightMatch}
-          {onNavigateToChatRun}
-          {onToggleProject}
-          {onRequestDeleteConversation}
-          {onToggleSelectConversation}
-          {onEnterBatchMode}
-          {onSessionDragStart}
-          {onSessionDragMove}
-          {onSessionDragEnd}
-          {onRequestRemoveProject}
-          {onNewChatInFolder}
-          {onNewChatInSubFolder}
+          enrichedProjectFolders={enrichedProjectFolders}
+          visibleSearchResults={visibleSearchResults}
+          selectedRunId={selectedRunId}
+          selectedScheduledTaskId={selectedScheduledTaskId}
+          mascotEnabled={mascotEnabled}
+          selectedGroupKeys={selectedGroupKeys}
+          batchModeActive={batchModeActive}
+          dragRunId={dragRunId}
+          dragOverFolderId={dragOverFolderId}
+          dragOverUnfolderedKey={dragOverUnfolderedKey}
+          highlightMatch={highlightMatch}
+          onNavigateToChatRun={onNavigateToChatRun}
+          onToggleProject={onToggleProject}
+          onRequestDeleteConversation={onRequestDeleteConversation}
+          onToggleSelectConversation={onToggleSelectConversation}
+          onEnterBatchMode={onEnterBatchMode}
+          onSessionDragStart={onSessionDragStart}
+          onSessionDragMove={onSessionDragMove}
+          onSessionDragEnd={onSessionDragEnd}
+          onRequestRemoveProject={onRequestRemoveProject}
+          onNewChatInFolder={onNewChatInFolder}
+          onNewChatInSubFolder={onNewChatInSubFolder}
           onSelectWorkspace={onSelectWorkspace}
-          {onBatchDeleteConfirm}
-          {onClearBatchSelection}
+          onBatchDeleteConfirm={onBatchDeleteConfirm}
+          onClearBatchSelection={onClearBatchSelection}
         />
       {:else if activeBodyId === "explorer"}
-        <C {explorerEmptyAction} />
+        <!-- prettier-ignore -->
+        <C explorerEmptyAction={explorerEmptyAction} />
       {:else if activeBodyId === "teams"}
-        <C {filteredTeams} />
+        <!-- prettier-ignore -->
+        <C filteredTeams={filteredTeams} />
       {:else if activeBodyId === "plugins"}
-        <C {pluginActiveSection} {pluginSections} {onPluginSectionChange} />
+        <!-- prettier-ignore -->
+        <C
+          pluginActiveSection={pluginActiveSection}
+          pluginSections={pluginSections}
+          onPluginSectionChange={onPluginSectionChange}
+        />
       {:else}
         <C />
       {/if}

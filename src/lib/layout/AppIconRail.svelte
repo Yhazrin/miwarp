@@ -11,7 +11,7 @@
     getNavItemHref: (item: { path: string; icon: string }) => string;
     attentionQueueBadgeCount: number;
     sidebarVersion: string;
-    sidebarVersionChecked: boolean;
+    sidebarVersionChecking: boolean;
     sidebarUpdateAvailable: boolean;
     onShowAbout: () => void;
   }
@@ -21,7 +21,7 @@
     getNavItemHref,
     attentionQueueBadgeCount,
     sidebarVersion,
-    sidebarVersionChecked,
+    sidebarVersionChecking,
     sidebarUpdateAvailable,
     onShowAbout,
   }: Props = $props();
@@ -216,7 +216,7 @@
       onclick={onShowAbout}
       aria-label={t("settings_checkUpdate")}
     >
-      {#if !sidebarVersionChecked}
+      {#if sidebarVersionChecking}
         <svg class="h-3.5 w-3.5 animate-spin opacity-50" viewBox="0 0 24 24" fill="none">
           <circle
             cx="12"

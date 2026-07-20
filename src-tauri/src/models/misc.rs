@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use super::run::RunStatus;
+use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LocalProxyStatus {
     pub proxy_id: String,
     pub running: bool,
@@ -171,8 +171,3 @@ pub struct RunSearchResponse {
     pub facets: RunSearchFacets,
     pub total_matching: usize,
 }
-
-// ── Team Run types ──
-// MiWarp's own team orchestration system (stored in ~/.miwarp/team-runs/)
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

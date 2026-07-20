@@ -57,8 +57,7 @@
   <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
     <div class="text-xs font-mono text-muted-foreground flex items-center gap-2">
       <span>
-        {#if toolInput?.pattern}<span class="text-miwarp-accent-violet"
-            >/{toolInput.pattern}/</span
+        {#if toolInput?.pattern}<span class="text-miwarp-accent-violet">/{toolInput.pattern}/</span
           >{/if}
         {#if toolInput?.path}<span class="text-muted-foreground/60 ml-2">{toolInput.path}</span
           >{/if}
@@ -110,11 +109,9 @@
   <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
     <div class="text-xs font-mono text-muted-foreground flex items-center gap-2">
       <span>
-        {#if toolInput?.pattern}<span class="text-miwarp-accent-violet"
-            >{toolInput.pattern}</span
+        {#if toolInput?.pattern}<span class="text-miwarp-accent-violet">{toolInput.pattern}</span
           >{/if}
-        {#if toolInput?.path}<span class="text-muted-foreground/60 ml-2"
-            >in {toolInput.path}</span
+        {#if toolInput?.path}<span class="text-muted-foreground/60 ml-2">in {toolInput.path}</span
           >{/if}
       </span>
       {#if globResult}

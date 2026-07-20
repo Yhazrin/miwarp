@@ -47,7 +47,9 @@ export function finalizeTimelineForDeadSession(tl: TimelineEntry[]): TimelineEnt
   let changed = false;
   const result = tl.map((e) => {
     if (e.kind !== "tool") return e;
-    const newSub = e.subTimeline ? finalizeTimelineForDeadSession(e.subTimeline) ?? e.subTimeline : e.subTimeline;
+    const newSub = e.subTimeline
+      ? (finalizeTimelineForDeadSession(e.subTimeline) ?? e.subTimeline)
+      : e.subTimeline;
     const needsFinalize = staleStatuses.has(e.tool.status);
     if (!needsFinalize && newSub === e.subTimeline) return e;
     changed = true;

@@ -6,10 +6,7 @@
   import { IS_MAC } from "$lib/utils/platform";
   import { t } from "$lib/i18n/index.svelte";
   import * as api from "$lib/api";
-  import type {
-    AuthOverview,
-    PlatformCredential,
-  } from "$lib/types";
+  import type { AuthOverview, PlatformCredential } from "$lib/types";
 
   let {
     // Left toolbar props
@@ -94,7 +91,7 @@
     onInterrupt?: () => void;
     canSend?: boolean;
     btwMode?: boolean;
-    onBtwSend?: () => void;
+    onBtwSend?: (question: string) => void;
     handleBtwSend?: () => void;
     handleSend?: () => void;
     onToggleBtwMode?: () => void;

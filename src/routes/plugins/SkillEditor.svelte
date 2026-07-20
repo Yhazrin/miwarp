@@ -123,9 +123,7 @@
       role="presentation"
       onclick={(e) => e.stopPropagation()}
     >
-      <div
-        class="flex items-center justify-between px-5 py-4 border-b border-border shrink-0"
-      >
+      <div class="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
         <h3 class="text-sm font-semibold text-foreground">
           {editorMode === "new" ? t("plugin_createSkill") : t("extensions_editSkill")}
         </h3>
@@ -205,9 +203,7 @@
           <label
             for="plugin-editor-content"
             class="block text-xs font-medium text-muted-foreground mb-1"
-            >{editorMode === "new"
-              ? t("plugin_editorContent")
-              : t("plugin_skillMdContent")}</label
+            >{editorMode === "new" ? t("plugin_editorContent") : t("plugin_skillMdContent")}</label
           >
           <textarea
             id="plugin-editor-content"

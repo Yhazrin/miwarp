@@ -1,14 +1,6 @@
 use crate::agent::claude_stream::augmented_path;
-use crate::agent::cli_update::CliInstallMethod;
-use crate::agent::ssh::{expand_local_tilde, shell_escape};
-use crate::models::{
-    ApiTestResult, AuthDiagnostics, ClaudeMdInfo, CliCheckResult, CliDiagnostics, CliDistTags,
-    ConfigDiagnostics, ConfigIssue, DiagnosticsReport, LocalProxyStatus, ProjectDiagnostics,
-    ProjectInitStatus, RemoteTestResult, ServicesDiagnostics, SshKeyInfo, SystemDiagnostics,
-    UpdateCliResult,
-};
+use crate::models::{CliCheckResult, LocalProxyStatus};
 use crate::process_ext::HideConsole;
-use std::path::Path;
 use std::process::Command;
 
 /// One-click update for Claude Code. Claude Code ships via two channels that
@@ -186,7 +178,7 @@ pub async fn check_cli_binary(name: String) -> Result<CliCheckResult, String> {
 
 // ── Local proxy detection ──
 
-async fn detect_proxy_inner(proxy_id: &str, base_url: &str) -> LocalProxyStatus {
+pub(super) async fn detect_proxy_inner(proxy_id: &str, base_url: &str) -> LocalProxyStatus {
     log::debug!(
         "[diagnostics] detect_local_proxy: proxy_id={}, base_url={}",
         proxy_id,
@@ -249,5 +241,3 @@ async fn detect_proxy_inner(proxy_id: &str, base_url: &str) -> LocalProxyStatus 
         }
     }
 }
-
-#[tauri::command]

@@ -4,18 +4,8 @@
 //! Owns the lifecycle of a `SessionActor`: acquire `SpawnLocks` → resolve auth & remote
 //! → spawn process → insert handle → send initial message.
 
-use crate::agent::adapter::{self, AdapterSettings};
-use crate::agent::attachment::AttachmentData;
-use crate::agent::claude_stream;
-use crate::agent::session_actor::{self, ActorCommand};
-use crate::agent::spawn_locks::SpawnLocks;
-use crate::governor::{Admission, ResourceGovernor};
-use crate::models::{AgentRuntimeKind, BusEvent, RunMeta, RunStatus, SessionMode};
-use crate::storage;
-use crate::web_server::broadcaster::BroadcastEmitter;
-use std::sync::Arc;
+use crate::agent::session_actor::ActorCommand;
 use std::time::Duration;
-use tokio_util::sync::CancellationToken;
 
 /// Default timeout for actor replies (permission, elicitation, hook callback, etc.)
 pub(crate) const ACTOR_REPLY_TIMEOUT_MS: u64 = 30_000;
@@ -26,7 +16,6 @@ pub(crate) const ACTOR_READY_TIMEOUT_MS: u64 = 5_000;
 
 /// Await an actor oneshot reply with a timeout.
 /// Returns the inner `Result<T, String>` or a timeout/drop error.
-
 pub(crate) async fn await_actor_reply<T>(
     rx: tokio::sync::oneshot::Receiver<Result<T, String>>,
     label: &str,
@@ -85,5 +74,3 @@ pub(crate) async fn stop_actor(
 
     Ok(true)
 }
-
-#[allow(clippy::too_many_arguments)]

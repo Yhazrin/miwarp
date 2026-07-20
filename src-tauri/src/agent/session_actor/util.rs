@@ -1,5 +1,9 @@
+use crate::agent::attachment::AttachmentData;
+use crate::models::{max_attachment_size, RunStatus, ALLOWED_DOC_TYPES, ALLOWED_IMAGE_TYPES};
+use std::time::Instant;
+
 /// Extract content from `<promise>...</promise>` tag in text.
-fn extract_promise_tag(text: &str) -> Option<&str> {
+pub(super) fn extract_promise_tag(text: &str) -> Option<&str> {
     let start = text.find("<promise>")?;
     let end = text.find("</promise>")?;
     if end <= start + 9 {
@@ -33,7 +37,7 @@ fn extract_promise_tag(text: &str) -> Option<&str> {
 /// `is_protocol_noise("\x1b[K")` → true (pure ANSI cursor sequence)
 /// `is_protocol_noise("Welcome to Claude v1.2.3")` → false (has digit)
 /// `is_protocol_noise("{\"foo\": }")` → false (has `{`)
-fn is_protocol_noise(line: &str) -> bool {
+pub(crate) fn is_protocol_noise(line: &str) -> bool {
     // Strip ANSI escapes FIRST. Otherwise bytes inside a CSI sequence
     // — `ESC [` (0x1b 0x5b) — would falsely match the `[` check
     // below, and digits inside CSI parameters would falsely look
@@ -86,7 +90,7 @@ fn is_protocol_noise(line: &str) -> bool {
 /// single-character escapes. Used by `is_protocol_noise` to detect
 /// pure-control output lines. Not a full VT100 parser — just enough
 /// for the desync prefilter's needs.
-fn strip_ansi(line: &str) -> String {
+pub(crate) fn strip_ansi(line: &str) -> String {
     let mut out = String::with_capacity(line.len());
     let bytes = line.as_bytes();
     let mut i = 0;
@@ -134,7 +138,7 @@ fn strip_ansi(line: &str) -> String {
 // ── Ralph Loop types ──
 
 #[derive(Debug, Clone, PartialEq)]
-enum RalphPhase {
+pub(super) enum RalphPhase {
     Running,
     WaitingRetry,
     PausedByUser { was: Box<RalphPhase> },
@@ -142,23 +146,20 @@ enum RalphPhase {
 }
 
 #[allow(dead_code)] // started_at is stored for potential future use
-struct RalphLoopState {
-    prompt: String,
-    phase: RalphPhase,
-    iteration: u32,
-    max_iterations: u32,
-    completion_promise: Option<String>,
-    started_at: String,
-    consecutive_failures: u32,
-    max_consecutive_failures: u32,
-    retry_after: Option<Instant>,
-    turn_toplevel_texts: Vec<String>,
+pub(super) struct RalphLoopState {
+    pub(super) prompt: String,
+    pub(super) phase: RalphPhase,
+    pub(super) iteration: u32,
+    pub(super) max_iterations: u32,
+    pub(super) completion_promise: Option<String>,
+    pub(super) started_at: String,
+    pub(super) consecutive_failures: u32,
+    pub(super) max_consecutive_failures: u32,
+    pub(super) retry_after: Option<Instant>,
+    pub(super) turn_toplevel_texts: Vec<String>,
 }
 
-/// Result returned by cancel_ralph_loop IPC command.
-#[derive(Debug, Clone, serde::Serialize)]
-
-fn map_state_to_run_status(state: &str) -> Option<RunStatus> {
+pub(super) fn map_state_to_run_status(state: &str) -> Option<RunStatus> {
     match state {
         "spawning" | "running" => Some(RunStatus::Running),
         "completed" => Some(RunStatus::Completed),
@@ -170,7 +171,7 @@ fn map_state_to_run_status(state: &str) -> Option<RunStatus> {
 }
 
 /// Sanitize a filename: keep only safe characters, truncate to 120 chars.
-fn att_safe_filename(name: &str) -> String {
+pub(super) fn att_safe_filename(name: &str) -> String {
     let cleaned: String = name
         .chars()
         .map(|c| {
@@ -194,7 +195,7 @@ fn att_safe_filename(name: &str) -> String {
 }
 
 /// Map MIME type to file extension.
-fn att_extension(mime: &str) -> &str {
+pub(super) fn att_extension(mime: &str) -> &str {
     if mime.starts_with("image/png") {
         ".png"
     } else if mime.starts_with("image/jpeg") {
@@ -212,7 +213,7 @@ fn att_extension(mime: &str) -> &str {
 
 /// Save an attachment to `~/.miwarp/runs/{run_id}/attachments/` and return the path.
 /// Returns `None` on failure (non-fatal, logged as warning).
-fn save_attachment_to_disk(run_id: &str, att: &AttachmentData) -> Option<String> {
+pub(super) fn save_attachment_to_disk(run_id: &str, att: &AttachmentData) -> Option<String> {
     let att_dir = crate::storage::run_dir(run_id).join("attachments");
     if let Err(e) = std::fs::create_dir_all(&att_dir) {
         log::warn!("[actor] failed to create attachments dir: {}", e);
@@ -334,5 +335,3 @@ pub fn build_user_payload(
     });
     (payload, uuid)
 }
-
-#[cfg(test)]

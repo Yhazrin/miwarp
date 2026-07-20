@@ -1,8 +1,8 @@
+use super::settings::{default_auth_mode, RemoteHost};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::collections::HashMap;
-use super::settings::{RemoteHost, UserSettings};
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
 pub enum RunStatus {
     Pending,
     Running,
@@ -357,6 +357,9 @@ pub struct RunArtifact {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cost_estimate: Option<f64>,
     pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunMeta {
     pub id: String,
     pub prompt: String,
@@ -571,5 +574,3 @@ impl RunMeta {
         }
     }
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]

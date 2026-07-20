@@ -11,7 +11,12 @@ import type { SoundSynthesizer } from "../../config/engine";
 import type { BaseTune } from "./tunes";
 import type { InstrumentConfig } from "./instruments";
 
-import { createClickSound, createPopSound, createToggleSound, createTickSound } from "./factory-basic";
+import {
+  createClickSound,
+  createPopSound,
+  createToggleSound,
+  createTickSound,
+} from "./factory-basic";
 import {
   createSweepSound,
   createRiseSound,

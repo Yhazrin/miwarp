@@ -17,6 +17,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Instant, UNIX_EPOCH};
 
+use super::helpers::{compute_streaks, extract_date_fast, read_activity_data};
+
 // ── In-memory cache ──
 
 static CACHE: std::sync::LazyLock<Mutex<Option<CachedData>>> =
@@ -42,11 +44,11 @@ struct CachedData {
 }
 
 #[derive(Default, Clone, Serialize, Deserialize)]
-struct TokenCounts {
-    input: u64,
-    output: u64,
-    cache_read: u64,
-    cache_create: u64,
+pub(super) struct TokenCounts {
+    pub(super) input: u64,
+    pub(super) output: u64,
+    pub(super) cache_read: u64,
+    pub(super) cache_create: u64,
 }
 
 // ── Disk cache types ──
@@ -63,11 +65,11 @@ struct DiskCache {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-struct FileData {
+pub(super) struct FileData {
     /// date → model → TokenCounts
-    daily_tokens: HashMap<String, HashMap<String, TokenCounts>>,
+    pub(super) daily_tokens: HashMap<String, HashMap<String, TokenCounts>>,
     /// date → message count
-    daily_messages: HashMap<String, u32>,
+    pub(super) daily_messages: HashMap<String, u32>,
 }
 
 // ── JSONL line schema (partial — unknown fields are skipped by serde) ──
@@ -102,36 +104,14 @@ struct LineUsage {
 
 // ── stats-cache.json (activity data only) ──
 
-#[derive(Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-struct StatsCache {
-    #[serde(default)]
-    total_sessions: u32,
-    #[serde(default)]
-    daily_activity: Vec<DailyActivityEntry>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct DailyActivityEntry {
-    date: String,
-    #[serde(default)]
-    message_count: u32,
-    #[serde(default)]
-    session_count: u32,
-    #[serde(default)]
-    tool_call_count: u32,
-}
-
 // ── Public API ──
-
 
 pub fn read_global_usage(days: Option<u32>) -> Result<UsageOverview, String> {
     let _compute_guard = COMPUTE_LOCK
         .lock()
         .map_err(|e| format!("Compute lock: {e}"))?;
 
-    let home = super::dirs_next().ok_or("Could not determine home directory")?;
+    let home = super::super::dirs_next().ok_or("Could not determine home directory")?;
     let claude_dir = home.join(".claude");
 
     // Check in-memory cache
@@ -303,7 +283,7 @@ fn list_jsonl_files(claude_dir: &Path) -> Vec<(PathBuf, u128, u64)> {
 // ── Disk cache I/O ──
 
 fn disk_cache_path() -> PathBuf {
-    super::data_dir().join("usage-scan-cache.json")
+    super::super::data_dir().join("usage-scan-cache.json")
 }
 
 /// Read the disk cache file. Returns `None` on any error or version mismatch.
@@ -348,7 +328,7 @@ fn write_disk_cache(cache: &DiskCache) {
 
     // Ensure parent directory exists
     if let Some(parent) = path.parent() {
-        let _ = super::ensure_dir(parent);
+        let _ = super::super::ensure_dir(parent);
     }
 
     let json = match serde_json::to_string(cache) {
@@ -379,7 +359,7 @@ fn write_disk_cache(cache: &DiskCache) {
 
 // ── Standalone single-file scanner (returns FileData, no side-effects) ──
 
-fn scan_single_jsonl_standalone(path: &Path) -> FileData {
+pub(super) fn scan_single_jsonl_standalone(path: &Path) -> FileData {
     let mut daily_tokens: HashMap<String, HashMap<String, TokenCounts>> = HashMap::new();
     let mut daily_messages: HashMap<String, u32> = HashMap::new();
 
@@ -533,7 +513,7 @@ fn merge_all_file_data(per_file: &HashMap<String, FileData>) -> (DailyModelMap, 
 ///
 /// 输入应当按 date 升序排列。空日期的位置插入一个全 0（无 token、无 cost、
 /// 无 session）的 DailyAggregate，占位条仍会被 streak 判定为 inactive。
-fn fill_daily_gaps(daily: &mut Vec<DailyAggregate>) {
+pub(super) fn fill_daily_gaps(daily: &mut Vec<DailyAggregate>) {
     if daily.len() < 2 {
         return;
     }
@@ -777,17 +757,9 @@ fn build_overview(data: &CachedData, days: Option<u32>) -> UsageOverview {
 type DailyModelMap = BTreeMap<String, HashMap<String, TokenCounts>>;
 type ScanActivityMap = HashMap<String, (u32, u32)>;
 
-/// Extract date ("YYYY-MM-DD") from a JSONL line by finding the "timestamp" field.
-///
-/// P0-4 修复：之前用 substring 截前 10 字符当成日期，**不解析时区**。
-/// JSONL timestamp 可能是：
-///   - "2026-02-13T23:30:00-05:00"（EST 23:30 = UTC 次日 04:30）
-///   - "2026-02-13T23:30:00.123Z"（UTC）
-///   - "2026-02-13T23:30:00+14:00"（+14 时区 23:30 = UTC 次日 13:30）
-///   - "2026-02-13T23:30:00"（无时区，本地时区）
-///
-/// 之前 buggy 的逻辑：substring[..10] = "2026-02-13"，把 EST 23:30 算成
-/// 2026-02-13（实际 UTC 是 2026-02-14），与 server 端的 UTC cutoff 错位。
-///
-/// 修复策略：先尝试完整 RFC 3339 解析 → 转 UTC → 取日期；
-/// 解析失败再 fallback substring（兼容老 CLI 无时区格式）。
+pub(super) fn clear_memory_cache() {
+    if let Ok(mut lock) = CACHE.lock() {
+        *lock = None;
+        log::debug!("[claude_usage] in-memory cache cleared");
+    }
+}

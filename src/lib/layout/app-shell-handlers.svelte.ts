@@ -25,10 +25,7 @@ export function handleSessionDragStart(
   import("$lib/utils/session-drag-state").then((m) => m.setSessionDragActive(true));
 }
 
-export function handleSessionDragMove(
-  setPos: (x: number, y: number) => void,
-  e: PointerEvent,
-) {
+export function handleSessionDragMove(setPos: (x: number, y: number) => void, e: PointerEvent) {
   setPos(e.clientX, e.clientY);
 }
 
@@ -70,6 +67,7 @@ export async function executeFolderDrop(
   if (!run) return;
   try {
     if (dropTarget.type === "folder") {
+      if (!dropTarget.folderId) return;
       const { moveRunToFolder } = await import("$lib/api");
       await moveRunToFolder(runId, dropTarget.folderId);
       rss.applyFolderMoveLocally([runId], dropTarget.folderId);
@@ -147,11 +145,7 @@ export function collectSelectedRunIds(
   return ids;
 }
 
-export async function batchSoftDelete(
-  rss: RunsSidebarStore,
-  ids: string[],
-  selectedRunId: string,
-) {
+export async function batchSoftDelete(rss: RunsSidebarStore, ids: string[], selectedRunId: string) {
   if (ids.length === 0) return;
   await rss.softDelete(ids);
   if (ids.includes(selectedRunId)) goto("/chat");

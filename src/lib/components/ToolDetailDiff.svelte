@@ -148,8 +148,9 @@
       </button>
     {/if}
   {:else if toolInput?.old_string != null || toolInput?.new_string != null}
-    {@const origFile = (toolUseResult as Record<string, unknown> | undefined)
-      ?.originalFile as string | undefined}
+    {@const origFile = (toolUseResult as Record<string, unknown> | undefined)?.originalFile as
+      | string
+      | undefined}
     {@const fallbackHunks = computeFallbackPatch(
       String(toolInput?.old_string ?? ""),
       String(toolInput?.new_string ?? ""),
@@ -257,9 +258,9 @@
     <div class="rounded bg-muted relative group/copy">
       <pre
         class="text-xs font-mono whitespace-pre-wrap p-2 leading-relaxed">{@html renderCodeWithLineNumbers(
-            displayContent,
-            lang,
-          )}</pre>
+          displayContent,
+          lang,
+        )}</pre>
       {#if truncated && !outputExpanded}
         <div class="px-2 pb-1.5 text-[10px] text-muted-foreground">
           {t("tool_linesTotal", { count: String(lines.length) })}

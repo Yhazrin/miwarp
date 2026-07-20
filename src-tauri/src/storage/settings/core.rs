@@ -1,12 +1,9 @@
-use crate::models::{
-    normalize_session_island_alignment, normalize_workspace_folder_sort_order, AgentSettings,
-    AllSettings, UserSettings,
-};
+use crate::models::{normalize_session_island_alignment, AllSettings};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 fn settings_path() -> PathBuf {
-    super::data_dir().join("settings.json")
+    super::super::data_dir().join("settings.json")
 }
 
 /// Back up a corrupt settings file to `settings.json.corrupt.<timestamp>`.
@@ -36,7 +33,7 @@ fn backup_corrupt_file(path: &Path) -> Option<PathBuf> {
     }
 }
 
-fn load_from_path(path: &Path) -> AllSettings {
+pub(super) fn load_from_path(path: &Path) -> AllSettings {
     match fs::read_to_string(path) {
         Ok(content) => match serde_json::from_str::<AllSettings>(&content) {
             Ok(mut settings) => {
@@ -78,11 +75,10 @@ fn load_from_path(path: &Path) -> AllSettings {
     }
 }
 
-fn save_to_path(settings: &AllSettings, path: &Path) -> Result<(), String> {
+pub(super) fn save_to_path(settings: &AllSettings, path: &Path) -> Result<(), String> {
     log::debug!("[storage/settings] saving settings");
-    super::durable_io::write_json_atomic(path, settings)
+    super::super::durable_io::write_json_atomic(path, settings)
 }
-
 
 pub fn load() -> AllSettings {
     load_from_path(&settings_path())
@@ -304,7 +300,7 @@ fn known_provider_defaults(pid: &str) -> Option<ProviderDefaults> {
 /// - Incorrect auth_env_var for providers that need ANTHROPIC_API_KEY (x-api-key header)
 /// - Old "minimax" credentials using minimaxi.com → rename to "minimax-cn" preset
 /// - Missing models/extra_env on existing credentials (needed for ANTHROPIC_MODEL injection)
-fn migrate_platform_credentials(settings: &mut AllSettings) -> bool {
+pub(super) fn migrate_platform_credentials(settings: &mut AllSettings) -> bool {
     let auth_fixes: &[(&str, &str)] = &[
         ("deepseek", "ANTHROPIC_AUTH_TOKEN"),
         ("zhipu", "ANTHROPIC_AUTH_TOKEN"),
@@ -429,7 +425,7 @@ fn migrate_platform_credentials(settings: &mut AllSettings) -> bool {
     changed
 }
 
-fn migrate_session_island_alignment(settings: &mut AllSettings) -> bool {
+pub(super) fn migrate_session_island_alignment(settings: &mut AllSettings) -> bool {
     let normalized = normalize_session_island_alignment(&settings.user.session_island_alignment);
     if settings.user.session_island_alignment == normalized {
         return false;
@@ -441,4 +437,3 @@ fn migrate_session_island_alignment(settings: &mut AllSettings) -> bool {
 pub fn save(settings: &AllSettings) -> Result<(), String> {
     save_to_path(settings, &settings_path())
 }
-

@@ -1,14 +1,6 @@
-use crate::agent::claude_stream::augmented_path;
 use crate::agent::cli_update::CliInstallMethod;
-use crate::agent::ssh::{expand_local_tilde, shell_escape};
-use crate::models::{
-    ApiTestResult, AuthDiagnostics, ClaudeMdInfo, CliCheckResult, CliDiagnostics, CliDistTags,
-    ConfigDiagnostics, ConfigIssue, DiagnosticsReport, LocalProxyStatus, ProjectDiagnostics,
-    ProjectInitStatus, RemoteTestResult, ServicesDiagnostics, SshKeyInfo, SystemDiagnostics,
-    UpdateCliResult,
-};
+use crate::models::UpdateCliResult;
 use crate::process_ext::HideConsole;
-use std::path::Path;
 use std::process::Command;
 
 /// One-click update for Claude Code. Claude Code ships via two channels that
@@ -369,5 +361,3 @@ async fn run_cask_upgrade(cask: &str, log_label: &str) -> Result<UpdateCliResult
         }
     }
 }
-
-#[tauri::command]

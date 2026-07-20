@@ -64,4 +64,27 @@ describe("SessionAsyncLifecycleCoordinator", () => {
     expect(lc.beginResume()).toBeNull();
     expect(lc.resumeInFlight).toBe(false);
   });
+
+  it("mount reactivates a shared coordinator without reviving stale work", () => {
+    const lc = new SessionAsyncLifecycleCoordinator();
+    const oldGeneration = lc.beginLoad();
+    lc.unmount();
+
+    lc.mount();
+
+    expect(lc.isMounted).toBe(true);
+    expect(lc.isStale(oldGeneration!)).toBe(true);
+    const newGeneration = lc.beginLoad();
+    expect(newGeneration).not.toBeNull();
+    expect(lc.isStale(newGeneration!)).toBe(false);
+  });
+
+  it("mount is idempotent while already active", () => {
+    const lc = new SessionAsyncLifecycleCoordinator();
+    const generation = lc.beginLoad();
+
+    lc.mount();
+
+    expect(lc.isStale(generation!)).toBe(false);
+  });
 });

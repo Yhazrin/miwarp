@@ -10,7 +10,11 @@
     marketplaceMatch,
     operationLoading = null,
     categoryColors = {} as Record<string, string>,
-    componentBadges = [] as { key: keyof MarketplacePlugin["components"]; label: () => string; color: string }[],
+    componentBadges = [] as {
+      key: keyof MarketplacePlugin["components"];
+      label: () => string;
+      color: string;
+    }[],
     onInstall,
     onUninstall,
     onToggleEnabled,
@@ -21,7 +25,11 @@
     marketplaceMatch?: MarketplacePlugin;
     operationLoading?: string | null;
     categoryColors?: Record<string, string>;
-    componentBadges?: { key: keyof MarketplacePlugin["components"]; label: () => string; color: string }[];
+    componentBadges?: {
+      key: keyof MarketplacePlugin["components"];
+      label: () => string;
+      color: string;
+    }[];
     onInstall: (name: string) => void;
     onUninstall: (plugin: InstalledPlugin) => void;
     onToggleEnabled: (plugin: InstalledPlugin) => void;
@@ -77,9 +85,7 @@
         <div class="flex flex-wrap gap-1 mt-1">
           {#each componentBadges as badge}
             {#if hasComponent(marketplaceMatch.components, badge.key)}
-              <span
-                class="rounded-full px-1.5 py-0.5 text-[10px] font-medium {badge.color}"
-              >
+              <span class="rounded-full px-1.5 py-0.5 text-[10px] font-medium {badge.color}">
                 {badge.label()}
               </span>
             {/if}
@@ -134,13 +140,9 @@
     <div class="flex items-start gap-2">
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
-          <span class="text-sm font-medium text-foreground truncate"
-            >{plugin.name}</span
-          >
+          <span class="text-sm font-medium text-foreground truncate">{plugin.name}</span>
           {#if plugin.version}
-            <span class="text-[11px] text-muted-foreground shrink-0"
-              >v{plugin.version}</span
-            >
+            <span class="text-[11px] text-muted-foreground shrink-0">v{plugin.version}</span>
           {/if}
         </div>
         {#if plugin.author}
@@ -155,9 +157,7 @@
           onclick={() => onInstall(plugin.name)}
           disabled={operationLoading === plugin.name}
         >
-          {operationLoading === plugin.name
-            ? t("plugin_installing")
-            : t("plugin_install")}
+          {operationLoading === plugin.name ? t("plugin_installing") : t("plugin_install")}
         </button>
         {#if plugin.install_count != null && plugin.install_count > 0}
           <span class="text-[11px] text-muted-foreground"
@@ -180,14 +180,9 @@
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
-              ><path
-                d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-              /><polyline points="15 3 21 3 21 9" /><line
-                x1="10"
-                x2="21"
-                y1="14"
-                y2="3"
-              /></svg
+              ><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline
+                points="15 3 21 3 21 9"
+              /><line x1="10" x2="21" y1="14" y2="3" /></svg
             >
           </a>
         {/if}
@@ -208,9 +203,7 @@
       {/if}
       {#each componentBadges as badge}
         {#if hasComponent(plugin.components, badge.key)}
-          <span
-            class="rounded-full px-1.5 py-0.5 text-[10px] font-medium {badge.color}"
-          >
+          <span class="rounded-full px-1.5 py-0.5 text-[10px] font-medium {badge.color}">
             {badge.label()}{#if componentCount(plugin.components, badge.key) > 0}
               ({componentCount(plugin.components, badge.key)}){/if}
           </span>
@@ -222,9 +215,7 @@
     {#if plugin.tags.length > 0}
       <div class="flex flex-wrap gap-1">
         {#each plugin.tags as tag}
-          <span
-            class="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
-            >{tag}</span
+          <span class="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{tag}</span
           >
         {/each}
       </div>

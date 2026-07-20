@@ -84,6 +84,14 @@
   import ChatDragOverlay from "$lib/components/ChatDragOverlay.svelte";
   import ChatConversationStage from "$lib/components/chat/ChatConversationStage.svelte";
   import ChatInputDock from "$lib/components/chat/ChatInputDock.svelte";
+  import { createLiveViewModel } from "$lib/components/chat/live-view-model";
+  import type {
+    ForkVm,
+    LoadingVm,
+    SessionVm,
+    ThinkingVm,
+    TimelineVm,
+  } from "$lib/components/chat/conversation-stage-types";
   import WorkspaceOverview from "$lib/components/chat/WorkspaceOverview.svelte";
   import ChatHeroMeta from "$lib/components/ChatHeroMeta.svelte";
   import SplitWorkspace from "$lib/components/split/SplitWorkspace.svelte";
@@ -106,7 +114,8 @@
   import { createChatState } from "./use-chat-state.svelte";
   import { createScrollState } from "./use-scroll.svelte";
   import { createFolderPicker } from "./use-folder-picker.svelte";
-  import { chatViewCache,
+  import {
+    chatViewCache,
     saveChatViewState,
     updateLastChatHref,
     getCachedScrollTop,
@@ -131,25 +140,6 @@
     },
     (opts) => fp.openFolderPicker(opts),
   );
-  const urlParams = createUrlParams({
-    pageUrl: () => $page.url,
-    store,
-    getRemoteHosts: () => remoteHosts,
-    chatViewCache,
-    getPromptRef: () => promptRef,
-    getSettingsCache: () => settingsCache,
-    getXtermRef: () => xtermRef,
-    setFolderCwdOverride: (v) => { folderCwdOverride = v; },
-    setSelectedWorkspaceCwd: (v) => { selectedWorkspaceCwd = v; },
-  });
-  const capsule = createContinuityCapsule({
-    store,
-    tl,
-    chatState,
-    scrollState,
-    getPromptRef: () => promptRef,
-    getChatAreaRef: () => chatAreaRef,
-  });
   let middlewareReady = $state(false);
   let xtermRef: XTerminal | undefined = $state();
   let promptRef: PromptInput | undefined = $state();
@@ -351,6 +341,29 @@
     getChatAreaRef: () => chatAreaRef,
     loadMoreEarlier: () => loadMoreEarlierRef(),
   });
+  const urlParams = createUrlParams({
+    pageUrl: () => $page.url,
+    store,
+    getRemoteHosts: () => remoteHosts,
+    chatViewCache,
+    getPromptRef: () => promptRef,
+    getSettingsCache: () => settingsCache,
+    getXtermRef: () => xtermRef,
+    setFolderCwdOverride: (v) => {
+      folderCwdOverride = v;
+    },
+    setSelectedWorkspaceCwd: (v) => {
+      selectedWorkspaceCwd = v;
+    },
+  });
+  const capsule = createContinuityCapsule({
+    store,
+    tl,
+    chatState,
+    scrollState,
+    getPromptRef: () => promptRef,
+    getChatAreaRef: () => chatAreaRef,
+  });
   const ta = createTimelineAnnotations({
     store,
     getVisibleTimeline: () => tl.visibleTimeline,
@@ -434,11 +447,17 @@
   });
 
   let routeRunPending = $derived(
-    !!urlParams.runId && tl.loadingRunId === urlParams.runId && store.run?.id !== urlParams.runId && !store.error,
+    !!urlParams.runId &&
+      tl.loadingRunId === urlParams.runId &&
+      store.run?.id !== urlParams.runId &&
+      !store.error,
   );
 
   let routeRunLoadFailed = $derived(
-    !!urlParams.runId && store.run?.id !== urlParams.runId && store.phase === "failed" && !!store.error,
+    !!urlParams.runId &&
+      store.run?.id !== urlParams.runId &&
+      store.phase === "failed" &&
+      !!store.error,
   );
 
   let welcomeVisible = $derived(
@@ -454,7 +473,7 @@
   let selectedWorkspaceCwd = $state("");
   let workspaceOverviewCwd = $derived(
     !urlParams.hasNewParam && !store.run && store.timeline.length === 0 && !store.streamingText
-      ? (selectedWorkspaceCwd || folderCwdOverride || "")
+      ? selectedWorkspaceCwd || folderCwdOverride || ""
       : "",
   );
   $effect(() => {
@@ -488,14 +507,16 @@
         permissionCoordinator.reconcileActiveRun(id);
         permissionCoordinator.bumpGeneration();
         permissionCoordinator.lastActiveRunId = id;
-      }      const previousSendRunId = sendCoordinatorLastActiveRunId;
+      }
+      const previousSendRunId = sendCoordinatorLastActiveRunId;
       if (previousSendRunId !== id) {
         if (previousSendRunId) {
           send.coordinator.cancelForRun(previousSendRunId, "Run switched");
         }
         send.coordinator.reconcileActiveRun(id);
         sendCoordinatorLastActiveRunId = id;
-      }      if (store.resumeInFlight || chatState.resuming) {
+      }
+      if (store.resumeInFlight || chatState.resuming) {
         dbg("effect", "skip loadRun — resume in progress");
         return;
       }
@@ -503,7 +524,8 @@
 
       if (!id) {
         // Case 1: explicit new chat (?new=1) → start empty
-        if (isNewChat) {          const prev = store.run?.id;
+        if (isNewChat) {
+          const prev = store.run?.id;
           if (prev) capsule.controller.flush("manual", prev);
           capsule.controller.switchRun("");
           capsule.restoreAppliedFor = "";
@@ -644,15 +666,6 @@
       });
     }
   });
-  createAutoScroll({
-    store,
-    getChatAreaRef: () => chatAreaRef,
-    scrollState,
-    pinChatToBottom,
-    followChatBottom,
-    scrollChatToBottom,
-  });
-
   function handleTermReady(_cols: number, _rows: number) {
     // Terminal ready — Codex pipe mode is output-only, no setup needed
   }
@@ -725,46 +738,82 @@
     permissionCoordinator,
   } = createPermissionHandlers({
     store,
-    get timelineIdIndex() { return tl.timelineIdIndex; },
-    setApproving: (v: boolean) => { chatState.approving = v; },
-    goto, tick,
+    get timelineIdIndex() {
+      return tl.timelineIdIndex;
+    },
+    setApproving: (v: boolean) => {
+      chatState.approving = v;
+    },
+    goto,
+    tick,
   });
 
   const {
-    handleModelChange, handleEffortChange, handleAuthModeChange,
-    checkAllLocalProxies, handlePlatformChange,
+    handleModelChange,
+    handleEffortChange,
+    handleAuthModeChange,
+    checkAllLocalProxies,
+    handlePlatformChange,
   } = createPlatformHandlers({
     store,
     getSettings: () => chatState.settings,
     getCurrentEffort: () => currentEffort,
-    setCurrentEffort: (v: string) => { currentEffort = v; },
+    setCurrentEffort: (v: string) => {
+      currentEffort = v;
+    },
     setLastKnownGoodModel: modelGuard.setLastKnownGoodModel,
-    setAuthOverview: (v) => { authOverview = v; },
-    setLocalProxyStatuses: (v) => { localProxyStatuses = v; },
+    setAuthOverview: (v) => {
+      authOverview = v;
+    },
+    setLocalProxyStatuses: (v) => {
+      localProxyStatuses = v;
+    },
     getCliCurrentModel,
   });
 
   const scrollNav = createScrollNavigation({
-    store, tick,
+    store,
+    tick,
     getChatAreaRef: () => chatAreaRef,
-    getFilteredTimeline: () => tl.filteredTimeline, getVisibleTimeline: () => tl.visibleTimeline,
-    getToolBursts: () => tl.toolBursts, burstCollapse,
+    getFilteredTimeline: () => tl.filteredTimeline,
+    getVisibleTimeline: () => tl.visibleTimeline,
+    getToolBursts: () => tl.toolBursts,
+    burstCollapse,
     getProcessVisibility: () => chatState.processVisibility,
-    getRenderLimit: () => tl.renderLimit, setRenderLimit: tl.setRenderLimit,
-    getToolFilter: () => tl.toolFilter, setToolFilter: tl.setToolFilter,
-    getLoadingRunId: () => tl.loadingRunId, setLoadingRunId: tl.setLoadingRunId,
-    getLoadingMore: () => tl.loadingMore, setLoadingMore: tl.setLoadingMore,
-    getLoadMoreArmed: () => tl.loadMoreArmed, setLoadMoreArmed: tl.setLoadMoreArmed,
-    setIsChatAutoScroll: (v: boolean) => { scrollState.isChatAutoScroll = v; },
+    getRenderLimit: () => tl.renderLimit,
+    setRenderLimit: tl.setRenderLimit,
+    getToolFilter: () => tl.toolFilter,
+    setToolFilter: tl.setToolFilter,
+    getLoadingRunId: () => tl.loadingRunId,
+    setLoadingRunId: tl.setLoadingRunId,
+    getLoadingMore: () => tl.loadingMore,
+    setLoadingMore: tl.setLoadingMore,
+    getLoadMoreArmed: () => tl.loadMoreArmed,
+    setLoadMoreArmed: tl.setLoadMoreArmed,
+    setIsChatAutoScroll: (v: boolean) => {
+      scrollState.isChatAutoScroll = v;
+    },
     getIsChatAutoScroll: () => scrollState.isChatAutoScroll,
-    setShowChatScrollHint: (v: boolean) => { scrollState.showChatScrollHint = v; },
+    setShowChatScrollHint: (v: boolean) => {
+      scrollState.showChatScrollHint = v;
+    },
     getScrollToInFlight: () => scrollState.scrollToInFlight,
-    setScrollToInFlight: (v: boolean) => { scrollState.scrollToInFlight = v; },
+    setScrollToInFlight: (v: boolean) => {
+      scrollState.scrollToInFlight = v;
+    },
     getSuppressLoadMoreRearm: () => _suppressLoadMoreRearm,
-    setSuppressLoadMoreRearm: (v: boolean) => { _suppressLoadMoreRearm = v; },
-    setReadingHistory: (v: boolean) => { scrollState.readingHistory = v; },
-    setFolderCwdOverride: (v: string) => { folderCwdOverride = v; },
-    reloadProjectData, getPageUrl: () => $page.url, replaceState,
+    setSuppressLoadMoreRearm: (v: boolean) => {
+      _suppressLoadMoreRearm = v;
+    },
+    setReadingHistory: (v: boolean) => {
+      scrollState.readingHistory = v;
+    },
+    setFolderCwdOverride: (v: string) => {
+      folderCwdOverride = v;
+    },
+    reloadProjectData,
+    getPageUrl: () => $page.url,
+    replaceState,
   });
   loadMoreEarlierRef = scrollNav.loadMoreEarlier;
   capsule.setScrollToMessage(scrollNav.scrollToMessage);
@@ -782,18 +831,39 @@
     scrollToMessage,
   } = scrollNav;
 
+  createAutoScroll({
+    store,
+    getChatAreaRef: () => chatAreaRef,
+    scrollState,
+    pinChatToBottom,
+    followChatBottom,
+    scrollChatToBottom,
+  });
+
   const chatActions = createChatActions({
     store,
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
     showToast: _showToast,
-    setBtwState: (v) => { btwState = v; },
-    setVerboseEnabled: (v) => { verbose.verboseEnabled = v; },
-    setRequestedPreviewUrl: (v) => { chatState.requestedPreviewUrl = v; },
-    setSidebarRequestedTab: (v) => { chatState.sidebarRequestedTab = v; },
+    setBtwState: (v) => {
+      btwState = v;
+    },
+    setVerboseEnabled: (v) => {
+      verbose.verboseEnabled = v;
+    },
+    setRequestedPreviewUrl: (v) => {
+      chatState.requestedPreviewUrl = v;
+    },
+    setSidebarRequestedTab: (v) => {
+      chatState.sidebarRequestedTab = v;
+    },
     getSidebarCollapsed: () => chatState.sidebarCollapsed,
-    setSidebarCollapsed: (v) => { chatState.sidebarCollapsed = v; },
+    setSidebarCollapsed: (v) => {
+      chatState.sidebarCollapsed = v;
+    },
     getSettings: () => chatState.settings,
-    setSettings: (v) => { chatState.settings = v; },
+    setSettings: (v) => {
+      chatState.settings = v;
+    },
     getPromptRef: () => promptRef,
   });
 
@@ -812,12 +882,21 @@
   } = chatActions;
 
   const forkLifecycle = createForkLifecycle({
-    store, middleware, goto, loadRunProgressive,
+    store,
+    middleware,
+    goto,
+    loadRunProgressive,
     getResuming: () => chatState.resuming,
-    setResuming: (v: boolean) => { chatState.resuming = v; },
+    setResuming: (v: boolean) => {
+      chatState.resuming = v;
+    },
     getForkOverlay: () => fork.forkOverlay,
-    setForkOverlay: (v) => { fork.setForkOverlay(v); },
-    setLastContinuableRun: (v) => { lastContinuableRun = v; },
+    setForkOverlay: (v) => {
+      fork.setForkOverlay(v);
+    },
+    setLastContinuableRun: (v) => {
+      lastContinuableRun = v;
+    },
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
   });
 
@@ -912,17 +991,28 @@
   });
 
   const send = createSendMessage({
-    store, thinking,
+    store,
+    thinking,
     getRemoteHosts: () => remoteHosts,
     showToast: _showToast,
     openFolderPicker: fp.openFolderPicker,
-    handleResume, loadCliVersionInfo,
-    promptInputRef: () => promptRef, getPromptRef: () => promptRef,
+    handleResume,
+    loadCliVersionInfo,
+    promptInputRef: () => promptRef,
+    getPromptRef: () => promptRef,
     goto,
-    setIsChatAutoScroll: (v) => { scrollState.isChatAutoScroll = v; },
-    setShowChatScrollHint: (v) => { scrollState.showChatScrollHint = v; },
-    setTeamDispatchPrompt: (v) => { team.setTeamDispatchPrompt(v); },
-    setTeamDispatchOpen: (v) => { team.setTeamDispatchOpen(v); },
+    setIsChatAutoScroll: (v) => {
+      scrollState.isChatAutoScroll = v;
+    },
+    setShowChatScrollHint: (v) => {
+      scrollState.showChatScrollHint = v;
+    },
+    setTeamDispatchPrompt: (v) => {
+      team.setTeamDispatchPrompt(v);
+    },
+    setTeamDispatchOpen: (v) => {
+      team.setTeamDispatchOpen(v);
+    },
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
     getFolderCwdOverride: () => folderCwdOverride,
     consumePendingSubFolderId: () => urlParams.consumePendingSubFolderId(),
@@ -992,101 +1082,153 @@
   }
 
   initLifecycleHandlers({
-    store, middleware, keybindingStore,
+    store,
+    middleware,
+    keybindingStore,
     getSettingsCache: () => settingsCache,
-    getSettings: () => chatState.settings, setSettings: (v) => { chatState.settings = v; },
-    setRemoteHosts: (v) => { remoteHosts = v; },
-    setAuthOverview: (v) => { authOverview = v; },
+    getSettings: () => chatState.settings,
+    setSettings: (v) => {
+      chatState.settings = v;
+    },
+    setRemoteHosts: (v) => {
+      remoteHosts = v;
+    },
+    setAuthOverview: (v) => {
+      authOverview = v;
+    },
     checkAllLocalProxies,
-    getAgentSettings: () => chatState.agentSettings, setAgentSettings: (v) => { chatState.agentSettings = v; },
-    setCurrentEffort: (v) => { currentEffort = v; },
-    handlePermissionModeChange, getPermModeLabel,
-    loadCliInfo, getCliCurrentModel, loadCliVersionInfo,
+    getAgentSettings: () => chatState.agentSettings,
+    setAgentSettings: (v) => {
+      chatState.agentSettings = v;
+    },
+    setCurrentEffort: (v) => {
+      currentEffort = v;
+    },
+    handlePermissionModeChange,
+    getPermModeLabel,
+    loadCliInfo,
+    getCliCurrentModel,
+    loadCliVersionInfo,
     isContaminatedDefaultModel: modelGuard.isContaminatedDefaultModel,
     setLastKnownGoodModel: modelGuard.setLastKnownGoodModel,
-    checkProjectInit, reloadProjectData,
-    getShortcutHelpOpen: () => chatState.shortcutHelpOpen, setShortcutHelpOpen: (v) => { chatState.shortcutHelpOpen = v; },
+    checkProjectInit,
+    reloadProjectData,
+    getShortcutHelpOpen: () => chatState.shortcutHelpOpen,
+    setShortcutHelpOpen: (v) => {
+      chatState.shortcutHelpOpen = v;
+    },
     getStatusBarRef: () => chatState.statusBarRef,
-    getStashedInput: () => chatState.stashedInput, setStashedInput: (v) => { chatState.stashedInput = v; },
+    getStashedInput: () => chatState.stashedInput,
+    setStashedInput: (v) => {
+      chatState.stashedInput = v;
+    },
     getPromptRef: () => promptRef,
-    setStatusBarExpanded: (v) => { chatState.statusBarExpanded = v; },
-    getSidebarCollapsed: () => chatState.sidebarCollapsed, setSidebarCollapsed: (v) => { chatState.sidebarCollapsed = v; },
-    setSidebarRequestedTab: (v) => { chatState.sidebarRequestedTab = v; },
+    setStatusBarExpanded: (v) => {
+      chatState.statusBarExpanded = v;
+    },
+    getSidebarCollapsed: () => chatState.sidebarCollapsed,
+    setSidebarCollapsed: (v) => {
+      chatState.sidebarCollapsed = v;
+    },
+    setSidebarRequestedTab: (v) => {
+      chatState.sidebarRequestedTab = v;
+    },
     setShowChatToast: _showToast,
-    setPageDragActive: (v) => { pageDragActive = v; },
-    setDragProcessingCount: (fn) => { dragProcessingCount = fn(dragProcessingCount); },
+    setPageDragActive: (v) => {
+      pageDragActive = v;
+    },
+    setDragProcessingCount: (fn) => {
+      dragProcessingCount = fn(dragProcessingCount);
+    },
     getXtermRef: () => xtermRef,
-    getBtwState: () => btwState, setBtwState: (v) => { btwState = v; },
+    getBtwState: () => btwState,
+    setBtwState: (v) => {
+      btwState = v;
+    },
     contextHistoryMap: sd.contextHistoryMap,
-    triggerContextHistoryReactivity: () => { sd.setContextHistoryMap(new Map(sd.contextHistoryMap)); },
+    triggerContextHistoryReactivity: () => {
+      sd.setContextHistoryMap(new Map(sd.contextHistoryMap));
+    },
     getRunId: () => urlParams.runId,
-    setLastContinuableRun: (v) => { lastContinuableRun = v; },
-    setMiddlewareReady: (v) => { middlewareReady = v; },
-    setAutoNameDone: (v) => { autoNameDone = v; },
+    setLastContinuableRun: (v) => {
+      lastContinuableRun = v;
+    },
+    setMiddlewareReady: (v) => {
+      middlewareReady = v;
+    },
+    setAutoNameDone: (v) => {
+      autoNameDone = v;
+    },
     getForkOverlay: () => fork.forkOverlay,
     cleanupVerbose: () => verbose.cleanupVerbose(),
-    cancelProgressive, handleSummarize, handleRewind, toggleCliConfigBool,
+    cancelProgressive,
+    handleSummarize,
+    handleRewind,
+    toggleCliConfigBool,
     goto,
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
   });
 
-  const stageTimelineVm = {
-    visibleTimeline: tl.visibleTimeline,
-    filteredTimeline: tl.filteredTimeline,
-    toolNamesInTimeline: tl.toolNamesInTimeline,
-    toolFilter: tl.toolFilter,
-    setToolFilter: tl.setToolFilter,
-    renderLimit: tl.renderLimit,
-    timelineIdIndex: tl.timelineIdIndex,
-    lastClearSepId: tl.lastClearSepId,
-    latestPlanToolId: tl.latestPlanToolId,
-    batchGroups: tl.batchGroups,
-    toolBursts: tl.toolBursts,
-    burstCollapse,
-    lastAssistantIdx: sd.lastAssistantIdx,
-    usageAnnotations: ta.usageAnnotations,
-    lastTurnUsage: ta.lastTurnUsage,
-    claudeTurnStarts: ta.claudeTurnStarts,
-    showPermissionPanel: false,
-    permissionCoordinator,
-    fetchToolResult: toolResultCache.fetchToolResult,
-    topSentinelRef: tl.topSentinel,
-    setTopSentinel: tl.setTopSentinel,
-  };
-  const stageSessionVm = {
-    welcomeVisible,
-    lastContinuableRun,
-    authOverview,
-    localProxyStatuses,
-    showInitHint,
-    cliVersionInfo: sd.cliVersionInfo,
-    channelLatest: sd.channelLatest,
-    remoteHosts,
-    availableWorkspaces: workspacesStore.list,
-    selectedCwd: folderCwdOverride,
-  };
-  const stageLoadingVm = {
-    routeRunLoadFailed,
-    routeRunPending,
-    runId: urlParams.runId,
-    notificationVisible,
-    latestNotification,
-    rewindMarkers,
-    activeTeamRuns: team.activeTeamRuns,
-  };
-  const stageThinkingVm = {
-    thinkingElapsed: thinking.thinkingElapsed,
-    thinkingVisible: thinking.thinkingVisible,
-    spinnerVerb: thinking.spinnerVerb,
-    processingSlashCmd: thinking.processingSlashCmd,
-    approving: chatState.approving,
-    sending,
-  };
-  const stageForkVm = {
-    forkOverlay: fork.forkOverlay,
-    forkElapsed: fork.forkElapsed,
-    resuming: chatState.resuming,
-  };
+  // These grouped objects cross a component boundary, so every property must
+  // remain a live selector. Copying rune values here captures the initial
+  // empty timeline and leaves ChatConversationStage blank after loadRun.
+  const stageTimelineVm = createLiveViewModel<TimelineVm>({
+    visibleTimeline: () => tl.visibleTimeline,
+    filteredTimeline: () => tl.filteredTimeline,
+    toolNamesInTimeline: () => tl.toolNamesInTimeline,
+    toolFilter: () => tl.toolFilter,
+    setToolFilter: () => tl.setToolFilter,
+    renderLimit: () => tl.renderLimit,
+    timelineIdIndex: () => tl.timelineIdIndex,
+    lastClearSepId: () => tl.lastClearSepId,
+    latestPlanToolId: () => tl.latestPlanToolId,
+    batchGroups: () => tl.batchGroups,
+    toolBursts: () => tl.toolBursts,
+    burstCollapse: () => burstCollapse,
+    lastAssistantIdx: () => sd.lastAssistantIdx,
+    usageAnnotations: () => ta.usageAnnotations,
+    lastTurnUsage: () => ta.lastTurnUsage,
+    claudeTurnStarts: () => ta.claudeTurnStarts,
+    showPermissionPanel: () => false,
+    permissionCoordinator: () => permissionCoordinator,
+    fetchToolResult: () => toolResultCache.fetchToolResult,
+    topSentinelRef: () => tl.topSentinel,
+    setTopSentinel: () => tl.setTopSentinel,
+  });
+  const stageSessionVm = createLiveViewModel<SessionVm>({
+    welcomeVisible: () => welcomeVisible,
+    lastContinuableRun: () => lastContinuableRun,
+    authOverview: () => authOverview,
+    localProxyStatuses: () => localProxyStatuses,
+    showInitHint: () => showInitHint,
+    cliVersionInfo: () => sd.cliVersionInfo,
+    channelLatest: () => sd.channelLatest,
+    remoteHosts: () => remoteHosts,
+    availableWorkspaces: () => workspacesStore.list,
+    selectedCwd: () => folderCwdOverride,
+  });
+  const stageLoadingVm = createLiveViewModel<LoadingVm>({
+    routeRunLoadFailed: () => routeRunLoadFailed,
+    routeRunPending: () => routeRunPending,
+    runId: () => urlParams.runId,
+    notificationVisible: () => notificationVisible,
+    latestNotification: () => latestNotification,
+    rewindMarkers: () => rewindMarkers,
+    activeTeamRuns: () => team.activeTeamRuns,
+  });
+  const stageThinkingVm = createLiveViewModel<ThinkingVm>({
+    thinkingElapsed: () => thinking.thinkingElapsed,
+    thinkingVisible: () => thinking.thinkingVisible,
+    spinnerVerb: () => thinking.spinnerVerb,
+    processingSlashCmd: () => thinking.processingSlashCmd,
+    approving: () => chatState.approving,
+    sending: () => sending,
+  });
+  const stageForkVm = createLiveViewModel<ForkVm>({
+    forkOverlay: () => fork.forkOverlay,
+    forkElapsed: () => fork.forkElapsed,
+    resuming: () => chatState.resuming,
+  });
   const stageHandlers = {
     goto,
     sendMessage,
@@ -1108,10 +1250,16 @@
       if (!normalized) return;
       folderCwdOverride = normalized;
       store.sessionCwd = normalized;
-      try { localStorage.setItem("ocv:project-cwd", normalized); } catch { /* noop */ }
+      try {
+        localStorage.setItem("ocv:project-cwd", normalized);
+      } catch {
+        /* noop */
+      }
       window.dispatchEvent(new Event("ocv:cwd-changed"));
     },
-    onAddWorkspace: () => { void fp.addWorkspaceFromPicker(); },
+    onAddWorkspace: () => {
+      void fp.addWorkspaceFromPicker();
+    },
     handleChatScroll,
     handleChatWheel,
     scrollChatToBottom,
@@ -1120,7 +1268,9 @@
     handleForkCancel,
     handleForkRetry,
     dismissInitHint,
-    dismissTaskNotificationBanner: () => { notificationVisible = false; },
+    dismissTaskNotificationBanner: () => {
+      notificationVisible = false;
+    },
     loadRunProgressive,
     setLastTarget,
   };
@@ -1368,28 +1518,28 @@
         </div>
       {/if}
       <div class="flex flex-1 min-h-0 flex-col" class:hidden={!!workspaceOverviewCwd}>
-      <ChatConversationStage
-        {store}
-        settings={chatState.settings}
-        processVisibility={chatState.processVisibility}
-        timelineVm={stageTimelineVm}
-        sessionVm={stageSessionVm}
-        loadingVm={stageLoadingVm}
-        thinkingVm={stageThinkingVm}
-        forkVm={stageForkVm}
-        handlers={stageHandlers}
-        bind:thinkingExpanded={thinking.thinkingExpanded}
-        showChatScrollHint={scrollState.showChatScrollHint}
-        isChatAutoScroll={scrollState.isChatAutoScroll}
-        readingHistory={scrollState.readingHistory}
-        bind:xtermRef
-        bind:chatAreaRef
-      >
-        {#snippet heroMetaFooter()}
-          {@render heroMetaFooterContent()}
-        {/snippet}
-      </ChatConversationStage>
-      {@render chatInputDock()}
+        <ChatConversationStage
+          {store}
+          settings={chatState.settings}
+          processVisibility={chatState.processVisibility}
+          timelineVm={stageTimelineVm}
+          sessionVm={stageSessionVm}
+          loadingVm={stageLoadingVm}
+          thinkingVm={stageThinkingVm}
+          forkVm={stageForkVm}
+          handlers={stageHandlers}
+          bind:thinkingExpanded={thinking.thinkingExpanded}
+          showChatScrollHint={scrollState.showChatScrollHint}
+          isChatAutoScroll={scrollState.isChatAutoScroll}
+          readingHistory={scrollState.readingHistory}
+          bind:xtermRef
+          bind:chatAreaRef
+        >
+          {#snippet heroMetaFooter()}
+            {@render heroMetaFooterContent()}
+          {/snippet}
+        </ChatConversationStage>
+        {@render chatInputDock()}
       </div>
     {/if}
 

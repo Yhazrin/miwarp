@@ -1,15 +1,14 @@
 use crate::agent::claude_stream::augmented_path;
-use crate::agent::cli_update::CliInstallMethod;
-use crate::agent::ssh::{expand_local_tilde, shell_escape};
 use crate::models::{
-    ApiTestResult, AuthDiagnostics, ClaudeMdInfo, CliCheckResult, CliDiagnostics, CliDistTags,
-    ConfigDiagnostics, ConfigIssue, DiagnosticsReport, LocalProxyStatus, ProjectDiagnostics,
-    ProjectInitStatus, RemoteTestResult, ServicesDiagnostics, SshKeyInfo, SystemDiagnostics,
-    UpdateCliResult,
+    AuthDiagnostics, ClaudeMdInfo, CliCheckResult, CliDiagnostics, ConfigDiagnostics, ConfigIssue,
+    DiagnosticsReport, ProjectDiagnostics, ServicesDiagnostics, SystemDiagnostics,
 };
 use crate::process_ext::HideConsole;
 use std::path::Path;
 use std::process::Command;
+
+use super::cli_check::check_agent_cli;
+use super::project::ENV_VAR_LIMITS;
 
 /// One-click update for Claude Code. Claude Code ships via two channels that
 /// don't share a single update path:
@@ -148,7 +147,7 @@ async fn check_cli_inner() -> CliDiagnostics {
 
 // ── Sub-check: dist tags + auto-update channel ──
 
-async fn fetch_dist_tags_inner() -> (Option<String>, Option<String>, Option<String>) {
+pub(super) async fn fetch_dist_tags_inner() -> (Option<String>, Option<String>, Option<String>) {
     let client = match reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
@@ -209,7 +208,7 @@ async fn fetch_dist_tags_inner() -> (Option<String>, Option<String>, Option<Stri
 async fn check_auth_inner() -> AuthDiagnostics {
     let (has_oauth, oauth_account) = match tokio::time::timeout(
         std::time::Duration::from_secs(12),
-        super::onboarding::check_cli_oauth(),
+        super::super::onboarding::check_cli_oauth(),
     )
     .await
     {
@@ -221,7 +220,7 @@ async fn check_auth_inner() -> AuthDiagnostics {
     };
 
     let cli_config = crate::storage::cli_config::load_cli_config();
-    let (api_key, api_key_source) = super::onboarding::detect_cli_api_key(&cli_config);
+    let (api_key, api_key_source) = super::super::onboarding::detect_cli_api_key(&cli_config);
     let has_api_key = api_key.is_some();
     let api_key_hint = api_key.as_ref().map(|k| {
         if k.len() > 4 {
@@ -288,7 +287,11 @@ async fn check_mcp_reg_inner() -> Option<bool> {
 
 // ── Sub-check: Config file validation ──
 
-fn validate_config_files_at(home: &Path, cwd: &str, has_valid_cwd: bool) -> Vec<ConfigIssue> {
+pub(super) fn validate_config_files_at(
+    home: &Path,
+    cwd: &str,
+    has_valid_cwd: bool,
+) -> Vec<ConfigIssue> {
     let mut issues = Vec::new();
 
     // User scope: ~/.claude/settings.json
@@ -331,7 +334,7 @@ fn validate_json_file(path: &Path, scope: &str, issues: &mut Vec<ConfigIssue>) {
 
 // ── Sub-check: Keybindings validation ──
 
-fn validate_keybindings_at(home: &Path) -> Vec<ConfigIssue> {
+pub(super) fn validate_keybindings_at(home: &Path) -> Vec<ConfigIssue> {
     let mut issues = Vec::new();
     let path = home.join("keybindings.json");
 
@@ -389,7 +392,11 @@ fn validate_keybindings_at(home: &Path) -> Vec<ConfigIssue> {
 
 // ── Sub-check: MCP config validation ──
 
-fn validate_mcp_configs_at(home: &Path, cwd: &str, has_valid_cwd: bool) -> Vec<ConfigIssue> {
+pub(super) fn validate_mcp_configs_at(
+    home: &Path,
+    cwd: &str,
+    has_valid_cwd: bool,
+) -> Vec<ConfigIssue> {
     let mut issues = Vec::new();
     let home_parent = home.parent().unwrap_or(home);
 
@@ -503,7 +510,7 @@ fn validate_mcp_servers(
 
 // ── Sub-check: Environment variables ──
 
-fn check_env_vars() -> Vec<ConfigIssue> {
+pub(super) fn check_env_vars() -> Vec<ConfigIssue> {
     let mut issues = Vec::new();
 
     for &(name, min, max) in ENV_VAR_LIMITS {
@@ -535,7 +542,11 @@ fn check_env_vars() -> Vec<ConfigIssue> {
 
 // ── Sub-check: CLAUDE.md files ──
 
-fn scan_claude_md_files_at(home: &Path, cwd: &str, has_valid_cwd: bool) -> Vec<ClaudeMdInfo> {
+pub(super) fn scan_claude_md_files_at(
+    home: &Path,
+    cwd: &str,
+    has_valid_cwd: bool,
+) -> Vec<ClaudeMdInfo> {
     let mut files = Vec::new();
 
     // ~/.claude/CLAUDE.md
@@ -592,5 +603,3 @@ fn list_lock_files_at(home: &Path) -> Vec<String> {
         Err(_) => Vec::new(),
     }
 }
-
-#[cfg(test)]

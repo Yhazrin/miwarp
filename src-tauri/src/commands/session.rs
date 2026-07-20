@@ -313,6 +313,26 @@ use crate::session::ralph_commands::{
 };
 use crate::session::side_question::side_question_impl as _side_question_impl;
 
+/// Serializable IPC representation of a Ralph-loop cancellation result.
+///
+/// The session actor owns the internal result type. Keep this boundary type at
+/// the command layer so the `cancel_ralph_loop` IPC payload remains stable even
+/// when actor implementation details move between modules.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct RalphCancelResponse {
+    pub iteration: u32,
+    pub immediate: bool,
+}
+
+impl From<crate::agent::session_actor::RalphCancelResult> for RalphCancelResponse {
+    fn from(result: crate::agent::session_actor::RalphCancelResult) -> Self {
+        Self {
+            iteration: result.iteration,
+            immediate: result.immediate,
+        }
+    }
+}
+
 #[tauri::command]
 pub async fn get_session_runtime_status(
     sessions: tauri::State<'_, crate::agent::adapter::ActorSessionMap>,
@@ -389,8 +409,10 @@ pub async fn start_ralph_loop(
 pub async fn cancel_ralph_loop(
     sessions: tauri::State<'_, crate::agent::adapter::ActorSessionMap>,
     run_id: String,
-) -> Result<crate::agent::session_actor::RalphCancelResult, String> {
-    _cancel_ralph_loop_impl(sessions.inner(), run_id).await
+) -> Result<RalphCancelResponse, String> {
+    _cancel_ralph_loop_impl(sessions.inner(), run_id)
+        .await
+        .map(RalphCancelResponse::from)
 }
 
 #[tauri::command]

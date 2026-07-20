@@ -3,32 +3,12 @@
 //! Exports Claude Code history sessions from `~/.claude/projects/**/*.jsonl` as a portable
 //! zip archive, and imports such archives into MiWarp without writing back to `~/.claude/projects/`.
 
-use crate::models::protocol_state::{validate_bus_event, ProtocolState};
-use crate::models::{
-    BusEvent, ConversationRef, ExecutionPath, ImportWatermark, RunMeta, RunSource, RunStatus,
-};
-use crate::storage::cli_sessions::normalize_transcript_line;
-use crate::storage::events::{is_replayable, EventWriter};
-use crate::storage::shared;
-use crate::storage::{ensure_dir, run_dir, runs_dir};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Read, Write};
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use tauri::{AppHandle, Emitter};
-use zip::write::SimpleFileOptions;
-use zip::{ZipArchive, ZipWriter};
-
-const ARCHIVE_VERSION: &str = "1.0";
-const MANIFEST_NAME: &str = "manifest.json";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-
 pub struct ExportReport {
     pub session_count: usize,
     pub total_bytes: u64,
@@ -70,27 +50,23 @@ pub struct ImportProgressEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ArchiveManifest {
-    version: String,
-    created_at: String,
-    cli_version: Option<String>,
-    sessions: Vec<ManifestSession>,
+pub(super) struct ArchiveManifest {
+    pub(super) version: String,
+    pub(super) created_at: String,
+    pub(super) cli_version: Option<String>,
+    pub(super) sessions: Vec<ManifestSession>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ManifestSession {
-    session_id: String,
-    cwd: String,
-    relative_path: String,
-    file_size: u64,
-    first_prompt: Option<String>,
-    started_at: Option<String>,
-    last_activity_at: Option<String>,
-    message_count: u32,
-    model: Option<String>,
+pub(super) struct ManifestSession {
+    pub(super) session_id: String,
+    pub(super) cwd: String,
+    pub(super) relative_path: String,
+    pub(super) file_size: u64,
+    pub(super) first_prompt: Option<String>,
+    pub(super) started_at: Option<String>,
+    pub(super) last_activity_at: Option<String>,
+    pub(super) message_count: u32,
+    pub(super) model: Option<String>,
 }
-
-// ── Export ────────────────────────────────────────────────────────────────────
-
-#[tauri::command]

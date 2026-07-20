@@ -6,40 +6,27 @@
 //! protocol state, and RunState emission — eliminating the cross-system coordination
 //! that previously caused race conditions.
 
-use crate::agent::adapter::ActorSessionMap;
 use crate::agent::attachment::AttachmentData;
-use crate::agent::claude_protocol::{validate_bus_event, ProtocolState};
-use crate::agent::notify::notify_if_background;
-use crate::agent::recovery::{CrashReason, RecoveryState};
-use crate::agent::runtime_recovery::{
-    classify_active_turn_eof, emit_session_lifecycle, on_actor_exit, ActorRecoveryBootstrap,
-    ActorRecoverySnapshot, PendingRecoveryMessage, RecoveryRegistry,
-};
+use crate::agent::recovery::CrashReason;
+use crate::agent::runtime_recovery::PendingRecoveryMessage;
 use crate::agent::turn_engine::{
-    apply_activity_reset, ActiveTurn, TurnOrigin, TurnPhase, UserTurnKind, UserTurnTicket,
-    ACCEPTED_CLIENT_MESSAGE_IDS_CAP, PROTOCOL_DESYNC_THRESHOLD, PROTOCOL_DESYNC_WINDOW_SECS,
-    QUARANTINE_DEADLINE, QUEUED_USER_CAP, STOP_ESCALATION_KILL, TICK_INTERVAL, USER_HARD_TIMEOUT,
-    USER_SOFT_TIMEOUT,
+    record_accepted_client_message_id, ActiveTurn, TurnOrigin, TurnPhase, UserTurnKind,
+    UserTurnTicket, ACCEPTED_CLIENT_MESSAGE_IDS_CAP, QUARANTINE_DEADLINE, STOP_ESCALATION_KILL,
+    USER_HARD_TIMEOUT, USER_SOFT_TIMEOUT,
 };
-use crate::models::{
-    max_attachment_size, now_iso, AgentRuntimeKind, BusEvent, RalphCompleteReason, RunStatus,
-    ALLOWED_DOC_TYPES, ALLOWED_IMAGE_TYPES,
-};
-use crate::storage;
-use crate::storage::runs;
-use crate::storage::shared;
-use crate::web_server::broadcaster::BroadcastEmitter;
+use crate::models::{BusEvent, RalphCompleteReason, RunStatus};
 use serde_json::Value;
-use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout};
-use tokio::sync::{mpsc, oneshot, watch};
-use tokio_util::sync::CancellationToken;
+use tokio::io::AsyncWriteExt;
+use tokio::sync::oneshot;
 
-    async fn try_dispatch(&mut self) {
+use super::state_machine::SessionActor;
+use super::types::{ActorStopReason, StopSource};
+use super::util::{build_user_payload, extract_promise_tag, RalphPhase};
+
+impl SessionActor {
+    pub(super) async fn try_dispatch(&mut self) {
         if self.active_turn.is_some() || self.quarantine_until_result || self.terminated {
             return;
         }
@@ -92,7 +79,7 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Start a user turn: write to stdin, emit events, set active_turn.
-    async fn start_user_turn(&mut self, ticket: UserTurnTicket) {
+    pub(super) async fn start_user_turn(&mut self, ticket: UserTurnTicket) {
         log::debug!(
             "[turn] start_user: turn_index={}, kind={:?}, seq={}",
             ticket.turn_index,
@@ -236,7 +223,7 @@ use tokio_util::sync::CancellationToken;
     // ── Ralph Loop methods ──
 
     /// Start a Ralph loop turn: write prompt to stdin, set active_turn with TurnOrigin::Ralph.
-    async fn start_ralph_turn(&mut self, prompt: String) {
+    pub(super) async fn start_ralph_turn(&mut self, prompt: String) {
         let turn_index = self.next_turn_index;
         self.next_turn_index += 1;
         // Ralph turns don't allocate auto_ctx_id (no auto-context)
@@ -302,7 +289,7 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Emit RalphComplete and clean up ralph_loop. After this, self.ralph_loop == None.
-    fn emit_ralph_complete(&mut self, reason: RalphCompleteReason) {
+    pub(super) fn emit_ralph_complete(&mut self, reason: RalphCompleteReason) {
         let iteration = self.ralph_loop.as_ref().map(|r| r.iteration).unwrap_or(0);
         self.ralph_loop = None;
         self.persist_and_emit(&BusEvent::RalphComplete {
@@ -318,7 +305,7 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Ralph state transition on turn end. Uses action-first pattern to avoid borrow conflicts.
-    fn ralph_on_turn_end(&mut self, turn: &ActiveTurn, state: &str) {
+    pub(super) fn ralph_on_turn_end(&mut self, turn: &ActiveTurn, state: &str) {
         // ── Step 1: compute action (borrows ralph_loop mutably, then drops) ──
         enum RalphAction {
             Complete(RalphCompleteReason),
@@ -446,7 +433,7 @@ use tokio_util::sync::CancellationToken;
     /// without a manual `Pin`. Internally just `Option::take()`s the
     /// receiver into a local future and awaits it; if no timer was
     /// scheduled, it `Pending::pending()`s forever (the arm is dead).
-    async fn poll_stop_kill(rx: &mut Option<oneshot::Receiver<()>>) -> bool {
+    pub(super) async fn poll_stop_kill(rx: &mut Option<oneshot::Receiver<()>>) -> bool {
         match rx {
             Some(inner) => match inner.await {
                 Ok(()) => true,
@@ -460,7 +447,7 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Independent timeout clock — checks soft/hard deadlines and quarantine. (HC #4)
-    async fn on_tick_timeout(&mut self) {
+    pub(super) async fn on_tick_timeout(&mut self) {
         // Check quarantine deadline first
         if self.quarantine_until_result {
             if let Some(deadline) = self.quarantine_deadline {
@@ -558,7 +545,7 @@ use tokio_util::sync::CancellationToken;
     /// `start_user_turn` after a turn has been successfully started.
     /// Idempotent: re-recording the same id is a no-op so a double-insert
     /// from a recovered retry cannot leak duplicates.
-    fn record_accepted_client_message_id(&mut self, cid: String) {
+    pub(super) fn record_accepted_client_message_id(&mut self, cid: String) {
         record_accepted_client_message_id(
             &mut self.accepted_client_message_ids,
             cid,
@@ -567,7 +554,7 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Write a user-format message to CLI stdin. Returns the UUID embedded in the payload.
-    async fn write_user_to_stdin(
+    pub(super) async fn write_user_to_stdin(
         &mut self,
         text: &str,
         attachments: &[AttachmentData],
@@ -598,14 +585,14 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Persist a BusEvent to JSONL, emit to Tauri webview, and broadcast to WS clients. (HC #32)
-    fn persist_and_emit(&self, event: &BusEvent) {
+    pub(super) fn persist_and_emit(&self, event: &BusEvent) {
         self.emitter.persist_and_emit(&self.run_id, event);
     }
 
     /// Drain all queued user turns. (HC #12)
     /// Replies were already sent on queue acceptance, so this just clears the
     /// queue. Logging retained for diagnostics.
-    fn fail_all_pending_replies(&mut self, reason: &str) {
+    pub(super) fn fail_all_pending_replies(&mut self, reason: &str) {
         let count = self.queued_user.len();
         self.queued_user.clear();
         if count > 0 {
@@ -618,7 +605,7 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Send interrupt control request to CLI for quarantine recovery. (HC #15)
-    async fn send_interrupt_to_cli(&mut self) {
+    pub(super) async fn send_interrupt_to_cli(&mut self) {
         let request_id = format!("ocv_qint_{}", uuid::Uuid::new_v4());
         let payload = serde_json::json!({
             "type": "control_request",
@@ -653,7 +640,7 @@ use tokio_util::sync::CancellationToken;
 
     /// Write control request to stdin + register response waiter.
     /// Returns (request_id, response_rx) — caller awaits response_rx outside the actor.
-    async fn handle_send_control_async(
+    pub(super) async fn handle_send_control_async(
         &mut self,
         request: Value,
     ) -> Result<(String, oneshot::Receiver<Value>), String> {
@@ -707,7 +694,7 @@ use tokio_util::sync::CancellationToken;
     /// dropped stdin + killed the child inline, which caused the actor's
     /// `select!` to swallow the trailing stream-json events and leave the
     /// UI stuck on `RunState("streaming")` with no terminal event.
-    fn request_stop(&mut self, source: StopSource) -> ActorStopReason {
+    pub(super) fn request_stop(&mut self, source: StopSource) -> ActorStopReason {
         let reason = source.reason();
         match source {
             StopSource::User => {
@@ -765,7 +752,7 @@ use tokio_util::sync::CancellationToken;
     /// `STOP_ESCALATION_KILL` seconds the spawned task sends `()` on
     /// `stop_kill_rx`; the actor's main `select!` then calls
     /// `child.start_kill()` to free the wedged CLI.
-    fn arm_stop_kill_timer(&mut self) {
+    pub(super) fn arm_stop_kill_timer(&mut self) {
         let (tx, rx) = oneshot::channel::<()>();
         self.stop_kill_rx = Some(rx);
         tokio::spawn(async move {
@@ -778,7 +765,7 @@ use tokio_util::sync::CancellationToken;
         });
     }
 
-    async fn finalize_stop(&mut self) {
+    pub(super) async fn finalize_stop(&mut self) {
         // Drop stdin to signal EOF to CLI.
         self.stdin.take();
 
@@ -863,7 +850,7 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Clear pending interactive request if it matches the given request_id.
-    fn clear_pending_interactive_request(&mut self, request_id: &str) {
+    pub(super) fn clear_pending_interactive_request(&mut self, request_id: &str) {
         if let Some(ref req) = self.pending_interactive_request {
             if req.request_id == request_id {
                 log::debug!(
@@ -878,7 +865,10 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Send a control_cancel_request to CLI stdin (top-level message type).
-    async fn handle_cancel_control_request(&mut self, request_id: &str) -> Result<(), String> {
+    pub(super) async fn handle_cancel_control_request(
+        &mut self,
+        request_id: &str,
+    ) -> Result<(), String> {
         let payload = serde_json::json!({
             "type": "control_cancel_request",
             "request_id": request_id,
@@ -893,7 +883,11 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Low-level helper: serialize JSON payload, write to stdin, flush.
-    async fn write_json_line(&mut self, payload: &Value, context: &str) -> Result<(), String> {
+    pub(super) async fn write_json_line(
+        &mut self,
+        payload: &Value,
+        context: &str,
+    ) -> Result<(), String> {
         let stdin = self
             .stdin
             .as_mut()
@@ -915,7 +909,7 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Shared helper: write a control_response JSON to CLI stdin.
-    async fn write_control_response(
+    pub(super) async fn write_control_response(
         &mut self,
         request_id: &str,
         response: Value,
@@ -937,7 +931,4 @@ use tokio_util::sync::CancellationToken;
         );
         self.write_json_line(&payload, "control response").await
     }
-
-    // ── I/O handlers ──
-
-    /// Handle a stdout line from CLI — three-way routing: quarantine → control → map events.
+}

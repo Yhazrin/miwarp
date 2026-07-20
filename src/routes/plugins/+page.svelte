@@ -32,7 +32,6 @@
   import CommunityBrowser from "./CommunityBrowser.svelte";
   import MarketplaceBrowser from "./MarketplaceBrowser.svelte";
   import type {
-
     MarketplacePlugin,
     StandaloneSkill,
     MarketplaceInfo,

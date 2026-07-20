@@ -11,7 +11,7 @@
  *      "<name>", ...)` call site captures the literal wire string used.
  *
  * The union of those is compared against:
- *   - `src-tauri/src/web_server/dispatch.rs` `match method { ... }` arms
+ *   - `src-tauri/src/web_server/dispatch/routes.rs` `match method { ... }` arms
  *     (the wire surface for RPC requests)
  *   - `src-tauri/src/web_server/ws.rs` underscore-prefixed methods
  *     (`_subscribe`, `_unsubscribe`, `_full_reload` — the protocol-internal
@@ -61,14 +61,7 @@ const iosRpcFile = join(
   "Core",
   "MiWarpRPC.swift",
 );
-const dispatchFile = join(
-  REPO_ROOT,
-  "src-tauri",
-  "src",
-  "web_server",
-  "dispatch",
-  "mod.rs",
-);
+const dispatchFile = join(REPO_ROOT, "src-tauri", "src", "web_server", "dispatch", "routes.rs");
 const wsFile = join(REPO_ROOT, "src-tauri", "src", "web_server", "ws.rs");
 
 const wsSrc = readText(wsMessagesFile);
@@ -100,10 +93,7 @@ const wsInternal = parseWsInternalMethods(wsInternalSrc);
 
 // Union of named-constant methods + literal wire strings. Both must be
 // supported by the backend.
-const iosValues = new Set([
-  ...wsMethodEntries.map((e) => e.value),
-  ...sentMethods,
-]);
+const iosValues = new Set([...wsMethodEntries.map((e) => e.value), ...sentMethods]);
 
 if (iosValues.size === 0) {
   console.error(
@@ -121,12 +111,8 @@ const { unsupported, categorised, serverOnly } = classifyIosWsDrift(
 console.log(
   `  iOS methods (named + literal): ${iosValues.size}  |  dispatch supported: ${dispatch.supported.size}  |  internal WS: ${wsInternal.size}`,
 );
-console.log(
-  `    · WSMethod enum entries: ${wsMethodEntries.length}`,
-);
-console.log(
-  `    · sendRequest literals: ${sentMethods.size}`,
-);
+console.log(`    · WSMethod enum entries: ${wsMethodEntries.length}`);
+console.log(`    · sendRequest literals: ${sentMethods.size}`);
 console.log(
   `  dispatch categorised (desktop-only/ipc-only/blocked): ${dispatch.desktopOnly.size + dispatch.ipcOnly.size + dispatch.unknown.size}`,
 );
@@ -146,8 +132,7 @@ const KNOWN_CATEGORISATION = new Map([
   [
     "_full_reload",
     {
-      note:
-        "Server-pushed event name (not a request method). Declared in WSMethod for parser symmetry, but the iOS client only reads it off WSResponse.event. Sending _full_reload as a request would hit the dispatch catch-all (unknown method) at runtime. Acceptable to keep as documentation.",
+      note: "Server-pushed event name (not a request method). Declared in WSMethod for parser symmetry, but the iOS client only reads it off WSResponse.event. Sending _full_reload as a request would hit the dispatch catch-all (unknown method) at runtime. Acceptable to keep as documentation.",
     },
   ],
 ]);
@@ -175,13 +160,9 @@ for (const { method, reason } of categorised) {
   );
 }
 
-const serverOnlyFiltered = serverOnly.filter(
-  (m) => !KNOWN_CATEGORISATION.has(m),
-);
+const serverOnlyFiltered = serverOnly.filter((m) => !KNOWN_CATEGORISATION.has(m));
 if (serverOnlyFiltered.length > 0) {
-  console.log(
-    `  server-only methods (allowed): ${serverOnlyFiltered.length}`,
-  );
+  console.log(`  server-only methods (allowed): ${serverOnlyFiltered.length}`);
 }
 if (KNOWN_CATEGORISATION.size > 0) {
   console.log(

@@ -206,6 +206,20 @@ describe("SessionStore async lifecycle (failure injection)", () => {
     expect(store.phase).toBe("idle");
   });
 
+  it("mountGuards allows the shared store to switch runs after page remount", async () => {
+    vi.mocked(api.getRun).mockImplementation((id: string) => Promise.resolve(makeRun(id)));
+    const store = new SessionStore();
+    store.run = makeRun("run-before-remount", { status: "idle" });
+    store.phase = "idle";
+    store.unmountGuards();
+
+    store.mountGuards();
+    await store.loadRun("run-after-remount");
+
+    expect(api.getRun).toHaveBeenCalledWith("run-after-remount");
+    expect(store.run?.id).toBe("run-after-remount");
+  });
+
   it("recoverFromEventLog after run switch does not reload superseded run", async () => {
     const runA = makeRun("run-rec-a", { status: "completed" });
     const runB = makeRun("run-rec-b", { status: "completed" });

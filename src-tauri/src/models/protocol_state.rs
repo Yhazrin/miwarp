@@ -9,7 +9,6 @@
 //! module of the same crate.
 
 use crate::models::{AgentRuntimeKind, BusEvent};
-use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 
 // ─── MimoToolStartInfo ───────────────────────────────────────────────

@@ -6,13 +6,21 @@
 //!
 //! Also supports MiMo-Code JSON protocol via runtime_kind dispatch.
 
-use crate::models::{AgentRuntimeKind, BusEvent};
+use crate::models::protocol_state::{MimoToolStartInfo, ProtocolState};
+use crate::models::BusEvent;
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
-use crate::models::protocol_state::ProtocolState;
-use crate::models::protocol_state::MimoToolStartInfo;
 
-    fn map_event_mimo(&mut self, run_id: &str, raw: &Value) -> Vec<BusEvent> {
+impl ProtocolState {
+    /// Map a single MiMo-Code JSON event into zero or more `BusEvent`s.
+    ///
+    /// MiMo-Code event types (from `mimo run --format json`):
+    ///   - step_start: new agent step begins (skip)
+    ///   - tool_use: tool call with input/output (status: running/completed/error)
+    ///   - step_finish: step completed (reason: "tool-calls" | "stop")
+    ///   - text: assistant text output (complete, not delta)
+    ///   - reasoning: thinking blocks
+    ///   - error: error event
+    pub(super) fn map_event_mimo(&mut self, run_id: &str, raw: &Value) -> Vec<BusEvent> {
         let mut events = Vec::new();
 
         // Extract session ID from any event
@@ -412,7 +420,7 @@ use crate::models::protocol_state::MimoToolStartInfo;
         events
     }
 
-    fn map_event_cursor(&mut self, run_id: &str, raw: &Value) -> Vec<BusEvent> {
+    pub(super) fn map_event_cursor(&mut self, run_id: &str, raw: &Value) -> Vec<BusEvent> {
         use crate::agent::protocol::{ParseResult, ProtocolParser};
         let line = raw.to_string();
         match self.cursor_parser.parse_line(run_id, &line) {
@@ -432,5 +440,3 @@ use crate::models::protocol_state::MimoToolStartInfo;
         }
     }
 }
-
-#[cfg(test)]

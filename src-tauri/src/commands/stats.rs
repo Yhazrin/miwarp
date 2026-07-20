@@ -301,7 +301,7 @@ fn compute_usage_overview(days: Option<u32>) -> Result<UsageOverview, String> {
     );
 
     let (active_days, current_streak, longest_streak) =
-        crate::storage::claude_usage::compute_streaks(&daily, chrono::Utc::now().date_naive());
+        compute_streaks(&daily, chrono::Utc::now().date_naive());
 
     Ok(UsageOverview {
         total_cost_usd: total_cost,
@@ -316,6 +316,58 @@ fn compute_usage_overview(days: Option<u32>) -> Result<UsageOverview, String> {
         current_streak,
         longest_streak,
     })
+}
+
+/// Compute usage streaks for the command-owned aggregate.
+///
+/// This preserves the pre-split `claude_usage::compute_streaks` behavior while
+/// keeping `storage::claude_usage::helpers` private to its module boundary.
+fn compute_streaks(daily: &[DailyAggregate], anchor: chrono::NaiveDate) -> (u32, u32, u32) {
+    let active_dates: std::collections::HashSet<chrono::NaiveDate> = daily
+        .iter()
+        .filter(|day| {
+            day.input_tokens + day.output_tokens > 0
+                || day.message_count.unwrap_or(0) > 0
+                || day.runs > 0
+        })
+        .filter_map(|day| chrono::NaiveDate::parse_from_str(&day.date, "%Y-%m-%d").ok())
+        .collect();
+
+    let active_days = active_dates.len() as u32;
+    if active_days == 0 {
+        return (0, 0, 0);
+    }
+
+    let mut current_streak = 0u32;
+    let mut day = anchor;
+    loop {
+        if active_dates.contains(&day) {
+            current_streak += 1;
+            day -= chrono::Duration::days(1);
+        } else if day == anchor {
+            day -= chrono::Duration::days(1);
+        } else {
+            break;
+        }
+    }
+
+    let mut sorted: Vec<chrono::NaiveDate> = active_dates.into_iter().collect();
+    sorted.sort();
+    let mut longest_streak = 0u32;
+    let mut streak = 0u32;
+    let mut previous: Option<chrono::NaiveDate> = None;
+    for day in sorted {
+        if previous.is_some_and(|previous| day == previous + chrono::Duration::days(1)) {
+            streak += 1;
+        } else {
+            longest_streak = longest_streak.max(streak);
+            streak = 1;
+        }
+        previous = Some(day);
+    }
+    longest_streak = longest_streak.max(streak);
+
+    (active_days, current_streak, longest_streak)
 }
 
 #[tauri::command]

@@ -1,42 +1,10 @@
-use crate::models::{now_iso, BusEvent, ModelUsageSummary, RawRunUsage, RunEvent, RunEventType};
+use crate::models::{BusEvent, ModelUsageSummary, RawRunUsage};
 use std::collections::HashMap;
-use std::fs::{self, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::fs;
+use std::io::{BufRead, BufReader};
 
-/// Event types the frontend reducer actually handles during replay.
-/// "raw" events (CLI stream data) are 90%+ of the file but the frontend drops them,
-/// so filtering here avoids serializing megabytes of unused data across IPC.
-pub const REPLAY_TYPES: &[&str] = &[
-    "session_init",
-    "message_delta",
-    "thinking_delta",
-    "tool_input_delta",
-    "message_complete",
-    "user_message",
-    "tool_start",
-    "tool_end",
-    "run_state",
-    "usage_update",
-    "permission_denied",
-    "permission_prompt",
-    "compact_boundary",
-    "system_status",
-    "auth_status",
-    "hook_started",
-    "hook_response",
-    "control_cancelled",
-    "task_notification",
-    "tool_progress",
-    "tool_use_summary",
-    "command_output",
-    "files_persisted",
-    "hook_progress",
-    "hook_callback",
-    "elicitation_prompt",
-    "rate_limit_event",
-];
-
-/// Check if a BusEvent's serde tag is in REPLAY_TYPES.
+use super::core::{events_path, REPLAY_TYPES};
+use super::writer::EventWriter;
 
 pub fn persist_bus_event(
     writer: &EventWriter,
@@ -61,8 +29,8 @@ pub fn copy_bus_events(from_run_id: &str, to_run_id: &str) -> Result<(), String>
         );
         return Ok(());
     }
-    let dst_dir = super::run_dir(to_run_id);
-    super::ensure_dir(&dst_dir).map_err(|e| format!("ensure_dir failed: {}", e))?;
+    let dst_dir = super::super::run_dir(to_run_id);
+    super::super::ensure_dir(&dst_dir).map_err(|e| format!("ensure_dir failed: {}", e))?;
     let dst = events_path(to_run_id);
 
     let content =
@@ -153,7 +121,7 @@ pub fn extract_run_usage(run_id: &str) -> Option<RawRunUsage> {
 
     // Detect per-turn cost mode: CLI imports have per-turn total_cost_usd
     let is_per_turn_cost = {
-        let meta_path = super::run_dir(run_id).join("meta.json");
+        let meta_path = super::super::run_dir(run_id).join("meta.json");
         meta_path
             .exists()
             .then(|| {
@@ -384,17 +352,17 @@ fn scan_run_usage_inner(
 // ── usage cache ────────────────────────────────────────────────────────
 
 /// 缓存文件 schema 版本：未来字段变动时同步递增以避免反序列化旧数据。
-const USAGE_CACHE_VERSION: u32 = 1;
+pub(super) const USAGE_CACHE_VERSION: u32 = 1;
 
 #[derive(serde::Serialize, serde::Deserialize)]
-struct UsageCacheFile {
-    version: u32,
-    events_mtime_ns: u128,
-    events_size: u64,
-    usage: crate::models::RawRunUsage,
+pub(super) struct UsageCacheFile {
+    pub(super) version: u32,
+    pub(super) events_mtime_ns: u128,
+    pub(super) events_size: u64,
+    pub(super) usage: crate::models::RawRunUsage,
 }
 
-fn file_mtime_and_size(path: &std::path::Path) -> Option<(u128, u64)> {
+pub(super) fn file_mtime_and_size(path: &std::path::Path) -> Option<(u128, u64)> {
     let meta = fs::metadata(path).ok()?;
     let mtime_ns = meta
         .modified()
@@ -406,7 +374,7 @@ fn file_mtime_and_size(path: &std::path::Path) -> Option<(u128, u64)> {
 }
 
 fn usage_cache_path(run_id: &str) -> std::path::PathBuf {
-    super::usage_cache_dir().join(format!("{run_id}.json"))
+    super::super::usage_cache_dir().join(format!("{run_id}.json"))
 }
 
 fn read_usage_cache(run_id: &str, mtime_ns: u128, size: u64) -> Option<RawRunUsage> {
@@ -428,8 +396,8 @@ fn write_usage_cache(
     size: u64,
     usage: &RawRunUsage,
 ) -> Result<(), String> {
-    let dir = super::usage_cache_dir();
-    super::ensure_dir(&dir).map_err(|e| format!("ensure cache dir: {e}"))?;
+    let dir = super::super::usage_cache_dir();
+    super::super::ensure_dir(&dir).map_err(|e| format!("ensure cache dir: {e}"))?;
     let file = UsageCacheFile {
         version: USAGE_CACHE_VERSION,
         events_mtime_ns: mtime_ns,
@@ -560,5 +528,3 @@ pub fn list_bus_events(run_id: &str, since_seq: Option<u64>) -> Vec<serde_json::
 
     result
 }
-
-#[cfg(test)]

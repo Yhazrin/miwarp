@@ -20,10 +20,7 @@ export function applyHookEvent(
   if (event.run_id !== runId) return null;
 
   // In stream session mode, bus events already handle tool tracking
-  if (
-    isStreamOrAlive &&
-    (event.hook_type === "PreToolUse" || event.hook_type === "PostToolUse")
-  ) {
+  if (isStreamOrAlive && (event.hook_type === "PreToolUse" || event.hook_type === "PostToolUse")) {
     dbg("store", "skip hook tool event (stream mode):", event.hook_type, event.tool_name);
     return null;
   }
@@ -32,9 +29,7 @@ export function applyHookEvent(
   if (event.hook_type === "PostToolUse" && event.tool_name) {
     const idx = tools.findLastIndex(
       (e) =>
-        e.tool_name === event.tool_name &&
-        e.hook_type === "PreToolUse" &&
-        e.status === "running",
+        e.tool_name === event.tool_name && e.hook_type === "PreToolUse" && e.status === "running",
     );
     if (idx >= 0) {
       const updated = [...tools];
@@ -86,9 +81,7 @@ export function applyHookEventBatch(
     if (event.hook_type === "PostToolUse" && event.tool_name) {
       const idx = result.findLastIndex(
         (e) =>
-          e.tool_name === event.tool_name &&
-          e.hook_type === "PreToolUse" &&
-          e.status === "running",
+          e.tool_name === event.tool_name && e.hook_type === "PreToolUse" && e.status === "running",
       );
       if (idx >= 0) {
         if (!mutated) {

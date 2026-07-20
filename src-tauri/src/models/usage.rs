@@ -1,7 +1,10 @@
+use super::run::{AgentRuntimeKind, RunStatus};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use super::run::{AgentRuntimeKind, RunMeta, RunStatus};
+use std::collections::HashMap;
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RawRunUsage {
     pub total_cost_usd: f64,
     pub input_tokens: u64,
@@ -188,6 +191,7 @@ pub struct CliInfoError {
     pub message: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelUsageEntry {
     pub input_tokens: u64,
     pub output_tokens: u64,
@@ -216,9 +220,3 @@ pub struct McpServerInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
-
-// ── Ralph Loop types ──
-
-/// Reason a Ralph loop ended. Serializes to snake_case for frontend union matching.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "snake_case")]

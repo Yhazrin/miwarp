@@ -19,10 +19,7 @@ import type { InstrumentConfig } from "./instruments";
  * and an optional click transient layer when tune.meta.clickLayer is true
  * (used by overlay open/close/expand/collapse sounds for tactility).
  */
-export function createSweepSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig,
-): SoundSynthesizer {
+export function createSweepSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
@@ -165,30 +162,21 @@ export function createSweepSound(
 /**
  * Create a rise sound (pitch ascends) - alias for sweep
  */
-export function createRiseSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig,
-): SoundSynthesizer {
+export function createRiseSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return createSweepSound(tune, instrument);
 }
 
 /**
  * Create a drop sound (pitch descends) - alias for sweep
  */
-export function createDropSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig,
-): SoundSynthesizer {
+export function createDropSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return createSweepSound(tune, instrument);
 }
 
 /**
  * Create a chime sound (resonant tonal with decay)
  */
-export function createChimeSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig,
-): SoundSynthesizer {
+export function createChimeSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
@@ -379,10 +367,7 @@ export function createArpeggioSound(
 /**
  * Create a chord sound (multiple simultaneous notes)
  */
-export function createChordSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig,
-): SoundSynthesizer {
+export function createChordSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;

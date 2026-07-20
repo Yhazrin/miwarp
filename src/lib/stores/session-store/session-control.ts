@@ -7,13 +7,7 @@
  * @module session-control
  */
 import * as api from "$lib/api";
-import type {
-  TaskRun,
-  BusEvent,
-  Attachment,
-  SessionMode,
-  RunSurface,
-} from "$lib/types";
+import type { TaskRun, BusEvent, Attachment, SessionMode, RunSurface } from "$lib/types";
 import { isKeyOptionalPlatform } from "$lib/utils/platform-presets";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { t } from "$lib/i18n/index.svelte";
@@ -29,10 +23,7 @@ import {
   TERMINAL_PHASES,
 } from "../types";
 import type { ReduceCtx } from "../reducers/types";
-import type {
-  TimelineEntry,
-  HookEvent,
-} from "$lib/types";
+import type { TimelineEntry, HookEvent } from "$lib/types";
 
 // ── Store interface for session-control functions ──
 
@@ -253,9 +244,7 @@ export async function loadRunImpl(
           if (snapSeq === 0 && isIdleSnap) {
             // seq=0: skip snapshot, delete stale entry to prevent repeated hit-then-skip
             dbg("store", "idle snapshot seq=0, skipping for full replay");
-            snapshotCache
-              .deleteSnapshot(id)
-              .catch((e) => dbgWarn("snapshot", "delete failed", e));
+            snapshotCache.deleteSnapshot(id).catch((e) => dbgWarn("snapshot", "delete failed", e));
             snapshotBody = null; // fall through to miss path
           } else if (store._tryApplySnapshot(parsed)) {
             snapshotHit = true;
@@ -844,16 +833,16 @@ export async function resumeSessionImpl(
 
 // ── _handleFork (private helper, called from resumeSession) ──
 
-export async function handleForkImpl(
-  store: SessionControlAPI,
-  runId: string,
-): Promise<string> {
+export async function handleForkImpl(store: SessionControlAPI, runId: string): Promise<string> {
   dbg("store", "resumeSession: two-step fork", { runId });
   const loadGen = store._asyncLifecycle.currentGeneration;
 
   // Clear both routing and this store's physical owner to prevent source
   // RunState(stopped) events from interfering with the fork replay.
-  getEventMiddleware().subscribeCurrent("", store as unknown as Parameters<ReturnType<typeof getEventMiddleware>["subscribeCurrent"]>[1]);
+  getEventMiddleware().subscribeCurrent(
+    "",
+    store as unknown as Parameters<ReturnType<typeof getEventMiddleware>["subscribeCurrent"]>[1],
+  );
   store._connection.release();
 
   // Step 1: One-shot fork (backend does fork_oneshot, returns new run_id with new session_id)
@@ -887,7 +876,10 @@ export async function handleForkImpl(
     if (ms === null) throw new Error("Stale during fork replay");
   }
   // Subscribe to NEW run — live events from stream-json will route here.
-  getEventMiddleware().subscribeCurrent(newRunId, store as unknown as Parameters<ReturnType<typeof getEventMiddleware>["subscribeCurrent"]>[1]);
+  getEventMiddleware().subscribeCurrent(
+    newRunId,
+    store as unknown as Parameters<ReturnType<typeof getEventMiddleware>["subscribeCurrent"]>[1],
+  );
   dbg("store", "fork: middleware subscribed to new run", newRunId);
   store._connection.subscribeFromReplay(newRunId, allForkEvents);
 
@@ -912,13 +904,6 @@ export async function connectSessionImpl(
   dbg("store", "connectSession: establishing stream-json connection", { runId, sessionId: sid });
   store._connection.subscribeFresh(runId);
   store._setPhase("spawning");
-  await api.startSession(
-    runId,
-    "resume",
-    sid,
-    undefined,
-    undefined,
-    store.platformId || undefined,
-  );
+  await api.startSession(runId, "resume", sid, undefined, undefined, store.platformId || undefined);
   store._startSpawnTimeout(runId);
 }

@@ -1,7 +1,10 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use super::run::TaskRun;
+use serde::{Deserialize, Serialize};
 
+/// Real-time status of a digital employee (session actor).
+/// Derived from RunStatus + ActorSessionMap liveness + actor state string.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum FleetStatus {
     /// Actor alive, no active turn
     Idle,

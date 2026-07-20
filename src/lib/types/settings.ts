@@ -7,14 +7,12 @@ export interface BackendCapabilities {
   supportedCommands: string[];
 }
 
-
 export interface MemoryFileCandidate {
   path: string;
   label: string;
   scope: "project" | "global" | "memory";
   exists: boolean;
 }
-
 
 export interface UserSettings {
   default_agent: string;
@@ -108,7 +106,6 @@ export interface UserSettings {
   updated_at: string;
 }
 
-
 export interface SessionStatusColors {
   running?: string;
   done?: string;
@@ -118,7 +115,6 @@ export interface SessionStatusColors {
   blocked?: string;
   idle?: string;
 }
-
 
 export interface RemoteHost {
   name: string;
@@ -131,7 +127,6 @@ export interface RemoteHost {
   forward_api_key: boolean;
 }
 
-
 export interface RemoteTestResult {
   ssh_ok: boolean;
   cli_found: boolean;
@@ -139,7 +134,6 @@ export interface RemoteTestResult {
   cli_path?: string;
   error?: string;
 }
-
 
 export interface KeyBinding {
   command: string;
@@ -152,19 +146,16 @@ export interface KeyBinding {
   osGlobal?: boolean;
 }
 
-
 export interface ScreenshotPayload {
   contentBase64: string;
   mediaType: string;
   filename: string;
 }
 
-
 export interface KeyBindingOverride {
   command: string;
   key: string;
 }
-
 
 export interface AgentSettings {
   agent: string;
@@ -194,7 +185,6 @@ export interface AgentSettings {
   updated_at: string;
 }
 
-
 export interface CliCheckResult {
   agent: string;
   found: boolean;
@@ -202,18 +192,15 @@ export interface CliCheckResult {
   version?: string;
 }
 
-
 export interface ProjectInitStatus {
   cwd: string;
   has_claude_md: boolean;
 }
 
-
 export interface CliDistTags {
   latest?: string;
   stable?: string;
 }
-
 
 export interface LocalProxyStatus {
   proxyId: string;
@@ -222,7 +209,6 @@ export interface LocalProxyStatus {
   baseUrl: string;
   error?: string;
 }
-
 
 export interface ApiTestResult {
   success: boolean;
@@ -233,7 +219,6 @@ export interface ApiTestResult {
   partial: boolean;
 }
 
-
 export interface CliModelInfo {
   value: string;
   displayName: string;
@@ -243,7 +228,6 @@ export interface CliModelInfo {
   supportsAdaptiveThinking?: boolean;
 }
 
-
 export interface CliCommand {
   name: string;
   description: string;
@@ -251,12 +235,10 @@ export interface CliCommand {
   [key: string]: unknown;
 }
 
-
 export interface CliAccount {
   tokenSource: string;
   [key: string]: unknown;
 }
-
 
 export interface CliInfo {
   agent: string;
@@ -270,7 +252,6 @@ export interface CliInfo {
   fetched_at: string;
 }
 
-
 export interface McpServerInfo {
   name: string;
   status: string;
@@ -278,7 +259,6 @@ export interface McpServerInfo {
   scope?: string;
   error?: string;
 }
-
 
 export interface DiagnosticsReport {
   cli: CliDiagnostics;
@@ -288,7 +268,6 @@ export interface DiagnosticsReport {
   services: ServicesDiagnostics;
   system: SystemDiagnostics;
 }
-
 
 export interface CliDiagnostics {
   found: boolean;
@@ -300,7 +279,6 @@ export interface CliDiagnostics {
   ripgrep_available: boolean;
 }
 
-
 export interface AuthDiagnostics {
   has_oauth: boolean;
   oauth_account: string | null;
@@ -311,7 +289,6 @@ export interface AuthDiagnostics {
   app_platform_name: string | null;
 }
 
-
 export interface ProjectDiagnostics {
   cwd: string;
   has_claude_md: boolean;
@@ -319,12 +296,10 @@ export interface ProjectDiagnostics {
   skipped_project_scope: boolean;
 }
 
-
 export interface ClaudeMdInfo {
   path: string;
   size_chars: number;
 }
-
 
 export interface ConfigDiagnostics {
   settings_issues: ConfigIssue[];
@@ -333,7 +308,6 @@ export interface ConfigDiagnostics {
   env_var_issues: ConfigIssue[];
 }
 
-
 export interface ConfigIssue {
   scope: string;
   file: string;
@@ -341,18 +315,15 @@ export interface ConfigIssue {
   message: string;
 }
 
-
 export interface ServicesDiagnostics {
   community_registry: boolean | null;
   mcp_registry: boolean | null;
 }
 
-
 export interface SystemDiagnostics {
   sandbox_available: boolean | null;
   lock_files: string[];
 }
-
 
 export interface PermissionSuggestion {
   type: string;
@@ -365,7 +336,6 @@ export interface PermissionSuggestion {
   message?: unknown;
 }
 
-
 export interface UpdateInfo {
   hasUpdate: boolean;
   latestVersion: string;
@@ -374,13 +344,11 @@ export interface UpdateInfo {
   error: string;
 }
 
-
 export interface ChangelogEntry {
   version: string;
   date: string;
   changes: string[];
 }
-
 
 export type HookEventType =
   | "PreToolUse"
@@ -411,7 +379,6 @@ export type HookEventType =
   | "FileChanged"
   | "PermissionDenied";
 
-
 export interface HookHandler {
   type: "command" | "prompt" | "http" | "mcp_tool";
   command?: string;
@@ -432,16 +399,13 @@ export interface HookHandler {
   input?: Record<string, unknown>;
 }
 
-
 export interface HookMatcherGroup {
   matcher?: string;
   hooks: HookHandler[];
   [key: string]: unknown;
 }
 
-
 export type HooksConfig = Record<string, HookMatcherGroup[]>;
-
 
 export interface CliConfigSettingDef {
   key: string;
@@ -453,7 +417,6 @@ export interface CliConfigSettingDef {
   options?: { value: string; label: string }[];
 }
 
-
 export interface SshKeyInfo {
   key_path: string;
   key_path_expanded: string;
@@ -464,13 +427,11 @@ export interface SshKeyInfo {
   ssh_copy_id_available: boolean;
 }
 
-
 export interface AuthCheckResult {
   has_oauth: boolean;
   has_api_key: boolean;
   oauth_account?: string;
 }
-
 
 export interface AuthOverview {
   auth_mode: string;
@@ -485,7 +446,6 @@ export interface AuthOverview {
   app_platform_name?: string;
 }
 
-
 export interface ProductBootstrapStatus {
   version: number;
   targetVersion: number;
@@ -494,13 +454,11 @@ export interface ProductBootstrapStatus {
   completedAt?: string | null;
 }
 
-
 export interface ProductBootstrapRunResult {
   skillsInstalled: string[];
   appendPromptApplied: boolean;
   skipped: boolean;
 }
-
 
 export interface InstallMethod {
   id: string;
@@ -510,7 +468,6 @@ export interface InstallMethod {
   unavailable_reason?: string;
   note?: string;
 }
-
 
 export interface PlatformPreset {
   id: string;
@@ -525,7 +482,6 @@ export interface PlatformPreset {
   docs_url?: string;
   setup_hint?: string;
 }
-
 
 export interface PromptInputSnapshot {
   text: string;
@@ -547,7 +503,6 @@ export interface PromptInputSnapshot {
   pathRefs?: Array<{ id: string; name: string; path: string; isDir: boolean }>;
 }
 
-
 export interface PlatformCredential {
   platform_id: string;
   api_key?: string;
@@ -557,7 +512,6 @@ export interface PlatformCredential {
   models?: string[];
   extra_env?: Record<string, string>;
 }
-
 
 export interface AgentDefinitionSummary {
   file_name: string;
@@ -576,7 +530,6 @@ export interface AgentDefinitionSummary {
   raw_content?: string;
 }
 
-
 export interface ElementSelection {
   url: string;
   viewport: { width: number; height: number };
@@ -593,7 +546,6 @@ export interface ElementSelection {
   outerHtmlSnippet: string;
   styleSummary: Record<string, string>;
 }
-
 
 export function isElementSelection(v: unknown): v is ElementSelection {
   if (!v || typeof v !== "object") return false;
@@ -622,5 +574,3 @@ export function isElementSelection(v: unknown): v is ElementSelection {
     return false;
   return true;
 }
-
-

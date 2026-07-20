@@ -3,22 +3,19 @@
 //! Reads Claude CLI transcript files (~/.claude/projects/*/*.jsonl) and converts
 //! them into MiWarp run format (~/.miwarp/runs/{run-id}/).
 
-use crate::models::protocol_state::{validate_bus_event, ProtocolState};
-use crate::models::{BusEvent, ImportWatermark, RunMeta, RunSource, RunStatus};
-use crate::storage::events::{is_replayable, EventWriter};
+use crate::models::{ImportWatermark, RunMeta, RunSource, RunStatus};
+use crate::storage::events::EventWriter;
 use crate::storage::shared;
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use std::collections::{HashMap, HashSet};
+use serde_json::Value;
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::PathBuf;
+
+use super::discover::{build_imported_index, invalidate_imported_cache};
+use super::types::ImportResult;
+use super::util::{encode_cwd, import_index_path, validate_cli_path, TranscriptImporter};
 
 // ── Types ────────────────────────────────────────────────────────────
-
-/// CLI session summary (discovery phase output).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 
 pub fn import_session(
     session_id: &str,
@@ -203,8 +200,8 @@ pub fn import_session(
         protocol_kind: None,
     };
 
-    let run_dir = super::run_dir(&run_id);
-    super::ensure_dir(&run_dir).map_err(|e| format!("ensure_dir: {}", e))?;
+    let run_dir = super::super::run_dir(&run_id);
+    super::super::ensure_dir(&run_dir).map_err(|e| format!("ensure_dir: {}", e))?;
 
     // 5. Second pass — event conversion + index writing
     // Wrapped in closure so any `?` failure triggers cleanup in the match below.
@@ -273,7 +270,7 @@ pub fn import_session(
         file_size,
         last_uuid: None,
     });
-    super::runs::save_meta(&meta)?;
+    super::super::runs::save_meta(&meta)?;
 
     let elapsed = start.elapsed();
     log::debug!(
@@ -323,7 +320,7 @@ fn find_cli_session_path(session_id: &str, cwd: &str) -> Result<PathBuf, String>
 
 // ── Sync pre-check ────────────────────────────────────────────────
 
-fn file_mtime_ns_from_metadata(meta: &fs::Metadata) -> u128 {
+pub(super) fn file_mtime_ns_from_metadata(meta: &fs::Metadata) -> u128 {
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
@@ -338,5 +335,3 @@ fn file_mtime_ns_from_metadata(meta: &fs::Metadata) -> u128 {
             .unwrap_or(0)
     }
 }
-
-/// Source JSONL mtime in nanoseconds (for auto-sync prioritization).

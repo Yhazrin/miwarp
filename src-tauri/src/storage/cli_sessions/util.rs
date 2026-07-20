@@ -4,28 +4,23 @@
 //! them into MiWarp run format (~/.miwarp/runs/{run-id}/).
 
 use crate::models::protocol_state::{validate_bus_event, ProtocolState};
-use crate::models::{BusEvent, ImportWatermark, RunMeta, RunSource, RunStatus};
+use crate::models::BusEvent;
 use crate::storage::events::{is_replayable, EventWriter};
 use crate::storage::shared;
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
-use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Seek, SeekFrom, Write};
+use std::fs::{self, File};
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 // ── Types ────────────────────────────────────────────────────────────
-
-/// CLI session summary (discovery phase output).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 
 pub fn encode_cwd(cwd: &str) -> String {
     cwd.replace(['/', '\\'], "-")
 }
 
 /// Validate that a path is within ~/.claude/projects/ (path traversal guard).
-fn validate_cli_path(path: &Path) -> Result<(), String> {
+pub(super) fn validate_cli_path(path: &Path) -> Result<(), String> {
     let canonical = path
         .canonicalize()
         .map_err(|e| format!("canonicalize failed: {}", e))?;
@@ -45,12 +40,12 @@ fn validate_cli_path(path: &Path) -> Result<(), String> {
 }
 
 /// Path to import-index.jsonl for a run.
-fn import_index_path(run_id: &str) -> PathBuf {
-    super::run_dir(run_id).join("import-index.jsonl")
+pub(super) fn import_index_path(run_id: &str) -> PathBuf {
+    super::super::run_dir(run_id).join("import-index.jsonl")
 }
 
 /// Load source_key set from an import-index file for dedup.
-fn load_import_skip_set(index_path: &Path) -> HashSet<String> {
+pub(super) fn load_import_skip_set(index_path: &Path) -> HashSet<String> {
     let mut skip_set = HashSet::new();
     if let Ok(content) = fs::read_to_string(index_path) {
         for line in content.lines() {
@@ -164,24 +159,24 @@ pub fn normalize_transcript_line(raw: &Value) -> Option<Value> {
 // ── TranscriptImporter ──────────────────────────────────────────────
 
 /// Shared line processing for import and sync.
-struct TranscriptImporter {
+pub(super) struct TranscriptImporter {
     run_id: String,
     protocol: ProtocolState,
     event_writer: std::sync::Arc<EventWriter>,
-    turn_counter: u32,
+    pub(super) turn_counter: u32,
     pending_usage: Option<Value>, // Current turn's assistant.message.usage candidate
     has_usage_update_this_turn: bool, // Whether current turn already has a UsageUpdate
     pending_model: Option<String>, // Model from last assistant message
-    skipped_subtypes: HashMap<String, u64>,
-    events_imported: u64,
-    events_skipped: u64,
-    usage_incomplete: bool,
-    last_user_is_command: bool,      // Last user line was a slash command
-    known_usage_turns: HashSet<u64>, // Turns that already have usage_update in events.jsonl
+    pub(super) skipped_subtypes: HashMap<String, u64>,
+    pub(super) events_imported: u64,
+    pub(super) events_skipped: u64,
+    pub(super) usage_incomplete: bool,
+    last_user_is_command: bool, // Last user line was a slash command
+    pub(super) known_usage_turns: HashSet<u64>, // Turns that already have usage_update in events.jsonl
 }
 
 impl TranscriptImporter {
-    fn new(run_id: String, writer: std::sync::Arc<EventWriter>) -> Self {
+    pub(super) fn new(run_id: String, writer: std::sync::Arc<EventWriter>) -> Self {
         Self {
             run_id,
             protocol: ProtocolState::new(false),
@@ -200,7 +195,7 @@ impl TranscriptImporter {
     }
 
     /// Check if a user line is a real user prompt (not a command/metadata).
-    fn is_real_user_prompt(normalized: &Value) -> bool {
+    pub(super) fn is_real_user_prompt(normalized: &Value) -> bool {
         let message = normalized.get("message").unwrap_or(normalized);
         if let Some(is_meta) = normalized.get("isMeta").and_then(|v| v.as_bool()) {
             if is_meta {
@@ -301,7 +296,7 @@ impl TranscriptImporter {
     }
 
     /// Process a single transcript line — two-phase: produce candidates, then write/skip.
-    fn process_line(
+    pub(super) fn process_line(
         &mut self,
         raw_line: &str,
         raw_json: &Value,
@@ -461,7 +456,7 @@ impl TranscriptImporter {
     }
 
     /// Warmup mode: update ProtocolState and turn tracking without writing events.
-    fn warmup_line(&mut self, raw_json: &Value) -> Result<(), String> {
+    pub(super) fn warmup_line(&mut self, raw_json: &Value) -> Result<(), String> {
         let normalized = match normalize_transcript_line(raw_json) {
             Some(n) => n,
             None => return Ok(()),
@@ -527,7 +522,7 @@ impl TranscriptImporter {
     }
 
     /// Finalize — flush usage for the last turn via unified write pipeline.
-    fn finalize(
+    pub(super) fn finalize(
         &mut self,
         ts: &str,
         index_writer: &mut BufWriter<File>,
@@ -564,8 +559,8 @@ impl TranscriptImporter {
 
 /// Scan existing events.jsonl for usage_update turn indices.
 /// Used by sync/reconcile to avoid re-synthesizing usage for known turns.
-fn load_known_usage_turns(run_id: &str) -> HashSet<u64> {
-    let events_path = super::run_dir(run_id).join("events.jsonl");
+pub(super) fn load_known_usage_turns(run_id: &str) -> HashSet<u64> {
+    let events_path = super::super::run_dir(run_id).join("events.jsonl");
     let mut turns = HashSet::new();
     let Ok(content) = fs::read_to_string(&events_path) else {
         return turns;
@@ -607,7 +602,7 @@ type CacheEntry = (ImportedIndex, Instant);
 
 static IMPORTED_CACHE: Lazy<Mutex<Option<CacheEntry>>> = Lazy::new(|| Mutex::new(None));
 
-fn build_imported_index_cached(max_age: Duration) -> ImportedIndex {
+pub(super) fn build_imported_index_cached(max_age: Duration) -> ImportedIndex {
     // Short lock: check cache hit
     {
         let cache = IMPORTED_CACHE.lock().unwrap_or_else(|e| e.into_inner());
@@ -625,7 +620,7 @@ fn build_imported_index_cached(max_age: Duration) -> ImportedIndex {
 
     // Rebuild outside lock (slow I/O)
     log::debug!("[cli_sessions] imported-index cache miss, rebuilding");
-    let index = build_imported_index();
+    let index = super::discover::build_imported_index();
 
     // Short lock: write back
     {
@@ -639,4 +634,6 @@ fn build_imported_index_cached(max_age: Duration) -> ImportedIndex {
     index
 }
 
-/// Invalidate the imported-index cache. Call after successful import.
+pub(super) fn invalidate_imported_cache_inner() {
+    *IMPORTED_CACHE.lock().unwrap_or_else(|e| e.into_inner()) = None;
+}

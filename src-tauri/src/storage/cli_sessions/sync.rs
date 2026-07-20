@@ -3,22 +3,22 @@
 //! Reads Claude CLI transcript files (~/.claude/projects/*/*.jsonl) and converts
 //! them into MiWarp run format (~/.miwarp/runs/{run-id}/).
 
-use crate::models::protocol_state::{validate_bus_event, ProtocolState};
-use crate::models::{BusEvent, ImportWatermark, RunMeta, RunSource, RunStatus};
-use crate::storage::events::{is_replayable, EventWriter};
+use crate::models::ImportWatermark;
+use crate::storage::events::EventWriter;
 use crate::storage::shared;
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use std::collections::{HashMap, HashSet};
+use serde_json::Value;
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Seek, SeekFrom, Write};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-// ── Types ────────────────────────────────────────────────────────────
+use super::import::file_mtime_ns_from_metadata;
+use super::types::SyncResult;
+use super::util::{
+    import_index_path, load_import_skip_set, load_known_usage_turns, validate_cli_path,
+    TranscriptImporter,
+};
 
-/// CLI session summary (discovery phase output).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+// ── Types ────────────────────────────────────────────────────────────
 
 pub fn source_file_mtime_ns(path: &str) -> Option<u128> {
     fs::metadata(path)
@@ -43,7 +43,8 @@ pub fn watermark_indicates_pending_sync(
 
 /// Lightweight pre-check before `sync_session`: reads RunMeta + file stat only.
 pub fn session_has_pending_sync(run_id: &str) -> Result<bool, String> {
-    let meta = super::runs::get_run(run_id).ok_or_else(|| format!("run {} not found", run_id))?;
+    let meta =
+        super::super::runs::get_run(run_id).ok_or_else(|| format!("run {} not found", run_id))?;
     let watermark = meta
         .cli_import_watermark
         .ok_or("no cli_import_watermark in RunMeta")?;
@@ -72,7 +73,8 @@ pub fn sync_session(
     log::debug!("[cli_sessions] sync: run_id={}", run_id);
 
     // 1. Read RunMeta
-    let meta = super::runs::get_run(run_id).ok_or_else(|| format!("run {} not found", run_id))?;
+    let meta =
+        super::super::runs::get_run(run_id).ok_or_else(|| format!("run {} not found", run_id))?;
     let watermark = meta
         .cli_import_watermark
         .ok_or("no cli_import_watermark in RunMeta")?;
@@ -239,7 +241,7 @@ pub fn sync_session(
 
     // Update RunMeta
     let usage_incomplete = importer.usage_incomplete;
-    super::runs::with_meta(run_id, |meta| {
+    super::super::runs::with_meta(run_id, |meta| {
         meta.cli_import_watermark = Some(new_watermark.clone());
         meta.cli_usage_incomplete = if usage_incomplete { Some(true) } else { None };
         Ok(())
@@ -336,7 +338,7 @@ fn sync_reconcile(
 
     // Update RunMeta
     let usage_incomplete = importer.usage_incomplete;
-    super::runs::with_meta(run_id, |meta| {
+    super::super::runs::with_meta(run_id, |meta| {
         meta.cli_import_watermark = Some(new_watermark.clone());
         meta.cli_usage_incomplete = if usage_incomplete { Some(true) } else { None };
         Ok(())
@@ -356,5 +358,3 @@ fn sync_reconcile(
 }
 
 // ── Tests ──────────────────────────────────────────────────────────
-
-#[cfg(test)]

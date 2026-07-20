@@ -7,38 +7,20 @@
 //! that previously caused race conditions.
 
 use crate::agent::adapter::ActorSessionMap;
-use crate::agent::attachment::AttachmentData;
-use crate::agent::claude_protocol::{validate_bus_event, ProtocolState};
-use crate::agent::notify::notify_if_background;
-use crate::agent::recovery::{CrashReason, RecoveryState};
-use crate::agent::runtime_recovery::{
-    classify_active_turn_eof, emit_session_lifecycle, on_actor_exit, ActorRecoveryBootstrap,
-    ActorRecoverySnapshot, PendingRecoveryMessage, RecoveryRegistry,
-};
-use crate::agent::turn_engine::{
-    apply_activity_reset, ActiveTurn, TurnOrigin, TurnPhase, UserTurnKind, UserTurnTicket,
-    ACCEPTED_CLIENT_MESSAGE_IDS_CAP, PROTOCOL_DESYNC_THRESHOLD, PROTOCOL_DESYNC_WINDOW_SECS,
-    QUARANTINE_DEADLINE, QUEUED_USER_CAP, STOP_ESCALATION_KILL, TICK_INTERVAL, USER_HARD_TIMEOUT,
-    USER_SOFT_TIMEOUT,
-};
-use crate::models::{
-    max_attachment_size, now_iso, AgentRuntimeKind, BusEvent, RalphCompleteReason, RunStatus,
-    ALLOWED_DOC_TYPES, ALLOWED_IMAGE_TYPES,
-};
-use crate::storage;
-use crate::storage::runs;
-use crate::storage::shared;
+use crate::agent::claude_protocol::ProtocolState;
+use crate::agent::runtime_recovery::{ActorRecoveryBootstrap, RecoveryRegistry};
+use crate::models::AgentRuntimeKind;
 use crate::web_server::broadcaster::BroadcastEmitter;
-use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
-use std::time::Duration;
-use std::time::Instant;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout};
-use tokio::sync::{mpsc, oneshot, watch};
+use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 
+use super::state_machine::SessionActor;
+use super::types::{ActorCommand, SessionActorHandle};
+
+#[allow(clippy::too_many_arguments)]
 pub fn spawn_actor(
     emitter: Arc<BroadcastEmitter>,
     sessions: ActorSessionMap,
@@ -192,6 +174,3 @@ pub fn spawn_actor_with_runtime(
         shutdown_rx,
     }
 }
-
-// ── Actor main loop ──
-

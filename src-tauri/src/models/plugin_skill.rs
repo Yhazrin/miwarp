@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::collections::HashMap;
 
+use super::settings::default_true;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MarketplacePlugin {
     pub name: String,
     #[serde(default)]
@@ -424,7 +425,3 @@ pub struct ConfiguredMcpServer {
     #[serde(default)]
     pub header_keys: Vec<String>,
 }
-
-// ── Keybinding types ──
-
-#[derive(Debug, Clone, Serialize, Deserialize)]

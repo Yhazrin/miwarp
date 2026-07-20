@@ -8,22 +8,11 @@ import { CMD, type CmdName } from "../tauri-commands";
 function invoke<T>(cmd: CmdName | string, args?: Record<string, unknown>): Promise<T> {
   return getTransport().invoke<T>(cmd, args);
 }
-import type {
-  TeamSummary,
-  TeamConfig,
-  TeamTask,
-  TeamInboxMessage,
-  } from "../types";
-import type {
-  } from "../runtime-control-plane/types";
-import type {
-  } from "../types/task";
-import type {
-  } from "../types/run-journal";
-import type {
-  } from "../types/attention-queue";
-
-
+import type { TeamSummary, TeamConfig, TeamTask, TeamInboxMessage } from "../types";
+import type {} from "../runtime-control-plane/types";
+import type {} from "../types/task";
+import type {} from "../types/run-journal";
+import type {} from "../types/attention-queue";
 
 export async function listTeams(): Promise<TeamSummary[]> {
   dbg("api", "listTeams");
@@ -159,4 +148,3 @@ export async function setTeamMemberTask(
     task,
   });
 }
-

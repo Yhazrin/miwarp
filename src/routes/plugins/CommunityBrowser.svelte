@@ -12,18 +12,16 @@
     getCommunitySkillDetail,
     installCommunitySkill,
   } from "$lib/api";
-  import type {
-    CommunitySkillResult,
-    CommunitySkillDetail,
-    ProviderHealth,
-  } from "$lib/types";
+  import type { CommunitySkillResult, CommunitySkillDetail, ProviderHealth } from "$lib/types";
 
   let {
-    projectCwd = "", sByScope = {} as Record<string, Set<string>>,
+    projectCwd = "",
+    sByScope = {} as Record<string, Set<string>>,
     operationLoading = $bindable<string | null>(null),
     onInstalled,
   }: {
-    projectCwd?: string; sByScope?: Record<string, Set<string>>;
+    projectCwd?: string;
+    sByScope?: Record<string, Set<string>>;
     operationLoading?: string | null;
     onInstalled: () => Promise<void>;
   } = $props();
@@ -168,9 +166,7 @@
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
-        ><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path
-          d="M21 3v5h-5"
-        /></svg
+        ><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg
       >
     </button>
   </div>
@@ -194,8 +190,7 @@
   <div class="flex rounded-lg border border-border p-0.5 shrink-0">
     <button
       type="button"
-      class="rounded-md px-2 py-1 text-xs font-medium transition-colors {communityScope ===
-      'user'
+      class="rounded-md px-2 py-1 text-xs font-medium transition-colors {communityScope === 'user'
         ? 'bg-primary text-primary-foreground'
         : 'text-muted-foreground hover:text-foreground'}"
       onclick={() => (communityScope = "user")}>{t("plugin_scopeUser")}</button
@@ -224,9 +219,7 @@
     stroke-linejoin="round"
     ><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg
   >
-  {communityScope === "user"
-    ? t("extensions_scopeUserDesc")
-    : t("extensions_scopeProjectDesc")}
+  {communityScope === "user" ? t("extensions_scopeUserDesc") : t("extensions_scopeProjectDesc")}
 </div>
 
 <!-- Quick filters -->
@@ -289,8 +282,9 @@
           class="lg:w-[280px] lg:shrink-0 lg:max-h-[min(560px,60vh)] lg:overflow-y-auto space-y-1.5 pr-1"
         >
           {#each communityDisplayResults as skill}
-            {@const isInstalled = ( sByScope[communityScope] ?? new Set<string>()
-            ).has(toLocalSlug(skill.skill_id))}
+            {@const isInstalled = (sByScope[communityScope] ?? new Set<string>()).has(
+              toLocalSlug(skill.skill_id),
+            )}
             <div
               class="w-full text-left rounded-xl border px-3 py-2.5 transition-all cursor-pointer {communityDetail?.id ===
               skill.id
@@ -314,9 +308,7 @@
                         >{formatInstallCount(skill.installs)}</span
                       >
                     {/if}
-                    <span class="text-[10px] text-muted-foreground truncate"
-                      >{skill.source}</span
-                    >
+                    <span class="text-[10px] text-muted-foreground truncate">{skill.source}</span>
                   </div>
                 </div>
                 <button
@@ -350,9 +342,7 @@
               class="rounded-xl border border-border/50 bg-card/20 p-6 flex items-center justify-center h-full"
             >
               <Spinner size="sm" />
-              <span class="ml-2 text-xs text-muted-foreground"
-                >{t("plugin_loadingPreview")}</span
-              >
+              <span class="ml-2 text-xs text-muted-foreground">{t("plugin_loadingPreview")}</span>
             </div>
           {:else if communityDetailError}
             <div

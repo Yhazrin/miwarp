@@ -11,25 +11,17 @@ use crate::storage::cli_sessions::normalize_transcript_line;
 use crate::storage::events::{is_replayable, EventWriter};
 use crate::storage::shared;
 use crate::storage::{ensure_dir, run_dir, runs_dir};
-use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Read, Write};
-use std::path::{Path, PathBuf};
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::Path;
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter};
-use zip::write::SimpleFileOptions;
-use zip::{ZipArchive, ZipWriter};
 
-const ARCHIVE_VERSION: &str = "1.0";
-const MANIFEST_NAME: &str = "manifest.json";
+use super::types::{ImportDetail, ManifestSession};
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-
-pub(super) fn build_imported_index() -> HashMap<(String, String), String> {
+pub(crate) fn build_imported_index() -> HashMap<(String, String), String> {
     // Map (session_id, cwd) → run_id
     let mut index = HashMap::new();
     let runs = runs_dir();
@@ -50,7 +42,7 @@ pub(super) fn build_imported_index() -> HashMap<(String, String), String> {
     index
 }
 
-fn import_single_session(
+pub(super) fn import_single_session(
     session: &ManifestSession,
     temp_path: &Path,
     existing_index: &mut HashMap<(String, String), String>,
@@ -146,7 +138,7 @@ fn import_single_session(
     }
 }
 
-fn run_import_pipeline(
+pub(super) fn run_import_pipeline(
     jsonl_path: &Path,
     session_id: &str,
     cwd: &str,
@@ -544,7 +536,7 @@ fn run_import_pipeline(
     Ok(run_id)
 }
 
-fn is_real_user_prompt(normalized: &serde_json::Value) -> bool {
+pub(super) fn is_real_user_prompt(normalized: &serde_json::Value) -> bool {
     let message = normalized.get("message").unwrap_or(normalized);
     if let Some(is_meta) = normalized.get("isMeta").and_then(|v| v.as_bool()) {
         if is_meta {
@@ -569,7 +561,7 @@ fn is_real_user_prompt(normalized: &serde_json::Value) -> bool {
     false
 }
 
-fn flush_turn_usage(
+pub(super) fn flush_turn_usage(
     run_id: &str,
     turn_counter: u32,
     pending_usage: &Option<serde_json::Value>,
@@ -627,5 +619,3 @@ fn flush_turn_usage(
         None
     }
 }
-
-#[cfg(test)]

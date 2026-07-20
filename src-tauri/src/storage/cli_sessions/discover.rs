@@ -3,26 +3,23 @@
 //! Reads Claude CLI transcript files (~/.claude/projects/*/*.jsonl) and converts
 //! them into MiWarp run format (~/.miwarp/runs/{run-id}/).
 
-use crate::models::protocol_state::{validate_bus_event, ProtocolState};
-use crate::models::{BusEvent, ImportWatermark, RunMeta, RunSource, RunStatus};
-use crate::storage::events::{is_replayable, EventWriter};
+use crate::models::{RunMeta, RunSource};
 use crate::storage::shared;
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use std::collections::{HashMap, HashSet};
-use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Seek, SeekFrom, Write};
+use serde_json::Value;
+use std::collections::HashMap;
+use std::fs::{self, File};
+use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
+
+use super::types::{CliSessionSummary, DiscoverResult};
+use super::util::{build_imported_index_cached, encode_cwd, invalidate_imported_cache_inner};
+use std::time::Duration;
 
 // ── Types ────────────────────────────────────────────────────────────
 
-/// CLI session summary (discovery phase output).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-
 pub fn invalidate_imported_cache() {
     log::debug!("[cli_sessions] imported-index cache invalidated");
-    *IMPORTED_CACHE.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    invalidate_imported_cache_inner();
 }
 
 // ── Discovery ────────────────────────────────────────────────────────
@@ -153,10 +150,10 @@ fn collect_jsonl_files(dir: &Path, out: &mut Vec<(PathBuf, u64, std::time::Syste
     }
 }
 
-fn build_imported_index() -> HashMap<(String, String), String> {
+pub(super) fn build_imported_index() -> HashMap<(String, String), String> {
     // Map (session_id, cwd) → run_id
     let mut index = HashMap::new();
-    let runs_dir = super::runs_dir();
+    let runs_dir = super::super::runs_dir();
     if let Ok(entries) = fs::read_dir(&runs_dir) {
         for entry in entries.flatten() {
             let meta_path = entry.path().join("meta.json");
@@ -390,5 +387,3 @@ fn extract_summary(
 }
 
 // ── Import ──────────────────────────────────────────────────────────
-
-/// Import a CLI session as a new run.

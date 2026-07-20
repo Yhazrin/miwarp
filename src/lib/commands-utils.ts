@@ -6,11 +6,7 @@
 
 import type { SessionPhase } from "./stores/types";
 import { multiFieldFuzzyMatch } from "./utils/fuzzy";
-import {
-  type CommandDef,
-  type CommandCategory,
-  commands,
-} from "./commands-definitions";
+import { type CommandDef, type CommandCategory, commands } from "./commands-definitions";
 
 // Command usage statistics storage key
 const USAGE_STATS_KEY = "miwarp:command-usage-stats";

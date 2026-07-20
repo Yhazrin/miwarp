@@ -3,32 +3,22 @@
 //! Exports Claude Code history sessions from `~/.claude/projects/**/*.jsonl` as a portable
 //! zip archive, and imports such archives into MiWarp without writing back to `~/.claude/projects/`.
 
-use crate::models::protocol_state::{validate_bus_event, ProtocolState};
-use crate::models::{
-    BusEvent, ConversationRef, ExecutionPath, ImportWatermark, RunMeta, RunSource, RunStatus,
-};
-use crate::storage::cli_sessions::normalize_transcript_line;
-use crate::storage::events::{is_replayable, EventWriter};
 use crate::storage::shared;
-use crate::storage::{ensure_dir, run_dir, runs_dir};
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Read, Write};
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use tauri::{AppHandle, Emitter};
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
 use zip::write::SimpleFileOptions;
-use zip::{ZipArchive, ZipWriter};
+use zip::ZipWriter;
+
+use super::helpers::{collect_jsonl_recursive, export_single_session, should_exclude_path};
+use super::types::{ArchiveManifest, ExportReport, ManifestSession};
 
 const ARCHIVE_VERSION: &str = "1.0";
 const MANIFEST_NAME: &str = "manifest.json";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-
+#[tauri::command]
 pub fn export_claude_code_history_archive(output_path: String) -> Result<ExportReport, String> {
     log::debug!("[migration] export: output_path={}", output_path);
 
@@ -117,4 +107,3 @@ pub fn export_claude_code_history_archive(output_path: String) -> Result<ExportR
         failures,
     })
 }
-

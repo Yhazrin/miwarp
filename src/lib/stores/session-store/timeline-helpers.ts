@@ -33,11 +33,7 @@ export function findToolIdx(
 }
 
 /** Simple id-only lookup for hook events. Map fast-path + findIndex fallback. */
-export function findHeIdx(
-  he: HookEvent[],
-  index: Map<string, number>,
-  toolUseId: string,
-): number {
+export function findHeIdx(he: HookEvent[], index: Map<string, number>, toolUseId: string): number {
   const idx = index.get(toolUseId);
   if (
     idx !== undefined &&
@@ -45,9 +41,7 @@ export function findHeIdx(
     (he[idx] as Record<string, unknown>).tool_use_id === toolUseId
   )
     return idx;
-  const fallback = he.findIndex(
-    (e) => (e as Record<string, unknown>).tool_use_id === toolUseId,
-  );
+  const fallback = he.findIndex((e) => (e as Record<string, unknown>).tool_use_id === toolUseId);
   if (fallback >= 0) {
     dbgWarn("store", "findHeIdx: index miss, found via scan", {
       toolUseId,

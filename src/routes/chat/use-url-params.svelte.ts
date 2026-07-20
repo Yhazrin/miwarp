@@ -11,13 +11,18 @@ import { dbg, dbgWarn } from "$lib/utils/debug";
 import { setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
 import { normalizeCwd } from "$lib/utils/sidebar-groups";
 
+type SessionTerminalRef = {
+  clear(): void;
+  writeText(text: string): void;
+};
+
 export interface UrlParamsDeps {
-  pageUrl: () => URL;                     // () => $page.url
+  pageUrl: () => URL; // () => $page.url
   store: {
     remoteHostName: string | null;
     sessionCwd: string;
     effectiveCwd: string;
-    loadRun: (id: string, xtermRef: unknown) => void;
+    loadRun: (id: string, xtermRef?: SessionTerminalRef) => Promise<void> | void;
     resumeInFlight: boolean;
     run: { readonly id: string } | null;
     timeline: readonly unknown[];
@@ -31,7 +36,7 @@ export interface UrlParamsDeps {
   };
   getPromptRef: () => { focus: () => void } | undefined;
   getSettingsCache: () => unknown;
-  getXtermRef: () => unknown;
+  getXtermRef: () => SessionTerminalRef | undefined;
   setFolderCwdOverride: (v: string) => void;
   setSelectedWorkspaceCwd: (v: string) => void;
 }
@@ -108,10 +113,18 @@ export function createUrlParams(deps: UrlParamsDeps) {
   }
 
   return {
-    get runId() { return runId; },
-    get hasNewParam() { return hasNewParam; },
-    get hasResumeParam() { return hasResumeParam; },
-    get pendingSubFolderId() { return pendingSubFolderId; },
+    get runId() {
+      return runId;
+    },
+    get hasNewParam() {
+      return hasNewParam;
+    },
+    get hasResumeParam() {
+      return hasResumeParam;
+    },
+    get pendingSubFolderId() {
+      return pendingSubFolderId;
+    },
     consumePendingSubFolderId,
   };
 }

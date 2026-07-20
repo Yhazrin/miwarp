@@ -1,5 +1,11 @@
 <script lang="ts">
-  import { isPrivateUseKeyboardChar, formatCodePoints, hasKeyboardControlChars, mapIndexAfterStrip, stripKeyboardControlChars } from "./prompt/keyboard-utils";
+  import {
+    isPrivateUseKeyboardChar,
+    formatCodePoints,
+    hasKeyboardControlChars,
+    mapIndexAfterStrip,
+    stripKeyboardControlChars,
+  } from "./prompt/keyboard-utils";
   import { goto } from "$app/navigation";
   import { untrack } from "svelte";
   import type {
@@ -2091,8 +2097,6 @@
       {/if}
     </div>
   {/if}
-
-
 
   <!-- Unified input container -->
   <div

@@ -16,11 +16,7 @@
     updateMarketplace,
   } from "$lib/api";
   import PluginCard from "./PluginCard.svelte";
-  import type {
-    MarketplacePlugin,
-    InstalledPlugin,
-    MarketplaceInfo,
-  } from "$lib/types";
+  import type { MarketplacePlugin, InstalledPlugin, MarketplaceInfo } from "$lib/types";
 
   let {
     plugins = [] as MarketplacePlugin[],
@@ -28,16 +24,26 @@
     marketplaces = [] as MarketplaceInfo[],
     projectCwd = "",
     categoryColors = {} as Record<string, string>,
-    componentBadges = [] as { key: keyof MarketplacePlugin["components"]; label: () => string; color: string }[],
+    componentBadges = [] as {
+      key: keyof MarketplacePlugin["components"];
+      label: () => string;
+      color: string;
+    }[],
     onRefresh,
-    confirmAction = $bindable<{ title: string; message: string; onConfirm: () => void } | null>(null),
+    confirmAction = $bindable<{ title: string; message: string; onConfirm: () => void } | null>(
+      null,
+    ),
   }: {
     plugins?: MarketplacePlugin[];
     installedPlugins?: InstalledPlugin[];
     marketplaces?: MarketplaceInfo[];
     projectCwd?: string;
     categoryColors?: Record<string, string>;
-    componentBadges?: { key: keyof MarketplacePlugin["components"]; label: () => string; color: string }[];
+    componentBadges?: {
+      key: keyof MarketplacePlugin["components"];
+      label: () => string;
+      color: string;
+    }[];
     onRefresh: () => Promise<void>;
     confirmAction?: { title: string; message: string; onConfirm: () => void } | null;
   } = $props();
@@ -72,9 +78,13 @@
   }
 
   function resolvePluginCwd(plugin: InstalledPlugin): string | undefined {
-    const scope = (plugin.scope as string) ?? "user";
+    const scope = resolvePluginScope(plugin);
     if (!needsCwd(scope)) return undefined;
     return plugin.projectPath || projectCwd || undefined;
+  }
+
+  function resolvePluginScope(plugin: InstalledPlugin): string {
+    return typeof plugin.scope === "string" && plugin.scope ? plugin.scope : "user";
   }
 
   async function handleInstall(name: string) {
@@ -103,7 +113,7 @@
         operationLoading = plugin.name;
         dbg("plugins", "uninstall", { name: plugin.name });
         try {
-          await uninstallPlugin(plugin.name, resolvePluginCwd(plugin));
+          await uninstallPlugin(plugin.name, resolvePluginScope(plugin), resolvePluginCwd(plugin));
           globalToast(t("plugin_uninstalledPlugin", { name: plugin.name }), "success");
           await onRefresh();
         } catch (e) {
@@ -120,10 +130,10 @@
     dbg("plugins", "toggleEnabled", { name: plugin.name, currently: plugin.enabled });
     try {
       if (plugin.enabled !== false) {
-        await disablePlugin(plugin.name, resolvePluginCwd(plugin));
+        await disablePlugin(plugin.name, resolvePluginScope(plugin), resolvePluginCwd(plugin));
         globalToast(t("plugin_disabledPlugin", { name: plugin.name }), "success");
       } else {
-        await enablePlugin(plugin.name, resolvePluginCwd(plugin));
+        await enablePlugin(plugin.name, resolvePluginScope(plugin), resolvePluginCwd(plugin));
         globalToast(t("plugin_enabledPlugin", { name: plugin.name }), "success");
       }
       await onRefresh();
@@ -138,7 +148,7 @@
     operationLoading = plugin.name;
     dbg("plugins", "update", { name: plugin.name });
     try {
-      await updatePlugin(plugin.name, resolvePluginCwd(plugin));
+      await updatePlugin(plugin.name, resolvePluginScope(plugin), resolvePluginCwd(plugin));
       globalToast(t("plugin_updatedPlugin", { name: plugin.name }), "success");
       await onRefresh();
     } catch (e) {
@@ -230,16 +240,14 @@
   <div class="flex rounded-lg border border-border p-0.5 shrink-0">
     <button
       type="button"
-      class="rounded-md px-2 py-1 text-xs font-medium transition-colors {installScope ===
-      'user'
+      class="rounded-md px-2 py-1 text-xs font-medium transition-colors {installScope === 'user'
         ? 'bg-primary text-primary-foreground'
         : 'text-muted-foreground hover:text-foreground'}"
       onclick={() => (installScope = "user")}>{t("plugin_scopeUser")}</button
     >
     <button
       type="button"
-      class="rounded-md px-2 py-1 text-xs font-medium transition-colors {installScope ===
-      'project'
+      class="rounded-md px-2 py-1 text-xs font-medium transition-colors {installScope === 'project'
         ? 'bg-primary text-primary-foreground'
         : 'text-muted-foreground hover:text-foreground'} {!projectCwd
         ? 'opacity-40 cursor-not-allowed'
@@ -249,8 +257,7 @@
     >
     <button
       type="button"
-      class="rounded-md px-2 py-1 text-xs font-medium transition-colors {installScope ===
-      'local'
+      class="rounded-md px-2 py-1 text-xs font-medium transition-colors {installScope === 'local'
         ? 'bg-primary text-primary-foreground'
         : 'text-muted-foreground hover:text-foreground'} {!projectCwd
         ? 'opacity-40 cursor-not-allowed'
@@ -298,8 +305,7 @@
         stroke="currentColor"
         stroke-width="1.5"
         stroke-linecap="round"
-        stroke-linejoin="round"
-        ><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg
+        stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg
       >
     </div>
     <h2 class="text-sm font-medium text-foreground mb-1">{t("plugin_noPluginsFound")}</h2>
@@ -368,9 +374,16 @@
           version: plugin.version,
           category: "",
           tags: [],
-          components: { skills: [], commands: [], agents: [], hooks: [], mcp_servers: [], lsp_servers: [] },
+          components: {
+            skills: [],
+            commands: [],
+            agents: [],
+            hooks: false,
+            mcp_servers: [],
+            lsp_servers: [],
+          },
           install_count: 0,
-          author: null,
+          author: undefined,
           homepage: "",
         }}
         installedPlugin={plugin}
@@ -415,8 +428,7 @@
           type="button"
           class="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           onclick={() => handleAddMarketplace()}
-          disabled={!newMarketplaceSource.trim() ||
-            operationLoading === "__marketplace_add"}
+          disabled={!newMarketplaceSource.trim() || operationLoading === "__marketplace_add"}
         >
           {operationLoading === "__marketplace_add" ? t("plugin_adding") : t("plugin_add")}
         </button>
@@ -431,16 +443,12 @@
       {:else}
         <div class="space-y-2">
           {#each marketplaces as mp (mp.name)}
-            <div
-              class="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm px-4 py-3"
-            >
+            <div class="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm px-4 py-3">
               <div class="flex items-center justify-between">
                 <div>
                   <span class="text-sm font-medium text-foreground">{mp.name}</span>
                   <div class="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
-                    <span
-                      >{t("plugin_pluginCount", { count: String(mp.plugin_count) })}</span
-                    >
+                    <span>{t("plugin_pluginCount", { count: String(mp.plugin_count) })}</span>
                     {#if mp.last_updated}
                       <span
                         >{t("plugin_updatedTime", {

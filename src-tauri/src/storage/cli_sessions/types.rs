@@ -3,23 +3,15 @@
 //! Reads Claude CLI transcript files (~/.claude/projects/*/*.jsonl) and converts
 //! them into MiWarp run format (~/.miwarp/runs/{run-id}/).
 
-use crate::models::protocol_state::{validate_bus_event, ProtocolState};
-use crate::models::{BusEvent, ImportWatermark, RunMeta, RunSource, RunStatus};
-use crate::storage::events::{is_replayable, EventWriter};
-use crate::storage::shared;
+use crate::models::ImportWatermark;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use std::collections::{HashMap, HashSet};
-use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
+use std::collections::HashMap;
 
 // ── Types ────────────────────────────────────────────────────────────
 
 /// CLI session summary (discovery phase output).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-
 pub struct CliSessionSummary {
     pub session_id: String,
     pub cwd: String,
@@ -67,5 +59,3 @@ pub struct SyncResult {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
-
-/// Encode cwd for Claude CLI directory naming: '/' and '\' → '-'.

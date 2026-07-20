@@ -19,9 +19,8 @@ import type {
   SyncResult,
   RunSearchFilters,
   RunSearchResponse,
-  } from "../types";
-import type {
-  } from "../runtime-control-plane/types";
+} from "../types";
+import type {} from "../runtime-control-plane/types";
 import type {
   TaskCreateInput,
   TaskEvent,
@@ -46,8 +45,6 @@ import type {
   AttentionQueueSnapshot,
   AttentionReconcileReport,
 } from "../types/attention-queue";
-
-
 
 export async function listRuns(): Promise<TaskRun[]> {
   dbg("api", "listRuns");
@@ -694,4 +691,3 @@ export async function cancelRalphLoop(
   dbg("api", "cancelRalphLoop", { runId });
   return invoke<{ iteration: number; immediate: boolean }>(CMD.cancel_ralph_loop, { runId });
 }
-

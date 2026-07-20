@@ -1,42 +1,10 @@
-use crate::models::{now_iso, BusEvent, ModelUsageSummary, RawRunUsage, RunEvent, RunEventType};
+use crate::models::{now_iso, BusEvent};
 use std::collections::HashMap;
-use std::fs::{self, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::fs::OpenOptions;
+use std::io::{BufWriter, Write};
+use std::sync::{Arc, Mutex};
 
-/// Event types the frontend reducer actually handles during replay.
-/// "raw" events (CLI stream data) are 90%+ of the file but the frontend drops them,
-/// so filtering here avoids serializing megabytes of unused data across IPC.
-pub const REPLAY_TYPES: &[&str] = &[
-    "session_init",
-    "message_delta",
-    "thinking_delta",
-    "tool_input_delta",
-    "message_complete",
-    "user_message",
-    "tool_start",
-    "tool_end",
-    "run_state",
-    "usage_update",
-    "permission_denied",
-    "permission_prompt",
-    "compact_boundary",
-    "system_status",
-    "auth_status",
-    "hook_started",
-    "hook_response",
-    "control_cancelled",
-    "task_notification",
-    "tool_progress",
-    "tool_use_summary",
-    "command_output",
-    "files_persisted",
-    "hook_progress",
-    "hook_callback",
-    "elicitation_prompt",
-    "rate_limit_event",
-];
-
-/// Check if a BusEvent's serde tag is in REPLAY_TYPES.
+use super::core::{events_path, is_durable_event, next_seq, sync_events_dir, RunWriter};
 
 pub struct EventWriter {
     inner: Mutex<HashMap<String, Arc<Mutex<RunWriter>>>>,
@@ -68,8 +36,8 @@ impl EventWriter {
             return Ok(existing.clone());
         }
         let start_seq = next_seq(run_id);
-        let dir = super::run_dir(run_id);
-        let _ = super::ensure_dir(&dir);
+        let dir = super::super::run_dir(run_id);
+        let _ = super::super::ensure_dir(&dir);
         let path = events_path(run_id);
         let file = OpenOptions::new()
             .create(true)
@@ -124,7 +92,7 @@ impl EventWriter {
                 .get_ref()
                 .sync_data()
                 .map_err(|e| format!("sync_data events.jsonl failed: {}", e))?;
-            let dir = super::run_dir(run_id);
+            let dir = super::super::run_dir(run_id);
             sync_events_dir(dir.as_path())?;
         }
 
@@ -174,12 +142,9 @@ impl EventWriter {
                 .get_ref()
                 .sync_data()
                 .map_err(|e| format!("sync_data events.jsonl failed: {}", e))?;
-            let dir = super::run_dir(run_id);
+            let dir = super::super::run_dir(run_id);
             sync_events_dir(dir.as_path())?;
         }
         Ok(())
     }
 }
-
-/// Thin wrapper for backward compatibility — delegates to EventWriter.
-/// Returns `Err` if persistence failed.

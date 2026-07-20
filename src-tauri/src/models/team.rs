@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TeamConfig {
     pub name: String,
     #[serde(default)]
@@ -90,6 +91,8 @@ pub struct TeamSummary {
 
 // ── Plugin types ──
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum TeamRunStatus {
     Created,
     Planning,
@@ -187,12 +190,3 @@ pub struct TeamRun {
 fn default_team_mode() -> String {
     "plan_first".to_string()
 }
-
-// ── Project Desk metadata (v1.2.0+) ──
-//
-// Lightweight stat-shape types surfaced to the project desk sidebar:
-// stack fingerprint, available commands, curated docs, git snapshot,
-// user-curated notes. All serializable so the frontend can render directly.
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]

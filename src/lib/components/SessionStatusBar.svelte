@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, untrack } from "svelte";
+  import { Spring } from "svelte/motion";
+  import { browser } from "$app/environment";
   import type { TaskRun, McpServerInfo, CliModelInfo } from "$lib/types";
   import type { TurnUsage } from "$lib/stores/types";
   import { EVT_STATUSBAR_TOGGLE } from "$lib/utils/bus-events";
@@ -28,6 +30,10 @@
     ToastStatusPresentation,
   } from "$lib/chat/send-status-presentation";
   import type { Toast } from "$lib/stores/toast-store.svelte";
+  import {
+    SESSION_ISLAND_SPRING,
+    sessionIslandMotionStyle,
+  } from "$lib/components/session-island-motion";
 
   let {
     run = null,
@@ -474,6 +480,17 @@
   let hoverLeaveTimer: ReturnType<typeof setTimeout> | undefined;
   let tier2Open = $state(false);
   let tier2OpenTimer: ReturnType<typeof setTimeout> | undefined;
+  const reduceIslandMotion =
+    browser && typeof window !== "undefined"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      : false;
+  const islandMotion = new Spring(0, {
+    stiffness: SESSION_ISLAND_SPRING.stiffness,
+    damping: SESSION_ISLAND_SPRING.damping,
+    precision: SESSION_ISLAND_SPRING.precision,
+  });
+  let islandMotionTarget: 0 | 1 = 0;
+  let islandMotionStyle = $derived(sessionIslandMotionStyle(islandMotion.current));
 
   function onShellPointerEnter() {
     clearTimeout(hoverLeaveTimer);
@@ -484,7 +501,7 @@
     clearTimeout(hoverLeaveTimer);
     hoverLeaveTimer = setTimeout(() => {
       islandHover = false;
-    }, 220);
+    }, 180);
   }
 
   /** Bar is "active" while pointer is inside or a shell menu is open. */
@@ -492,7 +509,7 @@
 
   /** One class on the shell — context pill width + tier 2 + outer capsule share this. */
   let islandInteractionClass = $derived(
-    !statusOverlayActive && islandActive ? "session-island-active" : "",
+    !statusOverlayActive && tier2Open ? "session-island-active" : "",
   );
 
   let islandCompactClass = $derived(
@@ -517,12 +534,26 @@
     tier2OpenTimer = setTimeout(() => {
       tier2Open = true;
       tier2OpenTimer = undefined;
-    }, 140);
+    }, 80);
 
     return () => {
       clearTimeout(tier2OpenTimer);
       tier2OpenTimer = undefined;
     };
+  });
+
+  $effect(() => {
+    const target = tier2Open ? 1 : 0;
+    if (target === islandMotionTarget) return;
+    islandMotionTarget = target;
+    untrack(() => {
+      void islandMotion.set(
+        target,
+        reduceIslandMotion
+          ? { instant: true }
+          : { preserveMomentum: SESSION_ISLAND_SPRING.preserveMomentumMs },
+      );
+    });
   });
 
   // Dispatch event when island expansion state changes (for tool panel positioning)
@@ -595,7 +626,7 @@
     clearTimeout(confirmTimer);
     clearTimeout(hoverLeaveTimer);
     clearTimeout(tier2OpenTimer);
-    clearMorphFlash();
+    clearMorphFlash(morph);
   });
 
   // ── End Session confirmation ──
@@ -698,12 +729,15 @@
   Retains .session-status-drag for window drag region functionality.
 -->
 <div
-  class="session-status-drag session-island-shell {islandOverlayShellClass()} {islandInteractionClass} {islandTier2Class} {islandCompactClass} {tier2HasContent
+  class="session-status-drag session-island-shell session-island-physics {statusOverlayActive
+    ? 'session-island-overlay-active'
+    : ''} {islandOverlayShellClass()} {islandInteractionClass} {islandTier2Class} {islandCompactClass} {tier2HasContent
     ? 'session-island-has-tier2'
     : ''} {tier2Open ? 'session-island-expanded' : ''} {alignment === 'right'
     ? 'session-island-align-right'
     : ''}"
   data-session-island-alignment={alignment}
+  style={islandMotionStyle}
   data-tauri-drag-region
   onpointerenter={onShellPointerEnter}
   onpointerleave={onShellPointerLeave}
@@ -1113,9 +1147,9 @@
       intrinsic height lets the grid `0fr` track smoothly from 1fr → 0fr.
     -->
     <div
-      class="tier-2-content flex shrink-0 items-center justify-between overflow-hidden {tier2Open
-        ? 'session-island-tier2-open border-t border-border/20'
-        : 'border-0'} {statusOverlayActive ? 'opacity-0 pointer-events-none' : ''}"
+      class="tier-2-content flex shrink-0 items-center justify-between overflow-hidden border-t {tier2Open
+        ? 'session-island-tier2-open'
+        : ''} {statusOverlayActive ? 'opacity-0 pointer-events-none' : ''}"
     >
       <div class="session-island-tier2">
         {#if run && onRename}

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use super::run::RunMeta;
 
+#[derive(Debug, Clone, Serialize)]
 pub struct CliCheckResult {
     pub agent: String,
     pub found: bool,
@@ -106,7 +106,3 @@ pub struct SystemDiagnostics {
     pub sandbox_available: Option<bool>,
     pub lock_files: Vec<String>,
 }
-
-/// Raw usage data extracted from a run's events.jsonl (no RunMeta fields).
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]

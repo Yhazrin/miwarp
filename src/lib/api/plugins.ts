@@ -19,17 +19,11 @@ import type {
   McpRegistrySearchResult,
   ProviderHealth,
   AgentDefinitionSummary,
-  } from "../types";
-import type {
-  } from "../runtime-control-plane/types";
-import type {
-  } from "../types/task";
-import type {
-  } from "../types/run-journal";
-import type {
-  } from "../types/attention-queue";
-
-
+} from "../types";
+import type {} from "../runtime-control-plane/types";
+import type {} from "../types/task";
+import type {} from "../types/run-journal";
+import type {} from "../types/attention-queue";
 
 export async function listMarketplaces(): Promise<MarketplaceInfo[]> {
   dbg("api", "listMarketplaces");
@@ -314,4 +308,3 @@ export async function deleteAgentFile(
     cwd: cwd ?? null,
   });
 }
-

@@ -66,13 +66,27 @@ export function createFolderPicker(
   }
 
   return {
-    get folderPickerOpen() { return folderPickerOpen; },
-    set folderPickerOpen(v: boolean) { folderPickerOpen = v; },
-    get folderPickerInitialHost() { return folderPickerInitialHost; },
-    get folderPickerInitialPath() { return folderPickerInitialPath; },
-    get folderPickerHideTarget() { return folderPickerHideTarget; },
-    get folderPickerResolve() { return folderPickerResolve; },
-    set folderPickerResolve(v: typeof folderPickerResolve) { folderPickerResolve = v; },
+    get folderPickerOpen() {
+      return folderPickerOpen;
+    },
+    set folderPickerOpen(v: boolean) {
+      folderPickerOpen = v;
+    },
+    get folderPickerInitialHost() {
+      return folderPickerInitialHost;
+    },
+    get folderPickerInitialPath() {
+      return folderPickerInitialPath;
+    },
+    get folderPickerHideTarget() {
+      return folderPickerHideTarget;
+    },
+    get folderPickerResolve() {
+      return folderPickerResolve;
+    },
+    set folderPickerResolve(v: typeof folderPickerResolve) {
+      folderPickerResolve = v;
+    },
     openFolderPicker,
     addWorkspaceFromPicker,
   };

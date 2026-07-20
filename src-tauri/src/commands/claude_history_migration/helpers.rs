@@ -3,33 +3,16 @@
 //! Exports Claude Code history sessions from `~/.claude/projects/**/*.jsonl` as a portable
 //! zip archive, and imports such archives into MiWarp without writing back to `~/.claude/projects/`.
 
-use crate::models::protocol_state::{validate_bus_event, ProtocolState};
-use crate::models::{
-    BusEvent, ConversationRef, ExecutionPath, ImportWatermark, RunMeta, RunSource, RunStatus,
-};
-use crate::storage::cli_sessions::normalize_transcript_line;
-use crate::storage::events::{is_replayable, EventWriter};
 use crate::storage::shared;
-use crate::storage::{ensure_dir, run_dir, runs_dir};
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Read, Write};
+use std::fs::{self, File};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use tauri::{AppHandle, Emitter};
 use zip::write::SimpleFileOptions;
-use zip::{ZipArchive, ZipWriter};
+use zip::ZipWriter;
 
-const ARCHIVE_VERSION: &str = "1.0";
-const MANIFEST_NAME: &str = "manifest.json";
+use super::types::ManifestSession;
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-
-pub(super) fn collect_jsonl_recursive(dir: &Path) -> std::io::Result<Vec<(PathBuf, u64)>> {
+pub(crate) fn collect_jsonl_recursive(dir: &Path) -> std::io::Result<Vec<(PathBuf, u64)>> {
     let mut results = Vec::new();
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
@@ -47,7 +30,7 @@ pub(super) fn collect_jsonl_recursive(dir: &Path) -> std::io::Result<Vec<(PathBu
     Ok(results)
 }
 
-fn should_exclude_path(rel_path: &str) -> bool {
+pub(super) fn should_exclude_path(rel_path: &str) -> bool {
     // Exclude ~/.claude.json and settings files
     rel_path.contains(".claude.json")
         || rel_path.contains("/settings.json")
@@ -58,7 +41,7 @@ fn should_exclude_path(rel_path: &str) -> bool {
         || rel_path.contains("/.claude/")
 }
 
-fn export_single_session(
+pub(super) fn export_single_session(
     zip: &mut ZipWriter<File>,
     options: SimpleFileOptions,
     jsonl_path: &Path,
@@ -161,7 +144,3 @@ fn export_single_session(
         written,
     ))
 }
-
-// ── Import ────────────────────────────────────────────────────────────────────
-
-#[tauri::command]

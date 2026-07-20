@@ -4,29 +4,21 @@
 //! Owns the lifecycle of a `SessionActor`: acquire `SpawnLocks` → resolve auth & remote
 //! → spawn process → insert handle → send initial message.
 
-use crate::agent::adapter::{self, AdapterSettings};
+use crate::agent::adapter;
 use crate::agent::attachment::AttachmentData;
-use crate::agent::claude_stream;
 use crate::agent::session_actor::{self, ActorCommand};
 use crate::agent::spawn_locks::SpawnLocks;
 use crate::governor::{Admission, ResourceGovernor};
-use crate::models::{AgentRuntimeKind, BusEvent, RunMeta, RunStatus, SessionMode};
+use crate::models::{AgentRuntimeKind, BusEvent, RunStatus, SessionMode};
 use crate::storage;
 use crate::web_server::broadcaster::BroadcastEmitter;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
-/// Default timeout for actor replies (permission, elicitation, hook callback, etc.)
-pub(crate) const ACTOR_REPLY_TIMEOUT_MS: u64 = 30_000;
-/// Timeout for `send_message` actor replies (may need to wait for turn dispatch)
-pub(crate) const ACTOR_SEND_TIMEOUT_MS: u64 = 45_000;
-/// Timeout for `WaitReady` after actor spawn
-pub(crate) const ACTOR_READY_TIMEOUT_MS: u64 = 5_000;
+use super::fork::apply_project_desk_context;
+use super::reply::{await_actor_reply, stop_actor, ACTOR_SEND_TIMEOUT_MS};
 
-/// Await an actor oneshot reply with a timeout.
-/// Returns the inner `Result<T, String>` or a timeout/drop error.
-
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn start_session_impl(
     emitter: &Arc<BroadcastEmitter>,
     sessions: &crate::agent::adapter::ActorSessionMap,
@@ -171,14 +163,14 @@ pub(crate) async fn start_session_impl(
     }
 
     // 2b. Resolve remote host from RunMeta (audit #2: single truth source)
-    let remote = super::remote_context::resolve_remote_host(&meta)?;
-    let effective_pid = super::platform_routing::effective_platform_id(
+    let remote = super::super::remote_context::resolve_remote_host(&meta)?;
+    let effective_pid = super::super::platform_routing::effective_platform_id(
         &user_settings.auth_mode,
         platform_id.as_deref(),
         meta.platform_id.as_deref(),
         user_settings.active_platform_id.as_deref(),
     );
-    let resolved = super::auth_resolution::resolve_auth_env_for_platform(
+    let resolved = super::super::auth_resolution::resolve_auth_env_for_platform(
         &remote,
         &user_settings,
         effective_pid.as_deref(),
@@ -189,7 +181,7 @@ pub(crate) async fn start_session_impl(
         &agent_settings.model,
         &resolved.models,
     );
-    let resolved = super::auth_resolution::augment_with_shell_auth(
+    let resolved = super::super::auth_resolution::augment_with_shell_auth(
         resolved,
         &user_settings.auth_mode,
         remote.is_some(),
@@ -234,7 +226,7 @@ pub(crate) async fn start_session_impl(
     // Preflight: check base_url reachability
     // Skip for SSH remote — reachability depends on remote host's network
     if remote.is_none() {
-        if let Err(e) = super::process_spawn::preflight_check_base_url(
+        if let Err(e) = super::super::process_spawn::preflight_check_base_url(
             resolved.base_url.as_deref(),
             effective_pid.as_deref(),
         )
@@ -280,7 +272,7 @@ pub(crate) async fn start_session_impl(
     let (child, stdin, stdout, stderr) = match &runtime_kind {
         AgentRuntimeKind::MiMoCode => {
             // MiMoCode: spawn via mimo run --format json
-            super::process_spawn::spawn_mimo_process(
+            super::super::process_spawn::spawn_mimo_process(
                 effective_cwd,
                 &meta.prompt,
                 &adapter_settings,
@@ -291,7 +283,7 @@ pub(crate) async fn start_session_impl(
             .await?
         }
         AgentRuntimeKind::Cursor => {
-            super::process_spawn::spawn_cursor_process(
+            super::super::process_spawn::spawn_cursor_process(
                 effective_cwd,
                 &adapter_settings,
                 &session_mode,
@@ -302,7 +294,7 @@ pub(crate) async fn start_session_impl(
         }
         _ => {
             // ClaudeCode (default): existing spawn logic
-            super::process_spawn::spawn_cli_process(
+            super::super::process_spawn::spawn_cli_process(
                 effective_cwd,
                 &meta.prompt,
                 &adapter_settings,
@@ -376,7 +368,7 @@ pub(crate) async fn start_session_impl(
     };
     sessions.lock().await.insert(run_id.clone(), actor_handle);
 
-    super::recovery_commands::spawn_recovery_watcher(
+    super::super::recovery_commands::spawn_recovery_watcher(
         run_id.clone(),
         shutdown_rx,
         recovery_registry.clone(),
@@ -442,4 +434,3 @@ pub(crate) async fn start_session_impl(
     log::debug!("[session] actor spawned successfully for run_id={}", run_id);
     Ok(())
 }
-

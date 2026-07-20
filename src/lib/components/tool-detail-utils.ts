@@ -68,9 +68,7 @@ export interface WebFetchResultMeta {
 
 export interface WebSearchResultMeta {
   query: string;
-  results: Array<
-    { tool_use_id: string; content: Array<{ title: string; url: string }> } | string
-  >;
+  results: Array<{ tool_use_id: string; content: Array<{ title: string; url: string }> } | string>;
   durationSeconds: number;
 }
 

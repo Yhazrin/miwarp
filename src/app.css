@@ -2141,8 +2141,11 @@ textarea,
 .session-island-expanded {
   border-radius: 22px;
   background-color: hsl(var(--background) / 0.75);
-  backdrop-filter: blur(32px) saturate(180%);
-  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  /* Keep the same optical material while the geometry moves. Jumping from
+     10px to 32px blur caused a full WebView repaint exactly when the second
+     row opened, which read as a one-frame capsule mutation. */
+  backdrop-filter: blur(10px) saturate(125%);
+  -webkit-backdrop-filter: blur(10px) saturate(125%);
   box-shadow:
     0 12px 48px rgba(0, 0, 0, 0.18),
     0 0 0 1px rgba(255, 255, 255, 0.12),
@@ -2258,6 +2261,74 @@ textarea,
   transform-origin: left center;
 }
 
+/* ── Interruptible physical morph ──────────────────────────────────────
+   A single Svelte Spring writes every custom property below. Geometry,
+   content reveal and corner shape therefore share position and velocity;
+   reversing a hover mid-flight retargets the existing motion instead of
+   starting a second CSS transition from a mismatched class state. */
+.session-island-shell.session-island-physics.session-island-has-tier2:not(
+    .session-island-overlay-active
+  ) {
+  grid-template-rows: auto minmax(0, var(--session-island-motion-track));
+  width: min(var(--session-island-motion-shell-width), calc(100% - 24px));
+  --session-island-tier1-max-width: var(--session-island-motion-shell-width);
+  --session-island-tier2-max-width: var(--session-island-motion-tier2-width);
+  --context-pill-slot-width: var(--session-island-motion-context-width);
+  border-radius: var(--session-island-motion-radius);
+  transition:
+    background-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.session-island-shell.session-island-physics.session-island-has-tier2 .session-island-tier1-frame {
+  width: min(var(--session-island-motion-shell-width), 100%);
+  max-width: 100%;
+  transition: none;
+}
+
+.session-island-shell.session-island-physics.session-island-has-tier2 .session-island-tier1 {
+  column-gap: var(--session-island-motion-gap);
+  transition: none;
+}
+
+.session-island-shell.session-island-physics.session-island-has-tier2 .session-island-reveal-group {
+  gap: var(--session-island-motion-gap);
+  transition: none;
+}
+
+.session-island-shell.session-island-physics.session-island-has-tier2 .session-island-reveal {
+  width: var(--session-island-motion-reveal-width);
+  height: 28px;
+  opacity: var(--session-island-motion-progress);
+  transform: scale(var(--session-island-motion-progress));
+  transition:
+    color 120ms ease-out,
+    background-color 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+
+.session-island-shell.session-island-physics.session-island-has-tier2 .tier-2-content {
+  max-width: min(var(--session-island-motion-tier2-width), 100%);
+  border-top-width: 1px !important;
+  border-color: hsl(var(--border) / var(--session-island-motion-border-alpha)) !important;
+  transition: none;
+}
+
+.session-island-shell.session-island-physics.session-island-has-tier2 .session-island-tier2 {
+  opacity: var(--session-island-motion-progress);
+  transform: translate3d(0, var(--session-island-motion-tier2-offset), 0)
+    scale(var(--session-island-motion-tier2-scale));
+  transition: none;
+}
+
+.session-island-shell.session-island-physics.session-island-has-tier2 .session-context-ctx-label {
+  max-width: var(--session-island-motion-context-label-width);
+  margin-left: var(--session-island-motion-context-label-margin);
+  opacity: var(--session-island-motion-progress);
+  transform: scaleX(var(--session-island-motion-progress));
+  transition: none;
+}
+
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -2271,6 +2342,11 @@ textarea,
   .session-island-reveal,
   .session-context-ctx-label {
     transition-duration: 180ms;
+  }
+
+  .session-island-shell.session-island-physics.session-island-has-tier2,
+  .session-island-shell.session-island-physics.session-island-has-tier2 * {
+    transition: none !important;
   }
 }
 

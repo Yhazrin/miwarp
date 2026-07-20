@@ -6,20 +6,10 @@
  *
  * @module bus-event-dispatch
  */
-import type {
-  BusEvent,
-  HookEvent,
-  TimelineEntry,
-  RunStatus,
-  TaskRun,
-} from "$lib/types";
+import type { BusEvent, HookEvent, TimelineEntry, RunStatus, TaskRun } from "$lib/types";
 import { dbg } from "$lib/utils/debug";
 import { yieldToMain } from "$lib/utils/yield";
-import {
-  type SessionPhase,
-  type UsageState,
-  type TurnUsage,
-} from "../types";
+import { type SessionPhase, type UsageState, type TurnUsage } from "../types";
 import type { ReduceCtx } from "../reducers/types";
 import { beginHistorySoundMute, endHistorySoundMute } from "$lib/services/sound-feedback-service";
 import { finalizeSnapshotCtxTools, finalizeTimelineForDeadSession } from "./snapshot-manager";
@@ -68,10 +58,7 @@ export interface BusEventDispatchAPI {
 
 // ── applyEvent ──
 
-export function applyEventImpl(
-  store: BusEventDispatchAPI,
-  ev: BusEvent,
-): void {
+export function applyEventImpl(store: BusEventDispatchAPI, ev: BusEvent): void {
   // `attention_changed` and `runtime_health_changed` are global snapshot signals
   if (ev.type === "attention_changed" || ev.type === "runtime_health_changed") {
     return;
@@ -105,9 +92,7 @@ export function applyEventImpl(
 
 // ── _createReduceCtx ──
 
-export function createReduceCtxImpl(
-  store: BusEventDispatchAPI,
-): ReduceCtx {
+export function createReduceCtxImpl(store: BusEventDispatchAPI): ReduceCtx {
   const batchTlIndex = new Map<string, number>();
   for (let i = 0; i < store.timeline.length; i++) {
     const e = store.timeline[i];

@@ -14,7 +14,15 @@ export interface ScrollState {
   restoringScroll: boolean;
 }
 
-export function createScrollState(getStore: () => { timeline: { length: number }; streamingText: string; run: { id: string } | null; hasPendingPermission: boolean }, _getChatAreaRef: () => HTMLDivElement | undefined) {
+export function createScrollState(
+  getStore: () => {
+    timeline: { length: number };
+    streamingText: string;
+    run: { id: string } | null;
+    hasPendingPermission: boolean;
+  },
+  _getChatAreaRef: () => HTMLDivElement | undefined,
+) {
   let isChatAutoScroll = $state(true);
   let readingHistory = $state(false);
   let showChatScrollHint = $state(false);
@@ -57,25 +65,63 @@ export function createScrollState(getStore: () => { timeline: { length: number }
   }
 
   return {
-    get isChatAutoScroll() { return isChatAutoScroll; },
-    set isChatAutoScroll(v: boolean) { isChatAutoScroll = v; },
-    get readingHistory() { return readingHistory; },
-    set readingHistory(v: boolean) { readingHistory = v; },
-    get showChatScrollHint() { return showChatScrollHint; },
-    set showChatScrollHint(v: boolean) { showChatScrollHint = v; },
-    get showScrollButton() { return showScrollButton; },
-    get scrollToInFlight() { return scrollToInFlight; },
-    set scrollToInFlight(v: boolean) { scrollToInFlight = v; },
-    get restoringScroll() { return restoringScroll; },
-    set restoringScroll(v: boolean) { restoringScroll = v; },
-    get prevTl() { return prevTl; },
-    set prevTl(v: number) { prevTl = v; },
-    get prevSt() { return prevSt; },
-    set prevSt(v: number) { prevSt = v; },
-    get prevPermissionRunId() { return prevPermissionRunId; },
-    set prevPermissionRunId(v: string) { prevPermissionRunId = v; },
-    get prevHadPermission() { return prevHadPermission; },
-    set prevHadPermission(v: boolean) { prevHadPermission = v; },
+    get isChatAutoScroll() {
+      return isChatAutoScroll;
+    },
+    set isChatAutoScroll(v: boolean) {
+      isChatAutoScroll = v;
+    },
+    get readingHistory() {
+      return readingHistory;
+    },
+    set readingHistory(v: boolean) {
+      readingHistory = v;
+    },
+    get showChatScrollHint() {
+      return showChatScrollHint;
+    },
+    set showChatScrollHint(v: boolean) {
+      showChatScrollHint = v;
+    },
+    get showScrollButton() {
+      return showScrollButton;
+    },
+    get scrollToInFlight() {
+      return scrollToInFlight;
+    },
+    set scrollToInFlight(v: boolean) {
+      scrollToInFlight = v;
+    },
+    get restoringScroll() {
+      return restoringScroll;
+    },
+    set restoringScroll(v: boolean) {
+      restoringScroll = v;
+    },
+    get prevTl() {
+      return prevTl;
+    },
+    set prevTl(v: number) {
+      prevTl = v;
+    },
+    get prevSt() {
+      return prevSt;
+    },
+    set prevSt(v: number) {
+      prevSt = v;
+    },
+    get prevPermissionRunId() {
+      return prevPermissionRunId;
+    },
+    set prevPermissionRunId(v: string) {
+      prevPermissionRunId = v;
+    },
+    get prevHadPermission() {
+      return prevHadPermission;
+    },
+    set prevHadPermission(v: boolean) {
+      prevHadPermission = v;
+    },
     resetScrollFlags,
     setScrollToInFlight,
     setRestoringScroll,

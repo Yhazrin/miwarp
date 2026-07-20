@@ -5,28 +5,17 @@
 //! → spawn process → insert handle → send initial message.
 
 use crate::agent::adapter::{self, AdapterSettings};
-use crate::agent::attachment::AttachmentData;
 use crate::agent::claude_stream;
-use crate::agent::session_actor::{self, ActorCommand};
 use crate::agent::spawn_locks::SpawnLocks;
-use crate::governor::{Admission, ResourceGovernor};
-use crate::models::{AgentRuntimeKind, BusEvent, RunMeta, RunStatus, SessionMode};
+use crate::models::{BusEvent, RunMeta, RunStatus};
 use crate::storage;
 use crate::web_server::broadcaster::BroadcastEmitter;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio_util::sync::CancellationToken;
 
-/// Default timeout for actor replies (permission, elicitation, hook callback, etc.)
-pub(crate) const ACTOR_REPLY_TIMEOUT_MS: u64 = 30_000;
-/// Timeout for `send_message` actor replies (may need to wait for turn dispatch)
-pub(crate) const ACTOR_SEND_TIMEOUT_MS: u64 = 45_000;
-/// Timeout for `WaitReady` after actor spawn
-pub(crate) const ACTOR_READY_TIMEOUT_MS: u64 = 5_000;
+use super::reply::stop_actor;
 
 /// Await an actor oneshot reply with a timeout.
 /// Returns the inner `Result<T, String>` or a timeout/drop error.
-
 pub(crate) async fn fork_session_impl(
     emitter: &Arc<BroadcastEmitter>,
     sessions: &crate::agent::adapter::ActorSessionMap,
@@ -94,14 +83,14 @@ pub(crate) async fn fork_session_impl(
     let agent_settings = storage::settings::get_agent_settings(&source.agent);
     let user_settings = storage::settings::get_user_settings();
     let mut adapter = adapter::build_adapter_settings(&agent_settings, &user_settings, None);
-    let remote = super::remote_context::resolve_remote_host(&source)?;
-    let effective_pid = super::platform_routing::effective_platform_id(
+    let remote = super::super::remote_context::resolve_remote_host(&source)?;
+    let effective_pid = super::super::platform_routing::effective_platform_id(
         &user_settings.auth_mode,
         None,
         source.platform_id.as_deref(),
         user_settings.active_platform_id.as_deref(),
     );
-    let resolved = super::auth_resolution::resolve_auth_env_for_platform(
+    let resolved = super::super::auth_resolution::resolve_auth_env_for_platform(
         &remote,
         &user_settings,
         effective_pid.as_deref(),
@@ -112,7 +101,7 @@ pub(crate) async fn fork_session_impl(
         &agent_settings.model,
         &resolved.models,
     );
-    let resolved = super::auth_resolution::augment_with_shell_auth(
+    let resolved = super::super::auth_resolution::augment_with_shell_auth(
         resolved,
         &user_settings.auth_mode,
         remote.is_some(),
@@ -388,7 +377,3 @@ pub(crate) fn apply_project_desk_context(settings: &mut AdapterSettings, meta: &
 // adapter), and `apply_to_command` (the argv builder). Re-exports of
 // the canonical function are kept here so existing call sites in this
 // file continue to compile.
-
-// ── Tests ──
-
-#[cfg(test)]

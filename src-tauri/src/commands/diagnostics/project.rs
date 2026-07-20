@@ -1,15 +1,4 @@
-use crate::agent::claude_stream::augmented_path;
-use crate::agent::cli_update::CliInstallMethod;
-use crate::agent::ssh::{expand_local_tilde, shell_escape};
-use crate::models::{
-    ApiTestResult, AuthDiagnostics, ClaudeMdInfo, CliCheckResult, CliDiagnostics, CliDistTags,
-    ConfigDiagnostics, ConfigIssue, DiagnosticsReport, LocalProxyStatus, ProjectDiagnostics,
-    ProjectInitStatus, RemoteTestResult, ServicesDiagnostics, SshKeyInfo, SystemDiagnostics,
-    UpdateCliResult,
-};
-use crate::process_ext::HideConsole;
-use std::path::Path;
-use std::process::Command;
+use crate::models::ProjectInitStatus;
 
 /// One-click update for Claude Code. Claude Code ships via two channels that
 /// don't share a single update path:
@@ -54,10 +43,8 @@ pub fn check_project_init(cwd: String) -> Result<ProjectInitStatus, String> {
 
 // ── run_diagnostics: comprehensive system check ──
 
-const ENV_VAR_LIMITS: &[(&str, u64, u64)] = &[
+pub(super) const ENV_VAR_LIMITS: &[(&str, u64, u64)] = &[
     ("BASH_MAX_OUTPUT_LENGTH", 1, 1_000_000),
     ("TASK_MAX_OUTPUT_LENGTH", 1, 1_000_000),
     ("CLAUDE_CODE_MAX_OUTPUT_TOKENS", 1, 128_000),
 ];
-
-#[tauri::command]

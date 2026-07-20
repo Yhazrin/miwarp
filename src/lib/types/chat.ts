@@ -7,12 +7,10 @@ export interface DirEntry {
   size: number;
 }
 
-
 export interface DirListing {
   path: string;
   entries: DirEntry[];
 }
-
 
 export interface ChatMessage {
   id: string;
@@ -21,12 +19,9 @@ export interface ChatMessage {
   timestamp: string;
 }
 
-
 export interface Attachment {
   name: string;
   type: string;
   size: number;
   contentBase64: string;
 }
-
-

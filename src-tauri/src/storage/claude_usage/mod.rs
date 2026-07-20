@@ -1,8 +1,8 @@
-pub mod usage;
-pub mod helpers;
+mod helpers;
+mod usage;
 
-pub use usage::read_global_usage;
 pub use helpers::clear_cache;
+pub use usage::read_global_usage;
 
 #[cfg(test)]
 mod tests;

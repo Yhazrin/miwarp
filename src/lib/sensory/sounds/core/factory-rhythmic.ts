@@ -17,10 +17,7 @@ import { applyDecayToBuffer } from "./instruments";
  * (used by navigation.tab).
  * Reference: playConcept("whoosh") — sine-envelope noise, bandpass sweep.
  */
-export function createBurstSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig,
-): SoundSynthesizer {
+export function createBurstSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
@@ -93,10 +90,7 @@ export function createBurstSound(
 /**
  * Create a pulse sound (repeating pattern)
  */
-export function createPulseSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig,
-): SoundSynthesizer {
+export function createPulseSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
@@ -165,10 +159,7 @@ export function createPulseSound(
 /**
  * Create a wobble sound (LFO modulated)
  */
-export function createWobbleSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig,
-): SoundSynthesizer {
+export function createWobbleSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;

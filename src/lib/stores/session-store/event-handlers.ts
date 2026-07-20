@@ -11,13 +11,7 @@
  *
  * @module event-handlers
  */
-import type {
-  BusEvent,
-  BusToolItem,
-  HookEvent,
-  TimelineEntry,
-  CliCommand,
-} from "$lib/types";
+import type { BusEvent, BusToolItem, HookEvent, TimelineEntry, CliCommand } from "$lib/types";
 import type { SessionPhase } from "../types";
 import type { ReduceCtx } from "../reducers/types";
 import type { SessionStoreReducers } from "../reducers/types";
@@ -62,29 +56,16 @@ export interface ReduceStore extends SessionStoreReducers {
   _clearStreamingState(ctx: ReduceCtx | null): void;
   thinkingStartMs: number;
   thinkingEndMs: number;
-  _patchAssistantContentIfEmpty(
-    ctx: ReduceCtx | null,
-    messageId: string,
-    content: string,
-  ): boolean;
+  _patchAssistantContentIfEmpty(ctx: ReduceCtx | null, messageId: string, content: string): boolean;
   _appendSubTimelineStreamingDelta(
     parentToolUseId: string,
     field: "content" | "thinkingText",
     text: string,
     ctx: ReduceCtx | null,
   ): void;
-  _extractSubTimelineThinking(
-    parentToolUseId: string,
-    ctx: ReduceCtx | null,
-  ): string | undefined;
-  _removeSubTimelineStreamingEntry(
-    parentToolUseId: string,
-    ctx: ReduceCtx | null,
-  ): void;
-  _extractSubTimelineStreamingContent(
-    parentToolUseId: string,
-    ctx: ReduceCtx | null,
-  ): string;
+  _extractSubTimelineThinking(parentToolUseId: string, ctx: ReduceCtx | null): string | undefined;
+  _removeSubTimelineStreamingEntry(parentToolUseId: string, ctx: ReduceCtx | null): void;
+  _extractSubTimelineStreamingContent(parentToolUseId: string, ctx: ReduceCtx | null): string;
   previousPermissionMode: string;
   pendingPermissionModeOverride: string | null;
   pendingClearContextPlan: string | null;
@@ -126,11 +107,7 @@ function getSeenTool(ctx: ReduceCtx | null, store: ReduceStore): Set<string> {
  * Handle message/streaming events: message_delta, thinking_delta, tool_input_delta,
  * message_complete. Returns true if the event was handled.
  */
-export function reduceMessage(
-  ev: BusEvent,
-  ctx: ReduceCtx | null,
-  store: ReduceStore,
-): boolean {
+export function reduceMessage(ev: BusEvent, ctx: ReduceCtx | null, store: ReduceStore): boolean {
   const tl = getTl(ctx, store);
   const seenMsg = getSeenMsg(ctx, store);
 
@@ -138,12 +115,7 @@ export function reduceMessage(
     case "message_delta": {
       store._clearTimeoutError();
       if (ev.parent_tool_use_id) {
-        store._appendSubTimelineStreamingDelta(
-          ev.parent_tool_use_id,
-          "content",
-          ev.text,
-          ctx,
-        );
+        store._appendSubTimelineStreamingDelta(ev.parent_tool_use_id, "content", ev.text, ctx);
         return true;
       }
       if (store.thinkingStartMs && !store.thinkingEndMs) {
@@ -156,12 +128,7 @@ export function reduceMessage(
     case "thinking_delta": {
       store._clearTimeoutError();
       if (ev.parent_tool_use_id) {
-        store._appendSubTimelineStreamingDelta(
-          ev.parent_tool_use_id,
-          "thinkingText",
-          ev.text,
-          ctx,
-        );
+        store._appendSubTimelineStreamingDelta(ev.parent_tool_use_id, "thinkingText", ev.text, ctx);
         return true;
       }
       if (!store.thinkingStartMs) store.thinkingStartMs = eventTsMs(ev);
@@ -183,10 +150,7 @@ export function reduceMessage(
             ev.parent_tool_use_id,
             ev.tool_use_id,
             (t) => {
-              const accum = accumulateJsonInput(
-                t as Record<string, unknown>,
-                ev.partial_json,
-              );
+              const accum = accumulateJsonInput(t as Record<string, unknown>, ev.partial_json);
               return { ...t, ...accum } as typeof t;
             },
           );
@@ -196,10 +160,7 @@ export function reduceMessage(
       const tIdx = store._findToolIdx(ctx, ev.tool_use_id);
       if (tIdx >= 0) {
         const old = tl[tIdx] as Extract<TimelineEntry, { kind: "tool" }>;
-        const accum = accumulateJsonInput(
-          old.tool as Record<string, unknown>,
-          ev.partial_json,
-        );
+        const accum = accumulateJsonInput(old.tool as Record<string, unknown>, ev.partial_json);
         const updated: TimelineEntry = {
           ...old,
           tool: { ...old.tool, ...accum } as typeof old.tool,
@@ -223,9 +184,7 @@ export function reduceMessage(
         if (!ev.parent_tool_use_id) store._clearStreamingState(ctx);
         return true;
       }
-      const existingAssistant = tl.find(
-        (e) => e.kind === "assistant" && e.id === ev.message_id,
-      );
+      const existingAssistant = tl.find((e) => e.kind === "assistant" && e.id === ev.message_id);
       if (existingAssistant) {
         store._patchAssistantContentIfEmpty(ctx, ev.message_id, finalText);
         if (ev.parent_tool_use_id)
@@ -236,14 +195,8 @@ export function reduceMessage(
       }
       seenMsg.add(ev.message_id);
       if (ev.parent_tool_use_id) {
-        const subThinking = store._extractSubTimelineThinking(
-          ev.parent_tool_use_id,
-          ctx,
-        );
-        const subStreaming = store._extractSubTimelineStreamingContent(
-          ev.parent_tool_use_id,
-          ctx,
-        );
+        const subThinking = store._extractSubTimelineThinking(ev.parent_tool_use_id, ctx);
+        const subStreaming = store._extractSubTimelineStreamingContent(ev.parent_tool_use_id, ctx);
         const subFinalText = finalText.trim() ? finalText : subStreaming;
         store._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
         const entry: TimelineEntry = {
@@ -385,9 +338,7 @@ export function reduceTool(
               output: ev.output as Record<string, unknown>,
               duration_ms: ev.duration_ms,
               tool_name: ev.tool_name || t.tool_name,
-              tool_use_result: ev.tool_use_result as
-                | Record<string, unknown>
-                | undefined,
+              tool_use_result: ev.tool_use_result as Record<string, unknown> | undefined,
             }),
             ctx,
           )
@@ -405,9 +356,7 @@ export function reduceTool(
             output: ev.output as Record<string, unknown>,
             duration_ms: ev.duration_ms,
             tool_name: ev.tool_name || old.tool.tool_name,
-            tool_use_result: ev.tool_use_result as
-              | Record<string, unknown>
-              | undefined,
+            tool_use_result: ev.tool_use_result as Record<string, unknown> | undefined,
           },
         };
         if (ctx) ctx.tl[tIdx] = updated;
@@ -421,10 +370,7 @@ export function reduceTool(
         if (ev.tool_name === "EnterPlanMode") {
           store.previousPermissionMode = store.permissionMode || "default";
           store.permissionMode = "plan";
-        } else if (
-          ev.tool_name === "ExitPlanMode" &&
-          store.previousPermissionMode
-        ) {
+        } else if (ev.tool_name === "ExitPlanMode" && store.previousPermissionMode) {
           if (store.pendingPermissionModeOverride) {
             store.permissionMode = store.pendingPermissionModeOverride;
             store.pendingPermissionModeOverride = null;
@@ -433,24 +379,16 @@ export function reduceTool(
           }
           store.previousPermissionMode = "";
           if (store.pendingClearContextPlan === "__pending__") {
-            const toolResult = ev.tool_use_result as
-              | Record<string, unknown>
-              | undefined;
+            const toolResult = ev.tool_use_result as Record<string, unknown> | undefined;
             const plan =
-              (ev.output as Record<string, unknown> | undefined)?.plan ||
-              toolResult?.plan;
-            if (plan && typeof plan === "string")
-              store.pendingClearContextPlan = plan;
+              (ev.output as Record<string, unknown> | undefined)?.plan || toolResult?.plan;
+            if (plan && typeof plan === "string") store.pendingClearContextPlan = plan;
             else store.pendingClearContextPlan = null;
           }
         }
       }
       if (!isAskUser && !store._isStreamMode(ctx)) {
-        const hIdx = store._findHeIdxByStatus(
-          ctx,
-          ev.tool_use_id,
-          "running",
-        );
+        const hIdx = store._findHeIdxByStatus(ctx, ev.tool_use_id, "running");
         if (hIdx >= 0) {
           const updatedHe: HookEvent = {
             ...he[hIdx],
@@ -577,8 +515,7 @@ export function reduceDefault(
       if (!replayOnly) dispatchLiveBusSound(ev);
       if (!replayOnly) {
         if (ev.state === "running" || ev.state === "spawning") {
-          const newPhase: SessionPhase =
-            ev.state === "spawning" ? "spawning" : "running";
+          const newPhase: SessionPhase = ev.state === "spawning" ? "spawning" : "running";
           if (ctx) ctx.phase = newPhase;
           else store._setPhase(newPhase);
           if (!ctx && store.run) {
@@ -602,24 +539,15 @@ export function reduceDefault(
                   if (store.run?.id === snapId) store.run = r;
                   import("$lib/services/notification-listener")
                     .then((m) => m.cacheRun(r))
-                    .catch((e) =>
-                      dbgWarn("store", "cacheRun after terminal failed:", e),
-                    );
+                    .catch((e) => dbgWarn("store", "cacheRun after terminal failed:", e));
                 })
-                .catch((e) =>
-                  dbgWarn(
-                    "store",
-                    "getRun after terminal state failed:",
-                    e,
-                  ),
-                );
+                .catch((e) => dbgWarn("store", "getRun after terminal state failed:", e));
             }
           }
         }
         if (ev.state === "running" || ev.state === "idle") {
           if (ctx) ctx.runStatus = ev.state;
-          else if (store.run)
-            store.run = { ...store.run, status: ev.state };
+          else if (store.run) store.run = { ...store.run, status: ev.state };
         }
       }
       if (!replayOnly && ev.error && ev.state !== "stopped" && !store._stopping) {
@@ -633,18 +561,14 @@ export function reduceDefault(
             (t.status === "running" && !!t.permission_request_id),
           ctx,
         );
-        store._materializeOrphanStreamingOnIdle(ctx, ev, replayOnly, () =>
-          getTl(ctx, store),
-        );
+        store._materializeOrphanStreamingOnIdle(ctx, ev, replayOnly, () => getTl(ctx, store));
         if (!replayOnly) {
           store._clearStreamingState(ctx);
           store._needsIdleHealthCheck = true;
         }
         dbg("store", "run_state idle", {
           runId: ev.run_id,
-          streamingTextLen: ctx
-            ? ctx.streamText.length
-            : store.streamingText.length,
+          streamingTextLen: ctx ? ctx.streamText.length : store.streamingText.length,
           timelineLen: getTl(ctx, store).length,
         });
         if (!ctx && !replayOnly && store.run) {
@@ -724,9 +648,7 @@ export function reduceDefault(
             ...old.tool,
             status: "permission_prompt",
             permission_request_id: ev.request_id,
-            ...(ev.suggestions && ev.suggestions.length > 0
-              ? { suggestions: ev.suggestions }
-              : {}),
+            ...(ev.suggestions && ev.suggestions.length > 0 ? { suggestions: ev.suggestions } : {}),
           },
         };
         if (ctx) {
@@ -748,9 +670,7 @@ export function reduceDefault(
             ...t,
             status: "permission_prompt" as const,
             permission_request_id: ev.request_id,
-            ...(ev.suggestions && ev.suggestions.length > 0
-              ? { suggestions: ev.suggestions }
-              : {}),
+            ...(ev.suggestions && ev.suggestions.length > 0 ? { suggestions: ev.suggestions } : {}),
           }),
           ctx,
         );
@@ -788,12 +708,8 @@ export function reduceDefault(
     }
 
     case "raw": {
-      const rawText =
-        typeof ev.data === "string" ? ev.data : JSON.stringify(ev.data);
-      if (
-        rawText &&
-        (ev.source === "claude_stdout_text" || ev.source === "claude_stderr")
-      ) {
+      const rawText = typeof ev.data === "string" ? ev.data : JSON.stringify(ev.data);
+      if (rawText && (ev.source === "claude_stdout_text" || ev.source === "claude_stderr")) {
         const rawId = uuid();
         const entry: TimelineEntry = {
           kind: "assistant",
@@ -807,9 +723,7 @@ export function reduceDefault(
         store.rawFallbackCount++;
         dbgWarn("store", "raw fallback event:", ev.source, rawText?.slice(0, 100));
         if (store.strictMode) {
-          throw new Error(
-            `[STRICT] raw fallback event: source=${ev.source}`,
-          );
+          throw new Error(`[STRICT] raw fallback event: source=${ev.source}`);
         }
       }
       return true;
@@ -856,8 +770,6 @@ export function runReduce(
   store.unknownEventCount++;
   dbgWarn("store", "unknown bus event type:", (ev as Record<string, unknown>).type);
   if (store.strictMode) {
-    throw new Error(
-      `[STRICT] unknown event type: ${(ev as Record<string, unknown>).type}`,
-    );
+    throw new Error(`[STRICT] unknown event type: ${(ev as Record<string, unknown>).type}`);
   }
 }

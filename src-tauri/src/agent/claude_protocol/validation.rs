@@ -6,8 +6,10 @@
 //!
 //! Also supports MiMo-Code JSON protocol via runtime_kind dispatch.
 
-use crate::models::BusEvent;
+#[cfg(test)]
 use crate::models::protocol_state::validate_bus_event;
+#[cfg(test)]
+use crate::models::BusEvent;
 
 /// Strict wrapper — panics if validate returns Some. Only exists in test binary.
 #[cfg(test)]

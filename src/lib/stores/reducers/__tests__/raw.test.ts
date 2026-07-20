@@ -61,6 +61,28 @@ describe("reduceRaw", () => {
     expect(store.rawFallbackCount).toBe(1);
   });
 
+  it.each(["claude_system_thinking_tokens", "claude_message_delta"])(
+    "silently consumes legacy telemetry source %s",
+    (source) => {
+      const store = {
+        _pushTimeline: vi.fn(),
+        rawFallbackCount: 0,
+        strictMode: true,
+      };
+
+      expect(() =>
+        reduceRaw(
+          { type: "raw", run_id: "r", _seq: 1, source, data: { type: "telemetry" } } as never,
+          null,
+          store as never,
+          false,
+        ),
+      ).not.toThrow();
+      expect(store._pushTimeline).not.toHaveBeenCalled();
+      expect(store.rawFallbackCount).toBe(0);
+    },
+  );
+
   it("throws in strictMode on fallback", () => {
     const store = {
       _pushTimeline: vi.fn(),

@@ -69,7 +69,9 @@
   let lang = $derived(getLanguageFromPath(filePath));
   let isPlanFile = $derived(isPlanFilePath(filePath));
 
-  let fileResult = $derived(tool.tool_use_result?.file as import("./tool-detail-utils").FileResultMeta | undefined);
+  let fileResult = $derived(
+    tool.tool_use_result?.file as import("./tool-detail-utils").FileResultMeta | undefined,
+  );
   let readContent = $derived(fileResult?.content ?? outputText);
   let readStartLine = $derived(fileResult?.startLine ?? 1);
   let readLineInfo = $derived(
@@ -80,9 +82,13 @@
 
   let bashResult = $derived(extractBashResult(tool));
   let editResult = $derived(extractEditResult(tool));
-  let editHasPatches = $derived(editResult?.structuredPatch != null && editResult.structuredPatch.length > 0);
+  let editHasPatches = $derived(
+    editResult?.structuredPatch != null && editResult.structuredPatch.length > 0,
+  );
   let writeResult = $derived(extractWriteResult(tool));
-  let writeHasPatches = $derived(writeResult?.structuredPatch != null && writeResult.structuredPatch.length > 0);
+  let writeHasPatches = $derived(
+    writeResult?.structuredPatch != null && writeResult.structuredPatch.length > 0,
+  );
   let globResult = $derived(extractGlobResult(tool));
   let grepResult = $derived(extractGrepResult(tool));
   let webFetchResult = $derived(extractWebFetchResult(tool));
@@ -191,13 +197,18 @@
 
   // Detect which tool type for routing
   let isDiffTool = $derived(
-    tool.tool_name === "Edit" || tool.tool_name === "edit_file" ||
-    tool.tool_name === "Write" || tool.tool_name === "write_file"
+    tool.tool_name === "Edit" ||
+      tool.tool_name === "edit_file" ||
+      tool.tool_name === "Write" ||
+      tool.tool_name === "write_file",
   );
   let isSearchTool = $derived(
-    tool.tool_name === "Grep" || tool.tool_name === "search_files" ||
-    tool.tool_name === "Glob" || tool.tool_name === "list_directory" ||
-    tool.tool_name === "WebFetch" || tool.tool_name === "WebSearch"
+    tool.tool_name === "Grep" ||
+      tool.tool_name === "search_files" ||
+      tool.tool_name === "Glob" ||
+      tool.tool_name === "list_directory" ||
+      tool.tool_name === "WebFetch" ||
+      tool.tool_name === "WebSearch",
   );
 </script>
 

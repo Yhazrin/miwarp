@@ -26,6 +26,7 @@ use super::remote_context::resolve_remote_host;
 
 /// Spawn a watcher task that, after the actor signals shutdown, checks the recovery
 /// state and re-spawns the actor if the crash is recoverable.
+#[allow(clippy::too_many_arguments)]
 pub fn spawn_recovery_watcher(
     run_id: String,
     shutdown_rx: tokio::sync::oneshot::Receiver<()>,

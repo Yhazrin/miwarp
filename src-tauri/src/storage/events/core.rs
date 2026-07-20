@@ -1,7 +1,6 @@
-use crate::models::{now_iso, BusEvent, ModelUsageSummary, RawRunUsage, RunEvent, RunEventType};
-use std::collections::HashMap;
+use crate::models::{now_iso, BusEvent, RunEvent, RunEventType};
 use std::fs::{self, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 
 /// Event types the frontend reducer actually handles during replay.
 /// "raw" events (CLI stream data) are 90%+ of the file but the frontend drops them,
@@ -37,7 +36,6 @@ pub const REPLAY_TYPES: &[&str] = &[
 ];
 
 /// Check if a BusEvent's serde tag is in REPLAY_TYPES.
-
 pub fn is_replayable(event: &BusEvent) -> bool {
     let Ok(v) = serde_json::to_value(event) else {
         return false;
@@ -49,7 +47,7 @@ pub fn is_replayable(event: &BusEvent) -> bool {
 }
 
 pub fn events_path(run_id: &str) -> std::path::PathBuf {
-    super::run_dir(run_id).join("events.jsonl")
+    super::super::run_dir(run_id).join("events.jsonl")
 }
 
 pub fn next_seq(run_id: &str) -> u64 {
@@ -102,8 +100,8 @@ pub fn append_event(
         run_id,
         event_type
     );
-    let dir = super::run_dir(run_id);
-    super::ensure_dir(&dir).map_err(|e| e.to_string())?;
+    let dir = super::super::run_dir(run_id);
+    super::super::ensure_dir(&dir).map_err(|e| e.to_string())?;
 
     let event = RunEvent {
         id: uuid::Uuid::new_v4().to_string()[..12].to_string(),
@@ -146,13 +144,11 @@ pub fn list_events(run_id: &str, since_seq: u64) -> Vec<RunEvent> {
 
 // ── Bus event persistence ──
 
-use std::sync::{Arc, Mutex};
-
 /// `fsync` the parent directory so the appended entry survives power loss
 /// even when events.jsonl was just created. Mirrors `sync_directory` in
 /// `storage/durable_io.rs` but kept inline so this module has no cross-file
 /// dependency on a private helper.
-fn sync_events_dir(path: &std::path::Path) -> Result<(), String> {
+pub(super) fn sync_events_dir(path: &std::path::Path) -> Result<(), String> {
     #[cfg(unix)]
     {
         std::fs::File::open(path)
@@ -184,17 +180,7 @@ pub fn is_durable_event(event: &BusEvent) -> bool {
 /// Per-run writer state: monotonic seq counter + persistent BufWriter.
 /// Held under a single Mutex per run_id so seq allocation and file write
 /// are atomic without re-opening the file on every event.
-struct RunWriter {
-    next_seq: u64,
-    writer: BufWriter<std::fs::File>,
+pub(super) struct RunWriter {
+    pub(super) next_seq: u64,
+    pub(super) writer: BufWriter<std::fs::File>,
 }
-
-/// Atomic seq allocation + file write under per-run locks.
-/// Each run_id gets its own Mutex so different runs never block each other.
-/// The outer Mutex is only held briefly to get/create the per-run Arc.
-///
-/// Group commit: non-durable events are written to the BufWriter without
-/// fsync — the OS page cache batches them. Durable events (terminal state,
-/// permission gates, user messages) trigger an explicit flush + fsync +
-/// dir-sync before returning. This reduces fsync calls from hundreds/sec
-/// to a handful while preserving the crash-safety contract.

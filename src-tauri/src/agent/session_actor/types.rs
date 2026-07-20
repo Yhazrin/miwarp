@@ -6,38 +6,11 @@
 //! protocol state, and RunState emission — eliminating the cross-system coordination
 //! that previously caused race conditions.
 
-use crate::agent::adapter::ActorSessionMap;
 use crate::agent::attachment::AttachmentData;
-use crate::agent::claude_protocol::{validate_bus_event, ProtocolState};
-use crate::agent::notify::notify_if_background;
-use crate::agent::recovery::{CrashReason, RecoveryState};
-use crate::agent::runtime_recovery::{
-    classify_active_turn_eof, emit_session_lifecycle, on_actor_exit, ActorRecoveryBootstrap,
-    ActorRecoverySnapshot, PendingRecoveryMessage, RecoveryRegistry,
-};
-use crate::agent::turn_engine::{
-    apply_activity_reset, ActiveTurn, TurnOrigin, TurnPhase, UserTurnKind, UserTurnTicket,
-    ACCEPTED_CLIENT_MESSAGE_IDS_CAP, PROTOCOL_DESYNC_THRESHOLD, PROTOCOL_DESYNC_WINDOW_SECS,
-    QUARANTINE_DEADLINE, QUEUED_USER_CAP, STOP_ESCALATION_KILL, TICK_INTERVAL, USER_HARD_TIMEOUT,
-    USER_SOFT_TIMEOUT,
-};
-use crate::models::{
-    max_attachment_size, now_iso, AgentRuntimeKind, BusEvent, RalphCompleteReason, RunStatus,
-    ALLOWED_DOC_TYPES, ALLOWED_IMAGE_TYPES,
-};
-use crate::storage;
-use crate::storage::runs;
-use crate::storage::shared;
-use crate::web_server::broadcaster::BroadcastEmitter;
 use serde_json::Value;
-use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
-use std::time::Duration;
 use std::time::Instant;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout};
-use tokio::sync::{mpsc, oneshot, watch};
-use tokio_util::sync::CancellationToken;
+use tokio::sync::{mpsc, oneshot};
 
 pub struct RalphCancelResult {
     pub iteration: u32,
@@ -48,13 +21,13 @@ pub struct RalphCancelResult {
 /// that was forwarded to the frontend and is waiting for user response.
 /// Used for diagnosing hard-timeout causes.
 #[derive(Debug)]
-struct PendingInteractiveRequest {
-    request_id: String,
+pub(super) struct PendingInteractiveRequest {
+    pub(super) request_id: String,
     /// "can_use_tool" | "hook_callback" | "elicitation"
-    subtype: String,
+    pub(super) subtype: String,
     /// tool_name / hook event / server name
-    detail: String,
-    received_at: Instant,
+    pub(super) detail: String,
+    pub(super) received_at: Instant,
 }
 
 // ── Public types ──
@@ -194,7 +167,7 @@ pub(crate) enum StopSource {
 }
 
 impl StopSource {
-    fn reason(self) -> ActorStopReason {
+    pub(super) fn reason(self) -> ActorStopReason {
         match self {
             StopSource::User => ActorStopReason::UserRequested,
             StopSource::Cancel => ActorStopReason::Cancelled,
@@ -202,7 +175,3 @@ impl StopSource {
         }
     }
 }
-
-// ── Actor internals ──
-
-/// The actor's private state. Runs in a single tokio task.

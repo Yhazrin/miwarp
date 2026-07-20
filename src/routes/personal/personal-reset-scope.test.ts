@@ -10,8 +10,8 @@
  *
  * This test enforces the invariant at three layers:
  *
- *   1. Source-level: the Personal page imports `resetPersonalProfile` from
- *      `$lib/api` and does NOT import `resetUserSettings`.
+ *   1. Source-level: the Personal page imports `resetPersonalProfile` through
+ *      the `$lib/api` barrel and does NOT import `resetUserSettings`.
  *   2. Command surface: the backend command name `reset_personal_profile` is
  *      registered in the shared `CMD` table that the transport layer
  *      consults. The legacy `reset_user_settings` stays registered for the
@@ -69,38 +69,33 @@ describe("Backend command surface", () => {
     expect(cmdSource).toMatch(/reset_user_settings:\s*"reset_user_settings"/);
   });
 
-  const apiSource = readSource("src/lib/api.ts");
+  // The API surface is intentionally split by domain. The personal page uses
+  // the `$lib/api` barrel, while the scoped implementation lives in settings.
+  // Read the implementation file so this test continues to verify the real
+  // command wrapper rather than a deleted monolithic api.ts facade.
+  const apiSource = readSource("src/lib/api/settings.ts");
 
-  it("api.ts exposes a resetPersonalProfile() wrapper", () => {
+  it("settings API exposes a resetPersonalProfile() wrapper", () => {
     expect(apiSource).toMatch(/export\s+async\s+function\s+resetPersonalProfile\(/);
     expect(apiSource).toContain("reset_personal_profile");
   });
 
-  it("api.ts wrapper documents the credential-preservation guarantee", () => {
-    // The doc comment on resetPersonalProfile must spell out that api keys,
-    // platform credentials, remote hosts, webhook URLs, web server config,
-    // keybindings, and workspace folders are preserved. Without that, a
-    // future cleanup could quietly rename it back to the global helper.
+  it("settings API wrapper invokes only the scoped backend command", () => {
+    // Credentials are preserved by the backend's `reset_personal_profile`
+    // command. Verify the domain-split wrapper continues to call precisely
+    // that command, never the global settings reset. This checks executable
+    // behavior at the actual API module instead of relying on documentation
+    // that belonged to the removed monolithic api.ts file.
     const wrapperIndex = apiSource.indexOf("export async function resetPersonalProfile");
     expect(wrapperIndex, "resetPersonalProfile wrapper not found").toBeGreaterThan(-1);
-    const docStart = apiSource.lastIndexOf("/**", wrapperIndex);
-    expect(docStart, "personal-reset doc-comment block not found").toBeGreaterThan(-1);
-    const bodyEnd = apiSource.indexOf("\n}", wrapperIndex);
-    // Normalize whitespace so cross-line terms ("AI preferences") match too.
-    const block = apiSource
-      .slice(docStart, bodyEnd + 2)
-      // Strip JSDoc line-prefixes (` * `) and collapse remaining whitespace so
-      // cross-line terms like "AI preferences" match as a single token.
-      .replace(/^\s*\* ?/gm, "")
-      .replace(/\s+/g, " ");
-    expect(block, "block should contain identity").toMatch(/identity/i);
-    expect(block, "block should contain AI preferences").toMatch(/ai\s+preferences/i);
-    expect(block, "block should mention api keys").toMatch(/api\s*keys?|api_key/i);
-    expect(block, "block should mention platform credentials").toMatch(/platform\s*credentials?/i);
-    expect(block, "block should mention remote hosts").toMatch(/remote\s*hosts?/i);
-    expect(block, "block should mention webhooks").toMatch(/webhook/i);
-    expect(block, "block should mention web server").toMatch(/web\s*server/i);
-    expect(block, "block should mention keybindings").toMatch(/keybinding/i);
+    const nextExport = apiSource.indexOf("\nexport ", wrapperIndex + 1);
+    const wrapper = apiSource.slice(
+      wrapperIndex,
+      nextExport === -1 ? apiSource.length : nextExport,
+    );
+    expect(wrapper).toContain("CMD.reset_personal_profile");
+    expect(wrapper).not.toContain("CMD.reset_user_settings");
+    expect(wrapper).toContain("notifyUserSettingsChanged(settings)");
   });
 });
 

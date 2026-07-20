@@ -1,12 +1,10 @@
 use serde_json::{json, Value};
 
-use crate::agent::attachment::AttachmentData;
-use crate::agent::session_actor::ActorCommand;
-use crate::models::SessionMode;
 use crate::storage;
 use crate::web_server::state::AppState;
 
 use super::middleware::{extract_str, extract_u64, stop_run_impl};
+pub(super) use super::session_handlers::handle_session;
 
 // ── Runs ──
 
@@ -246,7 +244,11 @@ pub async fn handle_artifacts(method: &str, params: Value) -> Result<Value, Stri
 
 // ── Task Core ──
 
-pub async fn handle_task_core(method: &str, params: Value, state: &AppState) -> Result<Value, String> {
+pub async fn handle_task_core(
+    method: &str,
+    params: Value,
+    state: &AppState,
+) -> Result<Value, String> {
     match method {
         "task_create" => {
             let input_val = params
@@ -449,7 +451,11 @@ pub async fn handle_task_core(method: &str, params: Value, state: &AppState) -> 
 
 // ── Settings ──
 
-pub async fn handle_settings(method: &str, params: Value, state: &AppState) -> Result<Value, String> {
+pub async fn handle_settings(
+    method: &str,
+    params: Value,
+    state: &AppState,
+) -> Result<Value, String> {
     match method {
         "get_user_settings" => {
             let settings = crate::storage::settings::get_user_settings();
@@ -1293,12 +1299,39 @@ pub async fn handle_agents(method: &str, params: Value) -> Result<Value, String>
 
 // ── CLI Sync ──
 
-pub async fn handle_cli_sync_discover(method: &str, params: Value) -> Result<Value, String> {
+pub async fn handle_cli_sync(
+    method: &str,
+    params: Value,
+    state: &AppState,
+) -> Result<Value, String> {
     match method {
         "discover_cli_sessions" => {
             let cwd = extract_str(&params, "cwd")?;
             let result = crate::commands::cli_sync::discover_cli_sessions(cwd).await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "sync_cli_session" => {
+            let run_id = extract_str(&params, "run_id")?;
+            let writer = state.writer.clone();
+            let result = tokio::task::spawn_blocking(move || {
+                crate::storage::cli_sessions::sync_session(&run_id, writer)
+            })
+            .await
+            .map_err(|e| format!("spawn_blocking: {}", e))?;
+            let sync_result = result?;
+            serde_json::to_value(sync_result).map_err(|e| e.to_string())
+        }
+        "import_cli_session" => {
+            let session_id = extract_str(&params, "session_id")?;
+            let cwd = extract_str(&params, "cwd")?;
+            let writer = state.writer.clone();
+            let result = tokio::task::spawn_blocking(move || {
+                crate::storage::cli_sessions::import_session(&session_id, &cwd, writer)
+            })
+            .await
+            .map_err(|e| format!("spawn_blocking: {}", e))?;
+            let import_result = result?;
+            serde_json::to_value(import_result).map_err(|e| e.to_string())
         }
 
         _ => Err(format!("unknown {} method: {{}}", method)),
@@ -1331,7 +1364,11 @@ pub fn handle_clipboard(method: &str, params: Value) -> Result<Value, String> {
 
 // ── Web Server Status ──
 
-pub fn handle_web_server_status(method: &str, params: Value, state: &AppState) -> Result<Value, String> {
+pub fn handle_web_server_status(
+    method: &str,
+    _params: Value,
+    state: &AppState,
+) -> Result<Value, String> {
     match method {
         "get_web_server_status" => {
             let port = state
@@ -1348,79 +1385,39 @@ pub fn handle_web_server_status(method: &str, params: Value, state: &AppState) -
     }
 }
 
-// ── Session management ──
+// ── CLI Info ──
 
-pub async fn handle_session(method: &str, params: Value, state: &AppState) -> Result<Value, String> {
+pub async fn handle_cli_info(
+    method: &str,
+    params: Value,
+    state: &AppState,
+) -> Result<Value, String> {
     match method {
-        "start_session" => {
-            let run_id = extract_str(&params, "run_id")?;
-            let mode: Option<SessionMode> = params
-                .get("mode")
-                .and_then(|v| serde_json::from_value(v.clone()).ok());
-            let session_id = params
-                .get("session_id")
-                .and_then(|v| v.as_str())
-                .map(String::from);
-            let initial_message = params
-                .get("initial_message")
-                .and_then(|v| v.as_str())
-                .map(String::from);
-            let attachments: Option<Vec<AttachmentData>> = params
-                .get("attachments")
-                .and_then(|v| serde_json::from_value(v.clone()).ok());
-            let platform_id = params
-                .get("platform_id")
-                .and_then(|v| v.as_str())
-                .map(String::from);
-            let permission_mode_override = params
-                .get("permission_mode_override")
-                .and_then(|v| v.as_str())
-                .map(String::from);
-            let client_message_id: Option<String> = params
-                .get("client_message_id")
-                .and_then(|v| v.as_str().map(|s| s.to_string()));
-            crate::commands::session::start_session_impl(
-                &state.emitter,
-                &state.sessions,
-                &state.spawn_locks,
-                &state.cancel_token,
-                &state.recovery_registry,
-                &state.governor,
-                run_id,
-                mode,
-                session_id,
-                initial_message,
-                attachments,
-                platform_id,
-                permission_mode_override,
-                client_message_id,
-            )
-            .await?;
-            Ok(json!(true))
-        }
-        "send_session_message" => {
-            let run_id = extract_str(&params, "run_id")?;
-            let message = extract_str(&params, "message")?;
-            let attachments: Vec<AttachmentData> = params
-                .get("attachments")
-                .and_then(|v| serde_json::from_value(v.clone()).ok())
+        "get_cli_info" => {
+            let force = params
+                .get("force_refresh")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let agent = params.get("agent").and_then(|v| v.as_str());
+            let runtime_kind = agent
+                .map(crate::models::AgentRuntimeKind::from_agent)
                 .unwrap_or_default();
-            let client_message_id: Option<String> = params
-                .get("client_message_id")
-                .and_then(|v| v.as_str().map(|s| s.to_string()));
-            log::debug!(
-                "[dispatch] send_session_message: run_id={}, msg_len={}, attachments={}, client_message_id={:?}",
-                run_id,
-                message.len(),
-                attachments.len(),
-                client_message_id,
-            );
-            let cmd_tx = {
-                let map = state.sessions.lock().await;
-                map.get(&run_id)
-                    .map(|h| h.cmd_tx.clone())
-                    .ok_or_else(|| format!("Session {} not found", run_id))?
+            match crate::agent::control::get_cli_info(&state.cli_info_cache, agent, force).await {
+                Ok(info) => serde_json::to_value(info).map_err(|e| e.to_string()),
+                Err(e) => {
+                    log::warn!(
+                        "[dispatch] CLI info failed ({}): {}, using fallback",
+                        e.code,
+                        e.message
+                    );
+                    serde_json::to_value(crate::agent::control::fallback_cli_info_for(
+                        &runtime_kind,
+                    ))
+                    .map_err(|e| e.to_string())
+                }
+            }
+        }
+
         _ => Err(format!("unknown {} method: {{}}", method)),
     }
 }
-

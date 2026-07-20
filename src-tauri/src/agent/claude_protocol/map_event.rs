@@ -6,11 +6,15 @@
 //!
 //! Also supports MiMo-Code JSON protocol via runtime_kind dispatch.
 
+use super::state::extract_xml_tag;
+use super::types::{context_window_percentages, opt_str, str_field};
+use crate::models::protocol_state::ProtocolState;
 use crate::models::{AgentRuntimeKind, BusEvent};
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
-use crate::models::protocol_state::ProtocolState;
+use std::collections::HashMap;
 
+impl ProtocolState {
+    /// Map a single raw Claude CLI JSON event into zero or more `BusEvent`s.
     pub fn map_event(&mut self, run_id: &str, raw: &Value) -> Vec<BusEvent> {
         // Dispatch to MiMo protocol if runtime_kind is MiMoCode
         if self.runtime_kind == AgentRuntimeKind::MiMoCode {
@@ -263,6 +267,11 @@ use crate::models::protocol_state::ProtocolState;
                         trigger: "micro_auto".to_string(),
                         pre_tokens: None,
                     });
+                } else if subtype == "thinking_tokens" {
+                    // Claude emits this high-frequency estimate while thinking.
+                    // It is transient transport telemetry, not durable chat state;
+                    // persisting it as Raw makes historical replay needlessly noisy.
+                    log::trace!("[protocol] system/thinking_tokens");
                 } else if subtype == "status" {
                     let status = opt_str(raw, "status");
                     log::debug!("[protocol] system/status: {:?}", status);
@@ -615,6 +624,14 @@ use crate::models::protocol_state::ProtocolState;
 
             "message_stop" => {
                 self.flush_pending_message_complete(run_id, &parent_tool_use_id, &mut events);
+            }
+
+            "message_delta" => {
+                // API-level message metadata (stop_reason + interim usage). Text
+                // and thinking deltas are handled by content_block_delta, while
+                // authoritative aggregate usage arrives in the result event.
+                // Do not persist this envelope as an unknown Raw event.
+                log::trace!("[protocol] message_delta metadata");
             }
 
             // ── complete assistant message ──
@@ -1241,13 +1258,4 @@ use crate::models::protocol_state::ProtocolState;
 
         events
     }
-
-    /// Map a single MiMo-Code JSON event into zero or more `BusEvent`s.
-    ///
-    /// MiMo-Code event types (from `mimo run --format json`):
-    ///   - step_start: new agent step begins (skip)
-    ///   - tool_use: tool call with input/output (status: running/completed/error)
-    ///   - step_finish: step completed (reason: "tool-calls" | "stop")
-    ///   - text: assistant text output (complete, not delta)
-    ///   - reasoning: thinking blocks
-    ///   - error: error event
+}

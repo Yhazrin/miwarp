@@ -5,7 +5,7 @@ mod permission_mode_override_tests {
     //! adapter, and the argv builder. The tests below exercise the
     //! canonicalization contract (alias → canonical, reject unknown)
     //! and confirm the canonical form is in the documented set.
-    use super::super::super::agent::adapter;
+    use crate::agent::adapter;
 
     /// Aliases from `agent::adapter::map_permission_mode`'s contract must
     /// canonicalize to a documented CLI mode. These are the values the

@@ -487,6 +487,7 @@ pub(crate) fn unwrap_windows_cli_shim(path: &str) -> String {
 
 /// Parse a single npm-style batch line for `"%dp0%\…\foo.exe"`.
 /// Pure string logic — unit-tested on all platforms.
+#[cfg_attr(not(windows), allow(dead_code))]
 fn dp0_exe_from_batch_line(line: &str, dp0: &std::path::Path) -> Option<PathBuf> {
     let trimmed = line.trim();
     if trimmed.is_empty() {
@@ -520,6 +521,7 @@ fn dp0_exe_from_batch_line(line: &str, dp0: &std::path::Path) -> Option<PathBuf>
 }
 
 /// Known Claude Code npm layout relative to the shim directory.
+#[cfg_attr(not(windows), allow(dead_code))]
 fn known_claude_exe_beside_shim(shim_dir: &std::path::Path) -> PathBuf {
     shim_dir
         .join("node_modules")

@@ -11,7 +11,11 @@
   import { t } from "$lib/i18n/index.svelte";
   import { formatPasteSize } from "$lib/utils/format";
   import { isSpreadsheetExt } from "$lib/utils/file-types";
-  import type { PendingAttachment, PastedBlock, PathRef } from "$lib/stores/prompt-input-store.svelte";
+  import type {
+    PendingAttachment,
+    PastedBlock,
+    PathRef,
+  } from "$lib/stores/prompt-input-store.svelte";
 
   let {
     attachments = [],
@@ -29,9 +33,7 @@
     onRemovePastedBlock?: (id: string) => void;
   } = $props();
 
-  const hasAny = $derived(
-    attachments.length > 0 || pastedBlocks.length > 0 || pathRefs.length > 0,
-  );
+  const hasAny = $derived(attachments.length > 0 || pastedBlocks.length > 0 || pathRefs.length > 0);
 </script>
 
 {#if hasAny}

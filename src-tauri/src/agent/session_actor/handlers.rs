@@ -6,40 +6,25 @@
 //! protocol state, and RunState emission — eliminating the cross-system coordination
 //! that previously caused race conditions.
 
-use crate::agent::adapter::ActorSessionMap;
-use crate::agent::attachment::AttachmentData;
-use crate::agent::claude_protocol::{validate_bus_event, ProtocolState};
+use crate::agent::claude_protocol::validate_bus_event;
 use crate::agent::notify::notify_if_background;
-use crate::agent::recovery::{CrashReason, RecoveryState};
-use crate::agent::runtime_recovery::{
-    classify_active_turn_eof, emit_session_lifecycle, on_actor_exit, ActorRecoveryBootstrap,
-    ActorRecoverySnapshot, PendingRecoveryMessage, RecoveryRegistry,
-};
+use crate::agent::recovery::CrashReason;
+use crate::agent::runtime_recovery::classify_active_turn_eof;
 use crate::agent::turn_engine::{
-    apply_activity_reset, ActiveTurn, TurnOrigin, TurnPhase, UserTurnKind, UserTurnTicket,
-    ACCEPTED_CLIENT_MESSAGE_IDS_CAP, PROTOCOL_DESYNC_THRESHOLD, PROTOCOL_DESYNC_WINDOW_SECS,
-    QUARANTINE_DEADLINE, QUEUED_USER_CAP, STOP_ESCALATION_KILL, TICK_INTERVAL, USER_HARD_TIMEOUT,
-    USER_SOFT_TIMEOUT,
+    apply_activity_reset, TurnOrigin, PROTOCOL_DESYNC_THRESHOLD, PROTOCOL_DESYNC_WINDOW_SECS,
 };
-use crate::models::{
-    max_attachment_size, now_iso, AgentRuntimeKind, BusEvent, RalphCompleteReason, RunStatus,
-    ALLOWED_DOC_TYPES, ALLOWED_IMAGE_TYPES,
-};
+use crate::models::{BusEvent, RunStatus};
 use crate::storage;
-use crate::storage::runs;
 use crate::storage::shared;
-use crate::web_server::broadcaster::BroadcastEmitter;
 use serde_json::Value;
-use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
-use std::time::Duration;
 use std::time::Instant;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout};
-use tokio::sync::{mpsc, oneshot, watch};
-use tokio_util::sync::CancellationToken;
 
-    async fn handle_stdout_line(&mut self, text: &str, line_num: u64) {
+use super::state_machine::SessionActor;
+use super::types::{PendingInteractiveRequest, StopSource};
+use super::util::is_protocol_noise;
+
+impl SessionActor {
+    pub(super) async fn handle_stdout_line(&mut self, text: &str, line_num: u64) {
         let text = text.trim();
         if text.is_empty() {
             return;
@@ -377,7 +362,7 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Handle control events during user turns (or idle): permission prompts, hooks, etc.
-    async fn handle_control_event(&mut self, parsed: &Value, event_type: &str) {
+    pub(super) async fn handle_control_event(&mut self, parsed: &Value, event_type: &str) {
         if event_type == "control_response" {
             let req_id = parsed
                 .get("response")
@@ -663,7 +648,7 @@ use tokio_util::sync::CancellationToken;
         }
     }
 
-    fn handle_stderr_line(&mut self, text: &str) {
+    pub(super) fn handle_stderr_line(&mut self, text: &str) {
         // Suppress stderr after cancel
         if self.cancel.is_cancelled() {
             log::trace!(
@@ -691,7 +676,7 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Handle stdout EOF — determine terminal state.
-    async fn handle_eof(&mut self) {
+    pub(super) async fn handle_eof(&mut self) {
         let exit_code = if let Some(ref mut child) = self.child {
             match child.wait().await {
                 Ok(s) => s.code(),
@@ -797,9 +782,4 @@ use tokio_util::sync::CancellationToken;
             notify_if_background(self.emitter.app(), title, &body);
         }
     }
-
-    // ── RunState emission (migrated from state.rs) ──
-
-    /// True when this actor is still the registered owner in the session map.
-    /// After `stop_actor` removes us for replacement or user stop, we must not
-    /// emit further RunState events — the IPC layer owns the terminal transition.
+}

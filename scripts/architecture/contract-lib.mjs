@@ -245,7 +245,8 @@ export function parseIosSentMethods(source) {
  * explicitly *blocked* methods (those that return "desktop only" /
  * "unknown method" errors before the catch-all).
  *
- * The dispatch in `web_server/dispatch.rs` is a giant `match method { ... }`.
+ * The dispatch route table in `web_server/dispatch/routes.rs` is a giant
+ * `match method { ... }`.
  * Each top-level arm is `"<method>" => { ... }`. The match body also contains
  * many quoted strings — param names (`"id"`, `"cwd"`), error messages,
  * JSON keys — that are NOT method arms. We isolate only the top-level arm
@@ -308,28 +309,22 @@ export function parseDispatchMethods(source) {
   const unknown = new Set();
   const ipcOnly = new Set();
 
-  // Match a top-level arm. Lines look like:
-  //     "method_name" => {
-  //     "method_name"
-  //         | "other_method" => {        (multi-pattern arm continuation)
-  //
-  // We use two separate passes because the regex engine advances past
-  // each match — once a continuation `|` is consumed, the next iteration
-  // starts AFTER it, so `^\s*` can't anchor to line start for the
-  // joined-pattern arms. Splitting into "start-of-line" + "continuation"
-  // regexes keeps each match addressable.
-  //
-  // In both cases the literal must be followed by either `=>` or another
-  // `|` continuation. This rules out param-name literals like `"id"`,
-  // `"cwd"` that appear inside arm bodies.
-  const armRegexes = [
-    /^\s*"([a-zA-Z_][a-zA-Z0-9_]*)"(?:\s*=>|\s*\|)/gm,
-    /^\s*\|\s*"([a-zA-Z_][a-zA-Z0-9_]*)"(?:\s*=>|\s*\|)/gm,
-  ];
-  for (const armRe of armRegexes) {
-    let m;
-    while ((m = armRe.exec(block)) !== null) {
-      const methodName = m[1];
+  // Match one complete top-level arm's left-hand pattern list, then extract
+  // every quoted method in it. A route arm commonly groups many methods over
+  // several lines (`"a" | "b" | ... => {`); parsing the individual lines
+  // loses all but the first name and silently weakens the contract gate.
+  // Anchoring at the beginning of an arm prevents strings inside handler
+  // bodies (parameter names, JSON fields and error messages) being treated
+  // as routes.
+  const armRe = /^\s*((?:"[a-zA-Z_][a-zA-Z0-9_]*"\s*\|?\s*)+)=>/gm;
+  let m;
+  while ((m = armRe.exec(block)) !== null) {
+    const methodNames = [...m[1].matchAll(/"([a-zA-Z_][a-zA-Z0-9_]*)"/g)].map((name) => name[1]);
+    const armRemainder = block.slice(m.index);
+    const nextArm = armRemainder.match(/\n\s+(?:"[a-zA-Z_]|_\s*=>)/);
+    const armBody = nextArm ? armRemainder.slice(0, nextArm.index) : armRemainder;
+    const tail = armBody.slice(0, 320);
+    for (const methodName of methodNames) {
       // Bound the inspection window to THIS arm only. Without a boundary,
       // a 320-char tail would bleed into the next arm and pick up its
       // error string (e.g. "unknown method"), falsely classifying the
@@ -338,12 +333,6 @@ export function parseDispatchMethods(source) {
       // start (`"name"` or `_`). Importantly, the `|` continuation inside
       // a multi-pattern arm does NOT count as a boundary — it's part of
       // the same arm.
-      const armRemainder = block.slice(m.index);
-      const nextArm = armRemainder.match(/\n\s+(?:"[a-zA-Z_]|_\s*=>)/);
-      const armBody = nextArm
-        ? armRemainder.slice(0, nextArm.index)
-        : armRemainder;
-      const tail = armBody.slice(0, 320);
       if (tail.includes('"desktop only"')) {
         desktopOnly.add(methodName);
       } else if (tail.includes('"unknown method"')) {

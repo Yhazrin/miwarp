@@ -88,70 +88,146 @@
   let removeProjectConfirmOpen = $state(false);
   let removeProjectTarget = $state("");
 
-  import { executeFolderDrop, collectSelectedRunIds, batchSoftDelete, batchHardDeleteAction } from "$lib/layout/app-shell-handlers.svelte";
+  import {
+    executeFolderDrop,
+    collectSelectedRunIds,
+    batchSoftDelete,
+    batchHardDeleteAction,
+  } from "$lib/layout/app-shell-handlers.svelte";
 
   function handleSessionDragStart(runId: string, label: string, e: PointerEvent) {
-    dragRunId = runId; sessionDragLabel = label; sessionDragX = e.clientX; sessionDragY = e.clientY;
+    dragRunId = runId;
+    sessionDragLabel = label;
+    sessionDragX = e.clientX;
+    sessionDragY = e.clientY;
     import("$lib/utils/session-drag-state").then((m) => m.setSessionDragActive(true));
   }
-  function handleSessionDragMove(e: PointerEvent) { sessionDragX = e.clientX; sessionDragY = e.clientY; }
+  function handleSessionDragMove(e: PointerEvent) {
+    sessionDragX = e.clientX;
+    sessionDragY = e.clientY;
+  }
   async function handleSessionDragEnd(e: PointerEvent) {
-    const rid = dragRunId; dragRunId = null; dragOverFolderId = null; dragOverUnfolderedKey = null; sessionDragLabel = "";
+    const rid = dragRunId;
+    dragRunId = null;
+    dragOverFolderId = null;
+    dragOverUnfolderedKey = null;
+    sessionDragLabel = "";
     if (!rid) return;
-    const { setSessionDragOverSplit, setSessionDragActive, findSessionDropTarget, findSessionSplitDropTarget } =
-      await import("$lib/utils/session-drag-state");
-    setSessionDragOverSplit(false); setSessionDragActive(false);
-    const overSplit = pathIsChat(get(page).url.pathname) && findSessionSplitDropTarget(e.clientX, e.clientY);
+    const {
+      setSessionDragOverSplit,
+      setSessionDragActive,
+      findSessionDropTarget,
+      findSessionSplitDropTarget,
+    } = await import("$lib/utils/session-drag-state");
+    setSessionDragOverSplit(false);
+    setSessionDragActive(false);
+    const overSplit =
+      pathIsChat(get(page).url.pathname) && findSessionSplitDropTarget(e.clientX, e.clientY);
     const dropTarget = overSplit ? null : findSessionDropTarget(e.clientX, e.clientY);
-    if (overSplit) { await (await import("$lib/split/split-workspace-lifecycle")).addSplitPane(rid); return; }
+    if (overSplit) {
+      await (await import("$lib/split/split-workspace-lifecycle")).addSplitPane(rid);
+      return;
+    }
     if (!dropTarget) return;
     await executeFolderDrop(rid, dropTarget, rss, sfs);
   }
-  function requestDeleteConversation(conv: import("$lib/utils/sidebar-groups").ConversationGroup) { deleteTarget = conv; deleteConfirmOpen = true; }
+  function requestDeleteConversation(conv: import("$lib/utils/sidebar-groups").ConversationGroup) {
+    deleteTarget = conv;
+    deleteConfirmOpen = true;
+  }
   async function confirmDeleteConversation() {
-    const c = deleteTarget; deleteConfirmOpen = false; deleteTarget = null;
-    if (c) { await rss.softDelete(c.runs.map((r) => r.id)); if (c.runs.some((r) => r.id === selectedRunId)) goto("/chat"); }
+    const c = deleteTarget;
+    deleteConfirmOpen = false;
+    deleteTarget = null;
+    if (c) {
+      await rss.softDelete(c.runs.map((r) => r.id));
+      if (c.runs.some((r) => r.id === selectedRunId)) goto("/chat");
+    }
   }
   async function confirmHardDeleteConversation() {
-    const c = deleteTarget; deleteConfirmOpen = false; deleteTarget = null;
-    if (c) { await rss.hardDelete(c.runs.map((r) => r.id)); if (c.runs.some((r) => r.id === selectedRunId)) goto("/chat"); }
+    const c = deleteTarget;
+    deleteConfirmOpen = false;
+    deleteTarget = null;
+    if (c) {
+      await rss.hardDelete(c.runs.map((r) => r.id));
+      if (c.runs.some((r) => r.id === selectedRunId)) goto("/chat");
+    }
   }
-  function cancelDeleteConversation() { deleteConfirmOpen = false; deleteTarget = null; }
-  function enterBatchMode(gk: string) { selectedGroupKeys = new Set([gk]); lastSelectedKey = gk; }
+  function cancelDeleteConversation() {
+    deleteConfirmOpen = false;
+    deleteTarget = null;
+  }
+  function enterBatchMode(gk: string) {
+    selectedGroupKeys = new Set([gk]);
+    lastSelectedKey = gk;
+  }
   function toggleSelectConversation(gk: string, e: MouseEvent) {
     const allKeys: string[] = [];
     for (const f of enrichedProjectFolders) {
       for (const c of f.conversations) allKeys.push(c.groupKey);
-      for (const sf of f.subFolders ?? []) for (const c of sf.conversations) allKeys.push(c.groupKey);
+      for (const sf of f.subFolders ?? [])
+        for (const c of sf.conversations) allKeys.push(c.groupKey);
     }
     if (selectedGroupKeys.size > 0 && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-      const ns = new Set(selectedGroupKeys); if (ns.has(gk)) ns.delete(gk); else ns.add(gk);
-      selectedGroupKeys = ns; lastSelectedKey = gk; return;
+      const ns = new Set(selectedGroupKeys);
+      if (ns.has(gk)) ns.delete(gk);
+      else ns.add(gk);
+      selectedGroupKeys = ns;
+      lastSelectedKey = gk;
+      return;
     }
     if (e.shiftKey && lastSelectedKey) {
-      const fi = allKeys.indexOf(lastSelectedKey), ti = allKeys.indexOf(gk);
-      if (fi >= 0 && ti >= 0) { const ns = new Set(selectedGroupKeys); for (let i = Math.min(fi,ti); i <= Math.max(fi,ti); i++) ns.add(allKeys[i]); selectedGroupKeys = ns; }
+      const fi = allKeys.indexOf(lastSelectedKey),
+        ti = allKeys.indexOf(gk);
+      if (fi >= 0 && ti >= 0) {
+        const ns = new Set(selectedGroupKeys);
+        for (let i = Math.min(fi, ti); i <= Math.max(fi, ti); i++) ns.add(allKeys[i]);
+        selectedGroupKeys = ns;
+      }
     } else if (e.metaKey || e.ctrlKey) {
-      const ns = new Set(selectedGroupKeys); if (ns.has(gk)) ns.delete(gk); else ns.add(gk); selectedGroupKeys = ns;
-    } else { selectedGroupKeys = new Set(); lastSelectedKey = gk; return; }
+      const ns = new Set(selectedGroupKeys);
+      if (ns.has(gk)) ns.delete(gk);
+      else ns.add(gk);
+      selectedGroupKeys = ns;
+    } else {
+      selectedGroupKeys = new Set();
+      lastSelectedKey = gk;
+      return;
+    }
     lastSelectedKey = gk;
   }
-  function clearBatchSelection() { selectedGroupKeys = new Set(); lastSelectedKey = ""; }
+  function clearBatchSelection() {
+    selectedGroupKeys = new Set();
+    lastSelectedKey = "";
+  }
   async function batchDelete() {
     const ids = collectSelectedRunIds(selectedGroupKeys, enrichedProjectFolders);
-    batchDeleteConfirmOpen = false; clearBatchSelection(); await batchSoftDelete(rss, ids, selectedRunId);
+    batchDeleteConfirmOpen = false;
+    clearBatchSelection();
+    await batchSoftDelete(rss, ids, selectedRunId);
   }
   async function batchHardDelete() {
     const ids = collectSelectedRunIds(selectedGroupKeys, enrichedProjectFolders);
-    batchDeleteConfirmOpen = false; clearBatchSelection(); await batchHardDeleteAction(rss, ids, selectedRunId);
+    batchDeleteConfirmOpen = false;
+    clearBatchSelection();
+    await batchHardDeleteAction(rss, ids, selectedRunId);
   }
-  function requestRemoveProject(cwd: string) { removeProjectTarget = normalizeCwd(cwd); removeProjectConfirmOpen = true; }
-  function confirmRemoveProject() { const n = removeProjectTarget; removeProjectConfirmOpen = false; removeProjectTarget = ""; if (n) pss.removeProject(n); }
-  function cancelRemoveProject() { removeProjectConfirmOpen = false; removeProjectTarget = ""; }
+  function requestRemoveProject(cwd: string) {
+    removeProjectTarget = normalizeCwd(cwd);
+    removeProjectConfirmOpen = true;
+  }
+  function confirmRemoveProject() {
+    const n = removeProjectTarget;
+    removeProjectConfirmOpen = false;
+    removeProjectTarget = "";
+    if (n) pss.removeProject(n);
+  }
+  function cancelRemoveProject() {
+    removeProjectConfirmOpen = false;
+    removeProjectTarget = "";
+  }
 
   // ── Plugin section type ──
-  type PluginSection = { id: string; label: () => string; icon: string };
-
   // ── Props ──
   let { children } = $props();
 
@@ -178,7 +254,11 @@
     ),
   );
   const sidebarUpdateAvailable = $derived(appUpdateCoordinator.hasUpdate);
-  const sidebarVersionChecked = $derived(appUpdateCoordinator.state.lastCheckedAt !== null);
+  // Spinner = "checking right now". Dev mode short-circuits auto-check
+  // (see +layout.svelte), so lastCheckedAt may stay null forever — using
+  // that as the spinner gate left it spinning indefinitely. Tie the
+  // spinner to the in-flight phases only.
+  const sidebarVersionChecking = $derived(appUpdateCoordinator.isBusy);
 
   // Sidebar collapse + width
   let sidebarOpen = $state(true);
@@ -295,7 +375,10 @@
   const uiZoom = $derived(clampUiZoom(settings?.ui_zoom));
   const nativeWindowGlassEnabled = $derived(settings?.native_window_glass_enabled !== false);
 
-  function navigateToChatRun(targetRunId: string, opts?: { scrollTo?: string; replaceState?: boolean }) {
+  function navigateToChatRun(
+    targetRunId: string,
+    opts?: { scrollTo?: string; replaceState?: boolean },
+  ) {
     getChatTimelineResetHandle()?.shrinkVisibleRender(24);
     requestAnimationFrame(() => {
       let href = `/chat?run=${encodeURIComponent(targetRunId)}`;
@@ -330,7 +413,9 @@
     if (!pss.pinnedCwds.includes(normalized)) pss.pin(normalized);
     window.dispatchEvent(new CustomEvent(EVT_PROJECT_CHANGED, { detail: { cwd: normalized } }));
     chatViewCache.lastRunId = "";
-    goto(`/chat?new=1&folder=${encodeURIComponent(normalized)}&sf=${encodeURIComponent(subFolderId)}`);
+    goto(
+      `/chat?new=1&folder=${encodeURIComponent(normalized)}&sf=${encodeURIComponent(subFolderId)}`,
+    );
   }
 
   function toggleSidebar() {
@@ -344,13 +429,24 @@
     layoutChromeState.sidebarOpen = sidebarOpen && needsLayoutContentPanel;
   });
   setContext<LayoutChromeContext>(LAYOUT_CHROME_CONTEXT_KEY, {
-    get state() { return layoutChromeState; },
+    get state() {
+      return layoutChromeState;
+    },
     toggleSidebar,
     newChat,
-    openCliBrowser: () => { showCliBrowser = true; },
-    openSettings: () => { beginRouteTransition(); void goto("/settings").finally(endRouteTransition); },
-    selectWorkspace: (cwd: string) => { selectWorkspaceCallback?.(cwd); },
-    onSelectWorkspaceChange: (cb) => { selectWorkspaceCallback = cb; },
+    openCliBrowser: () => {
+      showCliBrowser = true;
+    },
+    openSettings: () => {
+      beginRouteTransition();
+      void goto("/settings").finally(endRouteTransition);
+    },
+    selectWorkspace: (cwd: string) => {
+      selectWorkspaceCallback?.(cwd);
+    },
+    onSelectWorkspaceChange: (cb) => {
+      selectWorkspaceCallback = cb;
+    },
   });
 
   function highlightMatch(text: string, query: string): string {
@@ -407,32 +503,51 @@
 
   // ── Sidebar resize (ghost-line) ──
   function screenKey(): string {
-    try { if (typeof window !== "undefined" && window.screen) return `${window.screen.width}x${window.screen.height}`; } catch { /* SSR */ }
+    try {
+      if (typeof window !== "undefined" && window.screen)
+        return `${window.screen.width}x${window.screen.height}`;
+    } catch {
+      /* SSR */
+    }
     return "default";
   }
 
   let _resizeCleanup: (() => void) | null = null;
   function startResize(e: PointerEvent) {
     e.preventDefault();
-    const startX = e.clientX, startWidth = sidebarWidth;
+    const startX = e.clientX,
+      startWidth = sidebarWidth;
     let pendingWidth = startWidth;
-    sidebarResizing = true; sidebarGhostX = e.clientX;
+    sidebarResizing = true;
+    sidebarGhostX = e.clientX;
     const handle = e.currentTarget as HTMLElement;
     handle.setPointerCapture?.(e.pointerId);
-    document.body.style.userSelect = "none"; document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
     function onMove(ev: PointerEvent) {
       pendingWidth = Math.min(500, Math.max(180, startWidth + (ev.clientX - startX)));
-      if (sidebarGhostEl) sidebarGhostEl.style.left = `${startX + (pendingWidth - startWidth) - 1}px`;
+      if (sidebarGhostEl)
+        sidebarGhostEl.style.left = `${startX + (pendingWidth - startWidth) - 1}px`;
     }
     function cleanup() {
       handle.removeEventListener("pointermove", onMove);
       handle.removeEventListener("pointerup", onUp);
       handle.removeEventListener("pointercancel", onUp);
-      document.body.style.userSelect = ""; document.body.style.cursor = "";
-      sidebarWidth = pendingWidth; sidebarResizing = false; sidebarGhostEl = null; _resizeCleanup = null;
-      try { localStorage.setItem(`ocv:sidebar-width:${screenKey()}`, String(sidebarWidth)); } catch { /* ignore */ }
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      sidebarWidth = pendingWidth;
+      sidebarResizing = false;
+      sidebarGhostEl = null;
+      _resizeCleanup = null;
+      try {
+        localStorage.setItem(`ocv:sidebar-width:${screenKey()}`, String(sidebarWidth));
+      } catch {
+        /* ignore */
+      }
     }
-    function onUp() { cleanup(); }
+    function onUp() {
+      cleanup();
+    }
     handle.addEventListener("pointermove", onMove);
     handle.addEventListener("pointerup", onUp);
     handle.addEventListener("pointercancel", onUp);
@@ -444,28 +559,44 @@
     const normalized = normalizeCwd(cwd);
     const current = settings?.workspace_aliases ?? {};
     const updated: Record<string, string> = { ...current };
-    if (alias.trim()) updated[normalized] = alias.trim(); else delete updated[normalized];
+    if (alias.trim()) updated[normalized] = alias.trim();
+    else delete updated[normalized];
     try {
       const { updateUserSettings } = await import("$lib/api");
       await updateUserSettings({ workspace_aliases: updated });
       dbg("layout", "workspace alias saved", { cwd: normalized, alias });
-    } catch (e) { dbgWarn("layout", "save workspace alias failed", e); }
+    } catch (e) {
+      dbgWarn("layout", "save workspace alias failed", e);
+    }
   }
 
-  function doMoveToFolder(): void { void sfs.doMoveFromDialog(); }
+  function doMoveToFolder(): void {
+    void sfs.doMoveFromDialog();
+  }
 
   function onFolderPicked(result: { hostName: string | null; path: string }) {
     const { hostName, path } = result;
     if (!path) return;
-    if (hostName) { goto(`/chat?host=${encodeURIComponent(hostName)}&folder=${encodeURIComponent(path)}`); return; }
+    if (hostName) {
+      goto(`/chat?host=${encodeURIComponent(hostName)}&folder=${encodeURIComponent(path)}`);
+      return;
+    }
     const normalized = normalizeCwd(path) || "";
     if (normalized && pss.removedCwds.includes(normalized)) pss.unremoveProject(normalized);
     pss.setProjectCwd(normalized);
   }
 
-  function handleSetupComplete(): void { showSetupWizard = false; }
-  function toggleProject(folderKey: string) { pss.toggleProject(folderKey); }
-  function pickFolder() { folderPickerInitialHost = null; folderPickerInitialPath = pss.projectCwd; folderPickerOpen = true; }
+  function handleSetupComplete(): void {
+    showSetupWizard = false;
+  }
+  function toggleProject(folderKey: string) {
+    pss.toggleProject(folderKey);
+  }
+  function pickFolder() {
+    folderPickerInitialHost = null;
+    folderPickerInitialPath = pss.projectCwd;
+    folderPickerOpen = true;
+  }
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Escape" && selectedGroupKeys.size > 0) {
@@ -509,7 +640,8 @@
     const runId = selectedRunId;
     const runsLen = rss.runs.length;
     if (runId === _prevAutoExpandRunId && runsLen === _prevAutoExpandRunsLen) return;
-    _prevAutoExpandRunId = runId; _prevAutoExpandRunsLen = runsLen;
+    _prevAutoExpandRunId = runId;
+    _prevAutoExpandRunsLen = runsLen;
     if (!runId) return;
     const next = autoExpandForRun(runId, enrichedProjectFolders, pss.expandedProjects);
     if (next) pss.replaceExpanded(next);
@@ -532,7 +664,9 @@
     pss.persistAndPruneExpanded(new Set(enrichedProjectFolders.map((f) => f.folderKey)));
   });
 
-  $effect(() => { untrack(() => writeActiveSessionId(selectedRunId)); });
+  $effect(() => {
+    untrack(() => writeActiveSessionId(selectedRunId));
+  });
 
   $effect(() => {
     if (!needsLayoutContentPanel) return;
@@ -566,9 +700,16 @@
     if (!rss.runsLoadSucceededOnce) return;
     if (rss.runs.length > 0) {
       const fallback = ets.pickRecentRunsFallback(rss.runs);
-      if (fallback) { pss.setProjectCwd(fallback); _prevExplorerCwd = fallback; return; }
+      if (fallback) {
+        pss.setProjectCwd(fallback);
+        _prevExplorerCwd = fallback;
+        return;
+      }
     }
-    ets.fileTree = []; ets.treeLoading = false; ets.treeError = null; _prevExplorerCwd = _cwd;
+    ets.fileTree = [];
+    ets.treeLoading = false;
+    ets.treeError = null;
+    _prevExplorerCwd = _cwd;
   });
 
   $effect(() => {
@@ -595,9 +736,12 @@
     const fromPath = from.url.pathname;
     const toPath = to.url.pathname;
     if (pathIsChatOrSettingsTransition(fromPath, toPath)) {
-      beginRouteTransition(); armChatSettingsHop(); return;
+      beginRouteTransition();
+      armChatSettingsHop();
+      return;
     }
-    if (routeNeedsLayoutContentPanel(fromPath) !== routeNeedsLayoutContentPanel(toPath)) beginRouteTransition();
+    if (routeNeedsLayoutContentPanel(fromPath) !== routeNeedsLayoutContentPanel(toPath))
+      beginRouteTransition();
   });
   afterNavigate(() => endRouteTransition());
 
@@ -610,11 +754,23 @@
       ["miwarp:layout-new-chat", () => newChat()],
       ["miwarp:layout-show-wizard", () => (showSetupWizard = true)],
       ["miwarp:layout-open-permissions", () => (permissionsModalOpen = true)],
-      ["miwarp:layout-explorer-file-selected", (e) => { ets.explorerSelectedFile = (e as CustomEvent).detail?.path ?? ""; }],
-      ["miwarp:layout-app-version", (e) => { bundledAppVersion = (e as CustomEvent).detail ?? null; }],
+      [
+        "miwarp:layout-explorer-file-selected",
+        (e) => {
+          ets.explorerSelectedFile = (e as CustomEvent).detail?.path ?? "";
+        },
+      ],
+      [
+        "miwarp:layout-app-version",
+        (e) => {
+          bundledAppVersion = (e as CustomEvent).detail ?? null;
+        },
+      ],
     ];
     for (const [evt, fn] of handlers) window.addEventListener(evt, fn);
-    return () => { for (const [evt, fn] of handlers) window.removeEventListener(evt, fn); };
+    return () => {
+      for (const [evt, fn] of handlers) window.removeEventListener(evt, fn);
+    };
   });
 </script>
 
@@ -640,7 +796,7 @@
         {getNavItemHref}
         {attentionQueueBadgeCount}
         {sidebarVersion}
-        {sidebarVersionChecked}
+        {sidebarVersionChecking}
         {sidebarUpdateAvailable}
         onShowAbout={() => (showAbout = true)}
       />

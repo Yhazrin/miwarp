@@ -120,10 +120,7 @@ export function createPopSound(tune: BaseTune, instrument: InstrumentConfig): So
  * Create a toggle sound (state change - noise click + tonal tail)
  * Reference: playConcept("toggle") — 12ms noise bandpass 2500Hz + sine 800→400Hz
  */
-export function createToggleSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig,
-): SoundSynthesizer {
+export function createToggleSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;

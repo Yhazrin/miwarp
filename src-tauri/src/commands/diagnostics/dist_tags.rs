@@ -1,15 +1,6 @@
-use crate::agent::claude_stream::augmented_path;
-use crate::agent::cli_update::CliInstallMethod;
-use crate::agent::ssh::{expand_local_tilde, shell_escape};
-use crate::models::{
-    ApiTestResult, AuthDiagnostics, ClaudeMdInfo, CliCheckResult, CliDiagnostics, CliDistTags,
-    ConfigDiagnostics, ConfigIssue, DiagnosticsReport, LocalProxyStatus, ProjectDiagnostics,
-    ProjectInitStatus, RemoteTestResult, ServicesDiagnostics, SshKeyInfo, SystemDiagnostics,
-    UpdateCliResult,
-};
-use crate::process_ext::HideConsole;
-use std::path::Path;
-use std::process::Command;
+use crate::models::CliDistTags;
+
+use super::report::fetch_dist_tags_inner;
 
 /// One-click update for Claude Code. Claude Code ships via two channels that
 /// don't share a single update path:
@@ -32,7 +23,3 @@ pub async fn get_cli_dist_tags() -> Result<CliDistTags, String> {
     let (latest, stable, _channel) = fetch_dist_tags_inner().await;
     Ok(CliDistTags { latest, stable })
 }
-
-/// Check for existing SSH key pairs. Returns info about the first usable pair found.
-/// Priority: ed25519 > rsa. A "usable pair" means both private key and .pub exist.
-#[tauri::command]

@@ -6,40 +6,22 @@
 //! protocol state, and RunState emission — eliminating the cross-system coordination
 //! that previously caused race conditions.
 
-use crate::agent::adapter::ActorSessionMap;
-use crate::agent::attachment::AttachmentData;
-use crate::agent::claude_protocol::{validate_bus_event, ProtocolState};
-use crate::agent::notify::notify_if_background;
-use crate::agent::recovery::{CrashReason, RecoveryState};
+use crate::agent::recovery::RecoveryState;
 use crate::agent::runtime_recovery::{
-    classify_active_turn_eof, emit_session_lifecycle, on_actor_exit, ActorRecoveryBootstrap,
-    ActorRecoverySnapshot, PendingRecoveryMessage, RecoveryRegistry,
+    emit_session_lifecycle, on_actor_exit, ActorRecoverySnapshot, PendingRecoveryMessage,
 };
-use crate::agent::turn_engine::{
-    apply_activity_reset, ActiveTurn, TurnOrigin, TurnPhase, UserTurnKind, UserTurnTicket,
-    ACCEPTED_CLIENT_MESSAGE_IDS_CAP, PROTOCOL_DESYNC_THRESHOLD, PROTOCOL_DESYNC_WINDOW_SECS,
-    QUARANTINE_DEADLINE, QUEUED_USER_CAP, STOP_ESCALATION_KILL, TICK_INTERVAL, USER_HARD_TIMEOUT,
-    USER_SOFT_TIMEOUT,
-};
-use crate::models::{
-    max_attachment_size, now_iso, AgentRuntimeKind, BusEvent, RalphCompleteReason, RunStatus,
-    ALLOWED_DOC_TYPES, ALLOWED_IMAGE_TYPES,
-};
+use crate::models::{now_iso, BusEvent, RunStatus};
 use crate::storage;
 use crate::storage::runs;
-use crate::storage::shared;
-use crate::web_server::broadcaster::BroadcastEmitter;
-use serde_json::Value;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::sync::Arc;
-use std::time::Duration;
-use std::time::Instant;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout};
-use tokio::sync::{mpsc, oneshot, watch};
-use tokio_util::sync::CancellationToken;
 
-    fn is_still_registered(&self) -> bool {
+use super::state_machine::SessionActor;
+use super::types::ActorStopReason;
+use super::util::map_state_to_run_status;
+
+impl SessionActor {
+    pub(super) fn is_still_registered(&self) -> bool {
         let Ok(map) = self.sessions.try_lock() else {
             // Mailbox is contended; prefer emitting so a live actor is not silenced.
             return true;
@@ -50,7 +32,7 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Emit a RunState event with identity dedup. Single entry point.
-    fn emit_state(
+    pub(super) fn emit_state(
         &mut self,
         new_state: &str,
         exit_code: Option<i32>,
@@ -153,7 +135,7 @@ use tokio_util::sync::CancellationToken;
 
     /// Finalize meta.json on EOF when result event already set RunState.
     /// Determines terminal status from result_subtype + exit_code.
-    fn finalize_meta(&self, exit_code: Option<i32>) {
+    pub(super) fn finalize_meta(&self, exit_code: Option<i32>) {
         if let Err(e) = runs::with_meta(&self.run_id, |meta| {
             let had_result_error = meta
                 .result_subtype
@@ -190,7 +172,7 @@ use tokio_util::sync::CancellationToken;
     }
 
     /// Fire-and-forget auto-commit for worktree sessions on completion.
-    fn trigger_auto_commit(&self) {
+    pub(super) fn trigger_auto_commit(&self) {
         let run_id = self.run_id.clone();
         tokio::spawn(async move {
             let meta = tokio::task::spawn_blocking({
@@ -248,7 +230,7 @@ use tokio_util::sync::CancellationToken;
 
     // ── Cleanup ──
 
-    fn build_recovery_snapshot(&self) -> ActorRecoverySnapshot {
+    pub(super) fn build_recovery_snapshot(&self) -> ActorRecoverySnapshot {
         // Collect unaccepted messages from queued_user (not yet dispatched).
         let mut pending_unaccepted: VecDeque<PendingRecoveryMessage> = self
             .queued_user
@@ -299,7 +281,7 @@ use tokio_util::sync::CancellationToken;
         }
     }
 
-    async fn cleanup(mut self) {
+    pub(super) async fn cleanup(mut self) {
         log::debug!("[actor] cleanup starting: run_id={}", self.run_id);
 
         let snapshot = self.build_recovery_snapshot();
@@ -412,7 +394,7 @@ use tokio_util::sync::CancellationToken;
 impl SessionActor {
     /// Persist idle↔running status transition to meta + notify all windows.
     /// Only allows Running→Idle and Idle→Running; other transitions are skipped.
-    fn persist_idle_running(&self, target: RunStatus) {
+    pub(super) fn persist_idle_running(&self, target: RunStatus) {
         let meta = match storage::runs::get_run(&self.run_id) {
             Some(m) => m,
             None => return,
@@ -453,5 +435,5 @@ pub(crate) use crate::agent::turn_engine::is_accepted;
 /// (FIFO-evicting when at capacity). Pure function re-exported from
 /// `crate::agent::turn_engine` so both `session_actor` and
 /// `runtime_recovery` can use it without creating a dependency cycle.
+#[cfg(test)]
 pub(crate) use crate::agent::turn_engine::record_accepted_client_message_id;
-

@@ -1,15 +1,8 @@
-use crate::agent::claude_stream::augmented_path;
-use crate::agent::cli_update::CliInstallMethod;
 use crate::agent::ssh::{expand_local_tilde, shell_escape};
-use crate::models::{
-    ApiTestResult, AuthDiagnostics, ClaudeMdInfo, CliCheckResult, CliDiagnostics, CliDistTags,
-    ConfigDiagnostics, ConfigIssue, DiagnosticsReport, LocalProxyStatus, ProjectDiagnostics,
-    ProjectInitStatus, RemoteTestResult, ServicesDiagnostics, SshKeyInfo, SystemDiagnostics,
-    UpdateCliResult,
-};
+use crate::models::{ApiTestResult, LocalProxyStatus, RemoteTestResult};
 use crate::process_ext::HideConsole;
-use std::path::Path;
-use std::process::Command;
+
+use super::cli_check::detect_proxy_inner;
 
 /// One-click update for Claude Code. Claude Code ships via two channels that
 /// don't share a single update path:
@@ -39,7 +32,7 @@ pub async fn detect_local_proxy(
 /// Probe model used when the user hasn't configured one — just for connectivity testing.
 const PROBE_MODEL: &str = "claude-sonnet-4-6";
 
-async fn test_api_inner(
+pub(super) async fn test_api_inner(
     api_key: &str,
     base_url: &str,
     auth_env_var: &str,
@@ -245,7 +238,7 @@ pub async fn test_api_connectivity(
 }
 
 /// Platform-aware message for missing SSH binaries.
-fn ssh_not_found_msg(binary: &str) -> String {
+pub(super) fn ssh_not_found_msg(binary: &str) -> String {
     #[cfg(windows)]
     {
         format!(
@@ -408,6 +401,3 @@ pub async fn test_remote_host(
         error: cli_error,
     })
 }
-
-/// Check if a project directory has been initialized (has CLAUDE.md).
-#[tauri::command]

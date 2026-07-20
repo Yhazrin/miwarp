@@ -2,7 +2,7 @@
   import type { SessionStore } from "$lib/stores/session-store.svelte";
   import type { UserSettings, PromptInputSnapshot } from "$lib/types";
   import type { InputVm, PermissionVm, SidePanelsVm, InputDockHandlers } from "./input-dock-types";
-  import { canResumeNow, getResumeWarning, TERMINAL_PHASES, getCliCommands } from "$lib/stores";
+  import { canResumeNow, getResumeWarning, getCliCommands } from "$lib/stores";
   import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
   import { mergeProjectCommands } from "$lib/utils/slash-commands";
   import { dbg } from "$lib/utils/debug";
@@ -96,10 +96,7 @@
       getEl: () => stage,
       varName: "--chat-input-dock-offset",
       onCommit: (scrollPad, el) => {
-        el.style.setProperty(
-          "--chat-scroll-fade-height",
-          `${Math.min(scrollPad + 36, 200)}px`,
-        );
+        el.style.setProperty("--chat-scroll-fade-height", `${Math.min(scrollPad + 36, 200)}px`);
       },
     });
 
@@ -184,82 +181,80 @@
     />
   {/if}
 
-  {#if store.sessionAlive || !store.run || store.phase === "empty" || store.phase === "ready" || TERMINAL_PHASES.includes(store.phase)}
-    <div
-      class="pointer-events-auto relative z-10 px-2 pt-0 pb-[calc(var(--chat-input-dock-bottom-gap,1rem)+env(safe-area-inset-bottom,0px))]"
-    >
-      <div class="pointer-events-auto">
-        <PromptInput
-          bind:this={promptRef}
-          agent={store.agent}
-          running={store.isActivelyRunning}
-          disabled={inputBlockedByPermission}
-          busy={sendBusy}
-          pendingPermission={store.hasInlinePermission}
-          hasRun={!!store.run}
-          sessionAlive={store.sessionAlive}
-          canResume={!store.sessionAlive &&
-            canResumeNow(store.run, store.phase, agentSettings?.no_session_persistence ?? false)}
-          useStreamSession={store.useStreamSession}
-          isRemote={store.isRemote}
-          cliCommands={store.sessionInitReceived && store.sessionCommands.length > 0
-            ? store.sessionCommands
-            : mergeProjectCommands(getCliCommands(store.agent), projectCommands)}
-          models={effectiveModels}
-          currentModel={store.model}
-          permissionMode={store.permissionMode}
-          cwd={store.effectiveCwd ||
-            folderCwdOverride ||
-            localStorage.getItem(LS_PROJECT_CWD) ||
-            ""}
-          authMode={store.authMode}
-          platformId={store.platformId ?? "anthropic"}
-          platformCredentials={settings?.platform_credentials ?? []}
-          onSend={sendMessage}
-          onBtwSend={handleBtwSend}
-          onAgentChange={undefined}
-          onInterrupt={() => store.interrupt()}
-          onModelSwitch={handleModelChange}
-          onPermissionModeChange={handlePermissionModeChange}
-          onVirtualCommand={handleVirtualCommand}
-          fastModeState={store.fastModeState}
-          onFastModeSwitch={handleFastModeSwitch}
-          onPlatformChange={handlePlatformChange}
-          {authOverview}
-          authSourceLabel={store.authSourceLabel}
-          authSourceCategory={store.authSourceCategory}
-          apiKeySource={store.apiKeySource}
-          onAuthModeChange={handleAuthModeChange}
-          {localProxyStatuses}
-          showAuthBadge={!welcomeVisible}
-          onShortcutHelp={() => (shortcutHelpOpen = !shortcutHelpOpen)}
-          availableSkills={store.availableSkills}
-          {skillItems}
-          agents={preloadedAgents.map((a) => ({ name: a.name, description: a.description }))}
-          hasStash={!!stashedInput}
-          {userHistory}
-          runId={store.run?.id ?? ""}
-          onRestoreStash={() => {
-            if (stashedInput) {
-              promptRef?.restoreSnapshot(stashedInput);
-              stashedInput = null;
-              showChatToast(t("toast_stashRestored"));
-              dbg("chat", "stash restored via badge click");
-            }
-          }}
-          onValueChange={handleInputValueChange}
-          contextWindow={store.contextWindow}
-          {processVisibility}
-        />
-        {#if teamHintVisible}
-          <div
-            class="mx-2 mb-1 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-muted-foreground animate-in fade-in slide-in-from-bottom-1 duration-150"
-          >
-            <Icon name="users" size="sm" class="shrink-0 text-primary" />
-            <span>{t("teamRun_teamHint")}</span>
-          </div>
-        {/if}
-      </div>
+  <!-- Keep PromptInput mounted across run switches. Session loading may
+       temporarily disable editing, but it must not destroy/recreate the
+       editor, toolbar, draft, caret, or IME state. -->
+  <div
+    class="pointer-events-auto relative z-10 px-2 pt-0 pb-[calc(var(--chat-input-dock-bottom-gap,1rem)+env(safe-area-inset-bottom,0px))]"
+  >
+    <div class="pointer-events-auto">
+      <PromptInput
+        bind:this={promptRef}
+        agent={store.agent}
+        running={store.isActivelyRunning}
+        disabled={inputBlockedByPermission || store.phase === "loading"}
+        busy={sendBusy}
+        pendingPermission={store.hasInlinePermission}
+        hasRun={!!store.run}
+        sessionAlive={store.sessionAlive}
+        canResume={!store.sessionAlive &&
+          canResumeNow(store.run, store.phase, agentSettings?.no_session_persistence ?? false)}
+        useStreamSession={store.useStreamSession}
+        isRemote={store.isRemote}
+        cliCommands={store.sessionInitReceived && store.sessionCommands.length > 0
+          ? store.sessionCommands
+          : mergeProjectCommands(getCliCommands(store.agent), projectCommands)}
+        models={effectiveModels}
+        currentModel={store.model}
+        permissionMode={store.permissionMode}
+        cwd={store.effectiveCwd || folderCwdOverride || localStorage.getItem(LS_PROJECT_CWD) || ""}
+        authMode={store.authMode}
+        platformId={store.platformId ?? "anthropic"}
+        platformCredentials={settings?.platform_credentials ?? []}
+        onSend={sendMessage}
+        onBtwSend={handleBtwSend}
+        onAgentChange={undefined}
+        onInterrupt={() => store.interrupt()}
+        onModelSwitch={handleModelChange}
+        onPermissionModeChange={handlePermissionModeChange}
+        onVirtualCommand={handleVirtualCommand}
+        fastModeState={store.fastModeState}
+        onFastModeSwitch={handleFastModeSwitch}
+        onPlatformChange={handlePlatformChange}
+        {authOverview}
+        authSourceLabel={store.authSourceLabel}
+        authSourceCategory={store.authSourceCategory}
+        apiKeySource={store.apiKeySource}
+        onAuthModeChange={handleAuthModeChange}
+        {localProxyStatuses}
+        showAuthBadge={!welcomeVisible}
+        onShortcutHelp={() => (shortcutHelpOpen = !shortcutHelpOpen)}
+        availableSkills={store.availableSkills}
+        {skillItems}
+        agents={preloadedAgents.map((a) => ({ name: a.name, description: a.description }))}
+        hasStash={!!stashedInput}
+        {userHistory}
+        runId={store.run?.id ?? ""}
+        onRestoreStash={() => {
+          if (stashedInput) {
+            promptRef?.restoreSnapshot(stashedInput);
+            stashedInput = null;
+            showChatToast(t("toast_stashRestored"));
+            dbg("chat", "stash restored via badge click");
+          }
+        }}
+        onValueChange={handleInputValueChange}
+        contextWindow={store.contextWindow}
+        {processVisibility}
+      />
+      {#if teamHintVisible}
+        <div
+          class="mx-2 mb-1 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-muted-foreground animate-in fade-in slide-in-from-bottom-1 duration-150"
+        >
+          <Icon name="users" size="sm" class="shrink-0 text-primary" />
+          <span>{t("teamRun_teamHint")}</span>
+        </div>
+      {/if}
     </div>
-  {/if}
+  </div>
 </div>

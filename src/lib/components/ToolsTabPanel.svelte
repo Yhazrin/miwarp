@@ -114,9 +114,7 @@
 
 <!-- Overview: compact single-line session stats -->
 {#if toolStats.totalToolCount > 0}
-  <div
-    class="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border/50 text-[10px]"
-  >
+  <div class="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border/50 text-[10px]">
     <span class="font-medium text-foreground"
       >{t("toolActivity_totalTools", { count: String(toolStats.totalToolCount) })}</span
     >
@@ -200,8 +198,7 @@
       {@const isCollapsed = collapsedTurns.has(turn.turnIndex)}
       {@const hasTools = turn.tools.length > 0}
       {@const turnHasError =
-        hasTools &&
-        flattenNodes(turn.tools).some((t) => categorizeBusStatus(t.status) === "error")}
+        hasTools && flattenNodes(turn.tools).some((t) => categorizeBusStatus(t.status) === "error")}
       <!-- Turn header -->
       <div
         class="flex items-center w-full px-2.5 py-1.5 hover:bg-accent/50 transition-colors border-b border-border/30 {turnHasError
@@ -233,9 +230,7 @@
               {t("toolActivity_turn", { index: String(turn.turnIndex) })}
               <span class="text-foreground/70">{truncate(turn.userPreview, 25)}</span>
             {:else}
-              <span class="text-muted-foreground/60"
-                >{t("toolActivity_systemResume")}</span
-              >
+              <span class="text-muted-foreground/60">{t("toolActivity_systemResume")}</span>
             {/if}
           </span>
           <span class="ml-auto flex items-center gap-1.5 shrink-0">
@@ -245,19 +240,16 @@
                 {#if bk.reads > 0}<span class="text-[hsl(var(--miwarp-status-info)/0.7)]"
                     >{bk.reads}R</span
                   >{/if}
-                {#if bk.searches > 0}<span
-                    class="text-[hsl(var(--miwarp-accent-violet)/0.7)]"
+                {#if bk.searches > 0}<span class="text-[hsl(var(--miwarp-accent-violet)/0.7)]"
                     >{bk.searches}S</span
                   >{/if}
-                {#if bk.bash > 0}<span
-                    class="text-[hsl(var(--miwarp-status-success)/0.7)]">{bk.bash}B</span
+                {#if bk.bash > 0}<span class="text-[hsl(var(--miwarp-status-success)/0.7)]"
+                    >{bk.bash}B</span
                   >{/if}
-                {#if bk.writes > 0}<span
-                    class="text-[hsl(var(--miwarp-status-warning)/0.7)]"
+                {#if bk.writes > 0}<span class="text-[hsl(var(--miwarp-status-warning)/0.7)]"
                     >{bk.writes}W</span
                   >{/if}
-                <span
-                  class="px-1 py-0.5 rounded-full bg-muted text-muted-foreground font-medium"
+                <span class="px-1 py-0.5 rounded-full bg-muted text-muted-foreground font-medium"
                   >{countToolNodes(turn.tools)}</span
                 >
               </span>
@@ -299,9 +291,7 @@
       <div class="px-2.5 py-1">
         <div class="flex items-center gap-1.5">
           {@render statusIcon(cat)}
-          <div
-            class="flex h-4 w-4 shrink-0 items-center justify-center rounded {style.bg}"
-          >
+          <div class="flex h-4 w-4 shrink-0 items-center justify-center rounded {style.bg}">
             <svg
               class="h-2.5 w-2.5 {style.text}"
               viewBox="0 0 24 24"
@@ -318,9 +308,7 @@
             >{event.tool_name ?? event.hook_type}</span
           >
           {#if detail}
-            <span class="text-[10px] text-muted-foreground truncate min-w-0"
-              >{detail}</span
-            >
+            <span class="text-[10px] text-muted-foreground truncate min-w-0">{detail}</span>
           {/if}
         </div>
       </div>

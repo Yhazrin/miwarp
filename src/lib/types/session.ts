@@ -4,22 +4,18 @@
 import type { CliCommand } from "./settings";
 import type { McpServerInfo } from "./settings";
 import type { PermissionSuggestion } from "./settings";
-import type { ModelUsageEntry } from "./common";
+import type { ModelUsageEntry } from "./primitives";
 import type { Attachment } from "./chat";
 
 import type { RunStatus } from "./primitives";
 // RunStatus re-exported via primitives.ts
 export type { RunStatus };
 
-
 export type RunEventType = "system" | "stdout" | "stderr" | "command" | "user" | "assistant";
-
 
 export type ExecutionPath = "session_actor" | "pipe_exec";
 
-
 export type RunSurface = "chat" | "project_desk";
-
 
 export interface ProjectDeskContextMeta {
   /** Char count of the system prompt that was injected. */
@@ -31,13 +27,11 @@ export interface ProjectDeskContextMeta {
   snapshotGeneratedAt: string;
 }
 
-
 export type ConversationRef =
   | { kind: "claude_session"; id: string }
   | { kind: "codex_thread"; id: string }
   | { kind: "mimo_session"; id: string }
   | { kind: "opencode_session"; id: string };
-
 
 export interface TaskRun {
   id: string;
@@ -111,14 +105,12 @@ export interface TaskRun {
   scheduled_task_run_id?: string;
 }
 
-
 export interface ImportWatermark {
   offset: number;
   mtimeNs: number;
   fileSize: number;
   lastUuid?: string;
 }
-
 
 export interface SessionFolder {
   id: string;
@@ -127,7 +119,6 @@ export interface SessionFolder {
   createdAt: string;
   updatedAt: string;
 }
-
 
 export interface CliSessionSummary {
   sessionId: string;
@@ -145,7 +136,6 @@ export interface CliSessionSummary {
   existingRunId?: string;
 }
 
-
 export interface ImportResult {
   runId: string;
   sessionId: string;
@@ -155,13 +145,11 @@ export interface ImportResult {
   skippedSubtypes: Record<string, number>;
 }
 
-
 export interface DiscoverResult {
   sessions: CliSessionSummary[];
   total: number;
   truncated: boolean;
 }
-
 
 export interface SyncResult {
   newEvents: number;
@@ -169,13 +157,11 @@ export interface SyncResult {
   usageIncomplete: boolean;
 }
 
-
 export interface ExportReport {
   sessionCount: number;
   totalBytes: number;
   failures: string[];
 }
-
 
 export interface ImportDetail {
   sessionId: string;
@@ -185,7 +171,6 @@ export interface ImportDetail {
   error?: string;
 }
 
-
 export interface ImportReport {
   imported: number;
   skipped: number;
@@ -194,7 +179,6 @@ export interface ImportReport {
   missingCwd: number;
   details: ImportDetail[];
 }
-
 
 export interface CliSessionInfo {
   sessionId: string;
@@ -209,7 +193,6 @@ export interface CliSessionInfo {
   existingRunId?: string;
 }
 
-
 export interface RunEvent {
   id: string;
   task_id: string;
@@ -219,7 +202,6 @@ export interface RunEvent {
   timestamp: string;
 }
 
-
 export interface RunArtifact {
   task_id: string;
   files_changed: string[];
@@ -228,7 +210,6 @@ export interface RunArtifact {
   cost_estimate?: number;
   updated_at: string;
 }
-
 
 export interface HookEvent {
   run_id: string;
@@ -256,21 +237,17 @@ export interface HookEvent {
   [key: string]: unknown;
 }
 
-
 export interface TokenUsage {
   input_tokens: number;
   output_tokens: number;
   cost: number;
 }
 
-
 export type SessionMode = "new" | "resume" | "continue" | "fork";
-
 
 export interface ChatDelta {
   text: string;
 }
-
 
 export interface ChatDone {
   ok: boolean;
@@ -278,14 +255,12 @@ export interface ChatDone {
   error?: string;
 }
 
-
 export interface FileEntry {
   path: string;
   action: "read" | "write" | "edit" | "persisted";
   toolUseId?: string; // only top-level tools can be scrolled to
   status?: string;
 }
-
 
 export interface SessionInfoData {
   sessionId?: string;
@@ -321,7 +296,6 @@ export interface SessionInfoData {
   platformName?: string;
   cliUpdateAvailable?: string;
 }
-
 
 export type BusEvent =
   | {
@@ -610,13 +584,11 @@ export type BusEvent =
       timestamp_ms: number;
     };
 
-
 export type RalphCompleteReason =
   | "max_iterations"
   | "completion_promise"
   | "cancelled"
   | "fail_stopped";
-
 
 export interface ElicitationFieldSchema {
   type: "string" | "number" | "boolean" | "enum" | "array";
@@ -627,14 +599,12 @@ export interface ElicitationFieldSchema {
   required?: boolean;
 }
 
-
 export interface ElicitationSchema {
   type?: string;
   properties?: Record<string, ElicitationFieldSchema>;
   required?: string[];
   [key: string]: unknown;
 }
-
 
 export interface BusToolItem {
   tool_use_id: string;
@@ -662,7 +632,6 @@ export interface BusToolItem {
   tool_use_result?: Record<string, unknown>;
   [key: string]: unknown;
 }
-
 
 export type TimelineEntry =
   | {
@@ -694,5 +663,3 @@ export type TimelineEntry =
     }
   | { kind: "separator"; id: string; anchorId: string; content: string; ts: string }
   | { kind: "command_output"; id: string; anchorId: string; content: string; ts: string };
-
-

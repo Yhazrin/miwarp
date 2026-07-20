@@ -6,15 +6,15 @@
 //!
 //! Also supports MiMo-Code JSON protocol via runtime_kind dispatch.
 
+use crate::models::protocol_state::{ParserStats, ProtocolState};
 use crate::models::{AgentRuntimeKind, BusEvent};
-use crate::models::protocol_state::{MimoToolStartInfo, ParserStats, ProtocolState};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 
 /// Extract text content between simple XML tags: `<tag>content</tag>`.
 /// Returns `None` if tag not found or content is empty — callers use
 /// `None` → JSON `null` so frontend `??` correctly falls back to existing values.
-fn extract_xml_tag<'a>(text: &'a str, tag: &str) -> Option<&'a str> {
+pub(super) fn extract_xml_tag<'a>(text: &'a str, tag: &str) -> Option<&'a str> {
     let open = format!("<{}>", tag);
     let close = format!("</{}>", tag);
     let start = text.find(&open)?;
@@ -74,7 +74,7 @@ impl ProtocolState {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn emit_message_complete(
+    pub(super) fn emit_message_complete(
         &mut self,
         run_id: &str,
         events: &mut Vec<BusEvent>,
@@ -106,7 +106,7 @@ impl ProtocolState {
         self.current_message_text.clear();
     }
 
-    fn flush_pending_message_complete(
+    pub(super) fn flush_pending_message_complete(
         &mut self,
         run_id: &str,
         parent_tool_use_id: &Option<String>,
@@ -141,5 +141,4 @@ impl ProtocolState {
         s.strict_mode = true;
         s
     }
-
-    /// Map a single raw Claude CLI JSON event into zero or more `BusEvent`s.
+}

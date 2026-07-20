@@ -8,66 +8,60 @@
 
 use crate::agent::adapter::ActorSessionMap;
 use crate::agent::attachment::AttachmentData;
-use crate::agent::claude_protocol::{validate_bus_event, ProtocolState};
-use crate::agent::notify::notify_if_background;
+use crate::agent::claude_protocol::ProtocolState;
 use crate::agent::recovery::{CrashReason, RecoveryState};
 use crate::agent::runtime_recovery::{
-    classify_active_turn_eof, emit_session_lifecycle, on_actor_exit, ActorRecoveryBootstrap,
-    ActorRecoverySnapshot, PendingRecoveryMessage, RecoveryRegistry,
+    emit_session_lifecycle, PendingRecoveryMessage, RecoveryRegistry,
 };
 use crate::agent::turn_engine::{
-    apply_activity_reset, ActiveTurn, TurnOrigin, TurnPhase, UserTurnKind, UserTurnTicket,
-    ACCEPTED_CLIENT_MESSAGE_IDS_CAP, PROTOCOL_DESYNC_THRESHOLD, PROTOCOL_DESYNC_WINDOW_SECS,
-    QUARANTINE_DEADLINE, QUEUED_USER_CAP, STOP_ESCALATION_KILL, TICK_INTERVAL, USER_HARD_TIMEOUT,
-    USER_SOFT_TIMEOUT,
+    is_accepted, ActiveTurn, TurnOrigin, UserTurnKind, UserTurnTicket, QUEUED_USER_CAP,
+    TICK_INTERVAL,
 };
-use crate::models::{
-    max_attachment_size, now_iso, AgentRuntimeKind, BusEvent, RalphCompleteReason, RunStatus,
-    ALLOWED_DOC_TYPES, ALLOWED_IMAGE_TYPES,
-};
-use crate::storage;
-use crate::storage::runs;
-use crate::storage::shared;
+use crate::models::{BusEvent, RalphCompleteReason};
 use crate::web_server::broadcaster::BroadcastEmitter;
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
-use std::time::Duration;
 use std::time::Instant;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::{mpsc, oneshot, watch};
 use tokio_util::sync::CancellationToken;
 
-struct SessionActor {
-    emitter: Arc<BroadcastEmitter>,
-    sessions: ActorSessionMap,
-    run_id: String,
-    tag: Arc<()>,
-    protocol: ProtocolState,
+use super::types::{
+    ActorCommand, ActorStopReason, PendingInteractiveRequest, RalphCancelResult, StopSource,
+};
+use super::util::{RalphLoopState, RalphPhase};
+
+pub(super) struct SessionActor {
+    pub(super) emitter: Arc<BroadcastEmitter>,
+    pub(super) sessions: ActorSessionMap,
+    pub(super) run_id: String,
+    pub(super) tag: Arc<()>,
+    pub(super) protocol: ProtocolState,
     /// Current RunState string — identity dedup: skip emit if unchanged.
-    state: String,
-    stdin: Option<ChildStdin>,
-    child: Option<Child>,
-    cancel: CancellationToken,
-    pending_interrupt: bool,
-    control_waiters: HashMap<String, oneshot::Sender<Value>>,
-    shutdown_tx: Option<oneshot::Sender<()>>,
+    pub(super) state: String,
+    pub(super) stdin: Option<ChildStdin>,
+    pub(super) child: Option<Child>,
+    pub(super) cancel: CancellationToken,
+    pub(super) pending_interrupt: bool,
+    pub(super) control_waiters: HashMap<String, oneshot::Sender<Value>>,
+    pub(super) shutdown_tx: Option<oneshot::Sender<()>>,
 
     // ── Turn Transaction Engine fields ──
     /// Current active turn (None when idle).
-    active_turn: Option<ActiveTurn>,
+    pub(super) active_turn: Option<ActiveTurn>,
     /// Queue of pending user messages.
-    queued_user: VecDeque<UserTurnTicket>,
+    pub(super) queued_user: VecDeque<UserTurnTicket>,
     /// v1.0.9 Phase 2: bounded FIFO ledger of client_message_ids the actor
     /// has already accepted (i.e. reply.send(Ok(())) was reached). Used to
     /// dedupe retries across queue + ledger so a reconnect-retry that
     /// re-dispatches a previously-accepted submit resolves idempotently
     /// without creating a second turn. Bounded by
     /// `ACCEPTED_CLIENT_MESSAGE_IDS_CAP`; eviction is FIFO.
-    accepted_client_message_ids: VecDeque<String>,
+    pub(super) accepted_client_message_ids: VecDeque<String>,
     /// Next turn index (all user messages including slash). Starts from resume baseline.
-    next_turn_index: u32,
+    pub(super) next_turn_index: u32,
     /// Next auto_ctx_id (Normal user messages only). Starts from resume baseline.
     ///
     /// NOTE: this counter is still allocated and snapshotted for resume
@@ -75,55 +69,55 @@ struct SessionActor {
     /// consumed (auto-context was disabled — see `on_user_turn_finished`
     /// removal). The counter is preserved so existing recovery snapshots
     /// continue to deserialize without losing the resume baseline.
-    next_auto_ctx_id: u32,
+    pub(super) next_auto_ctx_id: u32,
     /// Monotonically increasing turn seq for ordering.
-    next_turn_seq: u64,
+    pub(super) next_turn_seq: u64,
     /// Quarantine: freeze dispatch until CLI reports a turn-boundary state.
-    quarantine_until_result: bool,
-    quarantine_deadline: Option<Instant>,
-    interrupt_sent_for_quarantine: bool,
+    pub(super) quarantine_until_result: bool,
+    pub(super) quarantine_deadline: Option<Instant>,
+    pub(super) interrupt_sent_for_quarantine: bool,
     /// Set after quarantine kill — reject new messages, break run loop.
-    terminated: bool,
+    pub(super) terminated: bool,
     /// JSON parse failures in handle_stdout_line (before map_event).
     /// Complements ParserStats.parse_warn_count (field-level malformation).
-    json_parse_fail_count: u32,
+    pub(super) json_parse_fail_count: u32,
     /// v1.0.6 / hardening A2: sliding-window parse-fail timestamps (epoch ms).
     /// Used to detect protocol desync when failures exceed the threshold
     /// within PROTOCOL_DESYNC_WINDOW_SECS.
-    parse_fail_window: Vec<u64>,
+    pub(super) parse_fail_window: Vec<u64>,
     /// v1.0.6 / hardening A2: a one-shot guard so we only emit ProtocolDesync
     /// once per session even if parse failures keep coming.
-    desync_emitted: bool,
+    pub(super) desync_emitted: bool,
 
     // ── Ralph Loop fields ──
     /// Ralph loop state (None = inactive / completed).
-    ralph_loop: Option<RalphLoopState>,
+    pub(super) ralph_loop: Option<RalphLoopState>,
     /// Flag set by on_tick_timeout when WaitingRetry expires, consumed by main loop.
-    ralph_needs_dispatch: bool,
+    pub(super) ralph_needs_dispatch: bool,
 
     // ── Observability: pending interactive request tracking ──
     /// Tracks the most recent interactive control request awaiting user response.
     /// Set when emitting PermissionPrompt / HookCallback(PreToolUse) / ElicitationPrompt.
     /// Cleared when the response is received. Retained during quarantine for diagnostics.
-    pending_interactive_request: Option<PendingInteractiveRequest>,
+    pub(super) pending_interactive_request: Option<PendingInteractiveRequest>,
 
     // ── v1.0.9 runtime recovery ──
-    recovery_registry: Option<RecoveryRegistry>,
-    connection_generation: u64,
-    session_id: Option<String>,
-    crash_reason: Option<CrashReason>,
-    user_stopped: bool,
-    recoverable_exit: bool,
-    exit_code: Option<i32>,
+    pub(super) recovery_registry: Option<RecoveryRegistry>,
+    pub(super) connection_generation: u64,
+    pub(super) session_id: Option<String>,
+    pub(super) crash_reason: Option<CrashReason>,
+    pub(super) user_stopped: bool,
+    pub(super) recoverable_exit: bool,
+    pub(super) exit_code: Option<i32>,
     /// Stash of messages captured before stdin write in `start_user_turn`.
     /// If the write succeeds, the message is harmlessly filtered during
     /// replay (it's already in the accepted ledger). If stdin fails, this
     /// ensures the message survives into `build_recovery_snapshot`.
-    pending_unaccepted_for_recovery: VecDeque<PendingRecoveryMessage>,
+    pub(super) pending_unaccepted_for_recovery: VecDeque<PendingRecoveryMessage>,
 
     // ── Readiness signal ──
     /// Sends `true` on first CLI output (stdout line). WaitReady commands clone a receiver.
-    ready_tx: watch::Sender<bool>,
+    pub(super) ready_tx: watch::Sender<bool>,
 
     // ── P0-4 hardening: real stop-reason propagation ──
     /// The last `ActorStopReason` stamped by the actor (or `None` if the
@@ -135,7 +129,7 @@ struct SessionActor {
     /// (`UserRequested`), app-initiated (`Cancelled`), or natural
     /// (`StreamEof`). The IPC layer also surfaces it via the `Stop`
     /// reply channel so callers can record intent in run metadata.
-    last_stop_reason: Option<ActorStopReason>,
+    pub(super) last_stop_reason: Option<ActorStopReason>,
 
     // ── P0-C4 hardening: stop escalation kill signal ──
     /// Receiver half of the stop-escalation oneshot. The sender is
@@ -147,7 +141,7 @@ struct SessionActor {
     /// Wrapped in `Option` so the actor can swap it out once it has
     /// fired (the timer is one-shot by construction — we don't want a
     /// stale sender leaking across a stop + resume cycle).
-    stop_kill_rx: Option<oneshot::Receiver<()>>,
+    pub(super) stop_kill_rx: Option<oneshot::Receiver<()>>,
 }
 
 // ── Spawn entry point ──
@@ -161,10 +155,9 @@ struct SessionActor {
 /// `initial_turn_index` and `initial_auto_ctx_id` are the resume baseline
 /// (from `count_user_messages`). For new sessions, pass (0, 0).
 #[allow(clippy::too_many_arguments)]
-
 impl SessionActor {
     /// Main select! loop. Consumes self.
-    async fn run(
+    pub(super) async fn run(
         mut self,
         mut cmd_rx: mpsc::Receiver<ActorCommand>,
         stdout: ChildStdout,
@@ -610,5 +603,4 @@ impl SessionActor {
 
         self.try_dispatch().await;
     }
-
-    /// Try to dispatch next queued item. HC #1: One turn at a time.
+}

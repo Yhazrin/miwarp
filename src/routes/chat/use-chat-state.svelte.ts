@@ -4,12 +4,15 @@
  */
 import type { UserSettings, AgentSettings } from "$lib/types";
 import type { ProcessVisibility } from "$lib/utils/process-visibility";
-import { getCachedProcessVisibility, normalizeProcessVisibility } from "$lib/utils/process-visibility";
+import {
+  getCachedProcessVisibility,
+  normalizeProcessVisibility,
+} from "$lib/utils/process-visibility";
 import type { SessionIslandAlignment } from "$lib/utils/session-island-alignment";
 import { normalizeSessionIslandAlignment } from "$lib/utils/session-island-alignment";
 import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
 import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
-import type { SessionStatusBar } from "$lib/components/SessionStatusBar.svelte";
+import type SessionStatusBar from "$lib/components/SessionStatusBar.svelte";
 import type { PromptInputSnapshot } from "$lib/types";
 
 export function createChatState() {
@@ -85,46 +88,126 @@ export function createChatState() {
   }
 
   return {
-    get settings() { return settings; },
-    set settings(v: UserSettings | null) { settings = v; },
-    get agentSettings() { return agentSettings; },
-    set agentSettings(v: AgentSettings | null) { agentSettings = v; },
-    get resuming() { return resuming; },
-    set resuming(v: boolean) { resuming = v; },
-    get approving() { return approving; },
-    set approving(v: boolean) { approving = v; },
-    get sidebarCollapsed() { return sidebarCollapsed; },
-    set sidebarCollapsed(v: boolean) { sidebarCollapsed = v; },
-    get shortcutHelpOpen() { return shortcutHelpOpen; },
-    set shortcutHelpOpen(v: boolean) { shortcutHelpOpen = v; },
-    get statusBarRef() { return statusBarRef; },
-    set statusBarRef(v: SessionStatusBar | undefined) { statusBarRef = v; },
-    get stashedInput() { return stashedInput; },
-    set stashedInput(v: PromptInputSnapshot | null) { stashedInput = v; },
-    get sidebarRequestedTab() { return sidebarRequestedTab; },
-    set sidebarRequestedTab(v: ToolActivityPanelTab | null) { sidebarRequestedTab = v; },
-    get mcpPanelOpen() { return mcpPanelOpen; },
-    set mcpPanelOpen(v: boolean) { mcpPanelOpen = v; },
-    get processVisibility() { return processVisibility; },
-    set processVisibility(v: ProcessVisibility) { processVisibility = v; },
-    get sessionIslandAlignmentOverride() { return sessionIslandAlignmentOverride; },
-    set sessionIslandAlignmentOverride(v: SessionIslandAlignment | null) { sessionIslandAlignmentOverride = v; },
-    get sessionIslandAlignment() { return sessionIslandAlignment; },
-    get toolPanelActiveTab() { return toolPanelActiveTab; },
-    set toolPanelActiveTab(v: ToolActivityPanelTab) { toolPanelActiveTab = v; },
-    get toolPanelIndicators() { return toolPanelIndicators; },
-    set toolPanelIndicators(v: { context: boolean; files: boolean; tasks: boolean }) { toolPanelIndicators = v; },
-    get requestedPreviewPath() { return requestedPreviewPath; },
-    set requestedPreviewPath(v: string | null) { requestedPreviewPath = v; },
-    get requestedPreviewUrl() { return requestedPreviewUrl; },
-    set requestedPreviewUrl(v: string | null) { requestedPreviewUrl = v; },
-    get permissionStatusOverlay() { return permissionStatusOverlay; },
-    get toastOverlay() { return toastOverlay; },
-    set toastOverlay(v: import("$lib/stores/toast-store.svelte").Toast | null) { toastOverlay = v; },
-    get toastOverlayVersion() { return toastOverlayVersion; },
-    set toastOverlayVersion(v: number) { toastOverlayVersion = v; },
-    get statusBarExpanded() { return statusBarExpanded; },
-    set statusBarExpanded(v: boolean) { statusBarExpanded = v; },
+    get settings() {
+      return settings;
+    },
+    set settings(v: UserSettings | null) {
+      settings = v;
+    },
+    get agentSettings() {
+      return agentSettings;
+    },
+    set agentSettings(v: AgentSettings | null) {
+      agentSettings = v;
+    },
+    get resuming() {
+      return resuming;
+    },
+    set resuming(v: boolean) {
+      resuming = v;
+    },
+    get approving() {
+      return approving;
+    },
+    set approving(v: boolean) {
+      approving = v;
+    },
+    get sidebarCollapsed() {
+      return sidebarCollapsed;
+    },
+    set sidebarCollapsed(v: boolean) {
+      sidebarCollapsed = v;
+    },
+    get shortcutHelpOpen() {
+      return shortcutHelpOpen;
+    },
+    set shortcutHelpOpen(v: boolean) {
+      shortcutHelpOpen = v;
+    },
+    get statusBarRef() {
+      return statusBarRef;
+    },
+    set statusBarRef(v: SessionStatusBar | undefined) {
+      statusBarRef = v;
+    },
+    get stashedInput() {
+      return stashedInput;
+    },
+    set stashedInput(v: PromptInputSnapshot | null) {
+      stashedInput = v;
+    },
+    get sidebarRequestedTab() {
+      return sidebarRequestedTab;
+    },
+    set sidebarRequestedTab(v: ToolActivityPanelTab | null) {
+      sidebarRequestedTab = v;
+    },
+    get mcpPanelOpen() {
+      return mcpPanelOpen;
+    },
+    set mcpPanelOpen(v: boolean) {
+      mcpPanelOpen = v;
+    },
+    get processVisibility() {
+      return processVisibility;
+    },
+    set processVisibility(v: ProcessVisibility) {
+      processVisibility = v;
+    },
+    get sessionIslandAlignmentOverride() {
+      return sessionIslandAlignmentOverride;
+    },
+    set sessionIslandAlignmentOverride(v: SessionIslandAlignment | null) {
+      sessionIslandAlignmentOverride = v;
+    },
+    get sessionIslandAlignment() {
+      return sessionIslandAlignment;
+    },
+    get toolPanelActiveTab() {
+      return toolPanelActiveTab;
+    },
+    set toolPanelActiveTab(v: ToolActivityPanelTab) {
+      toolPanelActiveTab = v;
+    },
+    get toolPanelIndicators() {
+      return toolPanelIndicators;
+    },
+    set toolPanelIndicators(v: { context: boolean; files: boolean; tasks: boolean }) {
+      toolPanelIndicators = v;
+    },
+    get requestedPreviewPath() {
+      return requestedPreviewPath;
+    },
+    set requestedPreviewPath(v: string | null) {
+      requestedPreviewPath = v;
+    },
+    get requestedPreviewUrl() {
+      return requestedPreviewUrl;
+    },
+    set requestedPreviewUrl(v: string | null) {
+      requestedPreviewUrl = v;
+    },
+    get permissionStatusOverlay() {
+      return permissionStatusOverlay;
+    },
+    get toastOverlay() {
+      return toastOverlay;
+    },
+    set toastOverlay(v: import("$lib/stores/toast-store.svelte").Toast | null) {
+      toastOverlay = v;
+    },
+    get toastOverlayVersion() {
+      return toastOverlayVersion;
+    },
+    set toastOverlayVersion(v: number) {
+      toastOverlayVersion = v;
+    },
+    get statusBarExpanded() {
+      return statusBarExpanded;
+    },
+    set statusBarExpanded(v: boolean) {
+      statusBarExpanded = v;
+    },
     pushPermissionStatus,
     clearPermissionStatusOverlay,
     clearToastOverlay,

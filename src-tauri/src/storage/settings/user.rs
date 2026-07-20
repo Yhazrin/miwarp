@@ -1,88 +1,8 @@
 use crate::models::{
-    normalize_session_island_alignment, normalize_workspace_folder_sort_order, AgentSettings,
-    AllSettings, UserSettings,
+    normalize_session_island_alignment, normalize_workspace_folder_sort_order, UserSettings,
 };
-use std::fs;
-use std::path::{Path, PathBuf};
 
-fn settings_path() -> PathBuf {
-    super::data_dir().join("settings.json")
-}
-
-/// Back up a corrupt settings file to `settings.json.corrupt.<timestamp>`.
-/// Returns the backup path on success so the caller can log it.
-fn backup_corrupt_file(path: &Path) -> Option<PathBuf> {
-    let ts = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis();
-    let backup = path.with_extension(format!("json.corrupt.{ts}"));
-    match fs::rename(path, &backup) {
-        Ok(()) => {
-            log::warn!(
-                "[storage/settings] corrupt file backed up to {}",
-                backup.display()
-            );
-            Some(backup)
-        }
-        Err(e) => {
-            log::error!(
-                "[storage/settings] failed to back up corrupt file {}: {}",
-                path.display(),
-                e
-            );
-            None
-        }
-    }
-}
-
-fn load_from_path(path: &Path) -> AllSettings {
-    match fs::read_to_string(path) {
-        Ok(content) => match serde_json::from_str::<AllSettings>(&content) {
-            Ok(mut settings) => {
-                log::debug!("[storage/settings] loaded settings from {}", path.display());
-                // Run one-time migrations on platform credentials
-                if migrate_platform_credentials(&mut settings) {
-                    log::info!("[storage/settings] migrated platform credentials, saving");
-                    let _ = save_to_path(&settings, path);
-                }
-                if migrate_session_island_alignment(&mut settings) {
-                    log::info!("[storage/settings] normalized session_island_alignment, saving");
-                    let _ = save_to_path(&settings, path);
-                }
-                settings
-            }
-            Err(e) => {
-                log::warn!(
-                    "[storage/settings] failed to parse settings: {}; using defaults (original preserved)",
-                    e
-                );
-                backup_corrupt_file(path);
-                AllSettings::default()
-            }
-        },
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            log::debug!("[storage/settings] settings file not found, using defaults");
-            AllSettings::default()
-        }
-        Err(e) => {
-            // IO error (permission denied, file locked, etc.) — do NOT overwrite
-            // the existing file with defaults. Return defaults for in-memory use
-            // only; the next explicit save() call will persist them atomically.
-            log::warn!(
-                "[storage/settings] failed to read settings: {}; using defaults (file preserved)",
-                e
-            );
-            AllSettings::default()
-        }
-    }
-}
-
-fn save_to_path(settings: &AllSettings, path: &Path) -> Result<(), String> {
-    log::debug!("[storage/settings] saving settings");
-    super::durable_io::write_json_atomic(path, settings)
-}
-
+use super::core::{load, save};
 
 pub fn get_user_settings() -> UserSettings {
     let mut user = load().user;
@@ -140,7 +60,7 @@ pub fn save_web_server_partial_disable() -> Result<(), String> {
     Ok(())
 }
 
-fn validate_ui_zoom(v: &serde_json::Value) -> Result<Option<f64>, String> {
+pub(super) fn validate_ui_zoom(v: &serde_json::Value) -> Result<Option<f64>, String> {
     if v.is_null() {
         return Ok(None);
     }
@@ -453,4 +373,3 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
     save(&all)?;
     Ok(all.user)
 }
-

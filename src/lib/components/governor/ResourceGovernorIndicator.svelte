@@ -1,10 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
-  import {
-    resourceGovernorStore,
-    type _GovernorStatus,
-  } from "$lib/stores/resource-governor-store.svelte";
+  import { resourceGovernorStore } from "$lib/stores/resource-governor-store.svelte";
 
   onMount(() => {
     void resourceGovernorStore.refresh().catch((e: unknown) => {

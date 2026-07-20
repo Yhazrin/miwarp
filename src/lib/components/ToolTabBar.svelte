@@ -63,8 +63,7 @@
       >
         <Icon name="clock" size="sm" />
         {#if contextHistory.length > 0}
-          <span
-            class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-success"
+          <span class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-success"
           ></span>
         {/if}
       </button>
@@ -79,8 +78,7 @@
       >
         <Icon name="file" size="sm" />
         {#if fileEntries.length > 0}
-          <span
-            class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
+          <span class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
           ></span>
         {/if}
       </button>

@@ -30,7 +30,10 @@ import { parseDispatchMethods, parseTauriGenerateHandler } from "./contract-lib.
 import { REPO_ROOT, readText, report } from "./lib.mjs";
 
 const LIB_RS = join(REPO_ROOT, "src-tauri", "src", "lib.rs");
-const DISPATCH = join(REPO_ROOT, "src-tauri", "src", "web_server", "dispatch", "mod.rs");
+// `mod.rs` is the public timing/normalisation wrapper. The wire-method
+// match lives in `routes.rs` after the dispatch decomposition, so inspect
+// that route table to keep the mobile-parity gate tied to real handlers.
+const DISPATCH = join(REPO_ROOT, "src-tauri", "src", "web_server", "dispatch", "routes.rs");
 const MODELS_DIR = join(REPO_ROOT, "src-tauri", "src", "models");
 const TYPES_TS = join(REPO_ROOT, "src", "lib", "types", "session.ts");
 
@@ -89,7 +92,7 @@ if (tauriRuntimeHub.size > 0) {
   for (const cmd of tauriRuntimeHub) {
     if (!supported.has(cmd) && !desktopOnly.has(cmd)) {
       violations.push(
-        `runtime_hub command "${cmd}" registered in lib.rs but missing from iOS WS dispatch (and not marked desktop-only). Add a "desktop only" arm in dispatch.rs OR a runtime_hub arm.`,
+        `runtime_hub command "${cmd}" registered in lib.rs but missing from iOS WS dispatch (and not marked desktop-only). Add a "desktop only" arm in dispatch/routes.rs OR a runtime_hub arm.`,
       );
     }
   }
@@ -105,7 +108,7 @@ if (tauriDiagnostics.size > 0) {
   for (const cmd of tauriDiagnostics) {
     if (!supported.has(cmd) && !desktopOnly.has(cmd)) {
       violations.push(
-        `diagnostics command "${cmd}" registered in lib.rs but missing from iOS WS dispatch. Either add a "desktop only" arm in dispatch.rs OR make it cross-platform.`,
+        `diagnostics command "${cmd}" registered in lib.rs but missing from iOS WS dispatch. Either add a "desktop only" arm in dispatch/routes.rs OR make it cross-platform.`,
       );
     }
   }
